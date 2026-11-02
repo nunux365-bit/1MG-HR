@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In · Tata 1mg People Desk</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+</head>
+<body>
+
+  <div class="login-wrapper">
+    <div class="login-card">
+      
+      <!-- Brand Header -->
+      <div class="brand-header">
+        <div class="brand-logo-container">
+          <picture>
+            <source srcset="/assets/logo.svg" type="image/svg+xml">
+            <img src="/assets/logo.png" alt="Tata 1mg" class="brand-logo">
+          </picture>
+        </div>
+        <div class="app-badge">People Desk</div>
+        <h1 class="card-title" id="pageTitle">Sign in to People Desk</h1>
+        <p class="card-subtitle" id="pageSubtitle">Enter your authorized email to continue</p>
+      </div>
+
+      <!-- Alert Box for Notifications -->
+      <div id="alertBox" class="alert-box alert-danger" style="display: none;">
+        <span id="alertMsg"></span>
+      </div>
+
+      <!-- ============================================================
+           STEP 1: EMAIL ADDRESS INPUT
+           ============================================================ -->
+      <div id="stepEmail" class="step-pane active">
+        <form id="emailForm" onsubmit="handleCheckEmail(event)">
+          <div class="form-group">
+            <label class="form-label" for="emailInput">Work or Registered Email</label>
+            <div class="input-container">
+              <input 
+                type="email" 
+                id="emailInput" 
+                class="form-input" 
+                placeholder="name@zohomail.in, name@gmail.com, name@1mg.com" 
+                required 
+                autofocus
+                autocomplete="email"
+              >
+            </div>
+            <p class="form-helper">Supports Gmail, Zoho Mail, or internal company email</p>
+          </div>
+
+          <button type="submit" id="btnContinueEmail" class="btn-primary">
+            <span>Continue</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- ============================================================
+           STEP 2A: ADMIN APP PASSWORD
+           ============================================================ -->
+      <div id="stepAdminPassword" class="step-pane">
+        <!-- Identity Chip -->
+        <div class="user-identity-chip">
+          <div class="chip-info">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="chip-name" id="adminNameDisplay">Administrator</span>
+              <span class="role-pill admin">ADMIN</span>
+            </div>
+            <span class="chip-email" id="adminEmailDisplay">admin@zohomail.in</span>
+          </div>
+          <button type="button" class="chip-edit-btn" onclick="goToEmailStep()">
+            Edit
+          </button>
+        </div>
+
+        <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="adminAppPasswordInput">Admin App Password</label>
+            <div class="input-container">
+              <input 
+                type="password" 
+                id="adminAppPasswordInput" 
+                class="form-input" 
+                placeholder="Enter your admin app password" 
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="input-icon-right" onclick="togglePasswordVisibility('adminAppPasswordInput', this)" title="Show/Hide">
+                👁️
+              </button>
+            </div>
+            <p class="form-helper">Enter your secure app password to access Admin Control Center</p>
+          </div>
+
+          <button type="submit" id="btnAdminLogin" class="btn-primary">
+            <span>Sign In as Admin</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- ============================================================
+           STEP 2B: AGENT LOGIN (Existing Password)
+           ============================================================ -->
+      <div id="stepAgentPassword" class="step-pane">
+        <!-- Identity Chip -->
+        <div class="user-identity-chip">
+          <div class="chip-info">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+              <span class="chip-name" id="agentNameDisplay">Agent Name</span>
+              <span class="role-pill agent" id="agentRoleBadge">AGENT</span>
+            </div>
+            <span class="chip-email" id="agentEmailDisplay">agent@gmail.com</span>
+            <span style="font-size: 11px; color: var(--secondary-teal); font-weight: 600;" id="agentDeptDisplay">Attendance HR</span>
+          </div>
+          <button type="button" class="chip-edit-btn" onclick="goToEmailStep()">
+            Edit
+          </button>
+        </div>
+
+        <form id="agentLoginForm" onsubmit="handleAgentLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="agentPasswordInput">Agent Password</label>
+            <div class="input-container">
+              <input 
+                type="password" 
+                id="agentPasswordInput" 
+                class="form-input" 
+                placeholder="Enter your password" 
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="input-icon-right" onclick="togglePasswordVisibility('agentPasswordInput', this)" title="Show/Hide">
+                👁️
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btnAgentLogin" class="btn-primary">
+            <span>Sign In to Agent Workbench</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- ============================================================
+           STEP 2C: AGENT ONBOARDING (Set Initial Password)
+           ============================================================ -->
+      <div id="stepSetPassword" class="step-pane">
+        <div class="onboarding-intro">
+          <strong>Namaste <span id="onboardAgentName">Agent</span>! 🎉</strong>
+          <p style="margin-top: 4px; font-size: 12.5px;">
+            Your account was created by the Admin for <strong id="onboardDeptName">People Desk</strong>. Please create your secure password to activate your access.
+          </p>
+        </div>
+
+        <form id="setPasswordForm" onsubmit="handleSetPassword(event)">
+          <div class="form-group">
+            <label class="form-label" for="newPasswordInput">Create Password</label>
+            <div class="input-container">
+              <input 
+                type="password" 
+                id="newPasswordInput" 
+                class="form-input" 
+                placeholder="At least 6 characters" 
+                required 
+                minlength="6"
+                autocomplete="new-password"
+              >
+              <button type="button" class="input-icon-right" onclick="togglePasswordVisibility('newPasswordInput', this)">
+                👁️
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirmPasswordInput">Confirm Password</label>
+            <div class="input-container">
+              <input 
+                type="password" 
+                id="confirmPasswordInput" 
+                class="form-input" 
+                placeholder="Re-enter your password" 
+                required 
+                minlength="6"
+                autocomplete="new-password"
+              >
+            </div>
+          </div>
+
+          <button type="submit" id="btnSetPassword" class="btn-primary">
+            <span>Set Password & Sign In</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Login Footer -->
+      <div class="login-footer">
+        <span class="secure-tag">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          Tata 1mg Enterprise Security
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/js/login.js"></script>
+</body>
+</html>
+

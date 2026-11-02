@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Console · Tata 1mg People Desk</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+</head>
+<body style="background: #F8F9FA;">
+  <header style="background: #FFFFFF; border-bottom: 1px solid var(--border-color); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <picture>
+        <source srcset="/assets/logo.svg" type="image/svg+xml">
+        <img src="/assets/logo.png" alt="Tata 1mg" style="height: 30px;">
+      </picture>
+      <span class="role-pill admin">ADMIN CONSOLE</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button onclick="window.location.href='/agent.html'" style="padding: 6px 12px; font-size: 13px; font-weight: 600; background: var(--secondary-teal-light); color: var(--secondary-teal); border: 1px solid var(--secondary-teal); border-radius: 6px; cursor: pointer;">
+        🔄 Switch to Agent View
+      </button>
+      <span id="userName" style="font-size: 13px; font-weight: 600;">Admin</span>
+      <button onclick="localStorage.clear(); window.location.href='/';" style="padding: 6px 12px; font-size: 13px; background: #F1F5F9; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">
+        Sign Out
+      </button>
+    </div>
+  </header>
+
+  <main style="max-width: 1200px; margin: 32px auto; padding: 0 16px;">
+    <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px;">
+      <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Admin Dashboard Loading...</h2>
+      <p style="color: var(--text-muted); font-size: 14px;">Admin controls for Managing Agents, Creating Departments, Auditing Cases, and Reports will be loaded here.</p>
+    </div>
+  </main>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
+    if (user.name) document.getElementById('userName').innerText = user.name;
+    if (user.role !== 'ADMIN') {
+      alert('Access restricted to Administrators.');
+      window.location.href = '/';
+    }
+  </script>
+</body>
+</html>
+

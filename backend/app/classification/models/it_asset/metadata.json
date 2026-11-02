@@ -1,0 +1,17 @@
+{
+  "category_code": "IT_ASSET",
+  "sample_count": 12,
+  "intents": [
+    "IT02",
+    "IT04",
+    "IT01",
+    "IT08",
+    "IT06",
+    "IT07",
+    "IT05",
+    "IT03"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

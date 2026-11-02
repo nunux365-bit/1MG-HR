@@ -1,0 +1,17 @@
+{
+  "category_code": "PEOPLEDESK",
+  "sample_count": 12,
+  "intents": [
+    "PD05",
+    "PD07",
+    "PD01",
+    "PD02",
+    "PD04",
+    "PD03",
+    "PD06",
+    "PD08"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

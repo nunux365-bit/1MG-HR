@@ -1,0 +1,17 @@
+{
+  "category_code": "PAYROLL",
+  "sample_count": 19,
+  "intents": [
+    "PR07",
+    "PR03",
+    "PR01",
+    "PR04",
+    "PR02",
+    "PR08",
+    "PR05",
+    "PR06"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

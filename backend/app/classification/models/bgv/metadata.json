@@ -1,0 +1,17 @@
+{
+  "category_code": "BGV",
+  "sample_count": 10,
+  "intents": [
+    "BG02",
+    "BG03",
+    "BG05",
+    "BG04",
+    "BG08",
+    "BG01",
+    "BG06",
+    "BG07"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

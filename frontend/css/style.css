@@ -1,0 +1,416 @@
+/* ==========================================================================
+   TATA 1MG PEOPLE DESK - DESIGN SYSTEM & STYLES
+   Colors: 1mg Coral (#FF6F61), Teal (#10847E), Slate (#F8F9FA), Dark (#212529)
+   ========================================================================== */
+
+:root {
+  --primary-coral: #FF6F61;
+  --primary-coral-hover: #EE5A4C;
+  --primary-coral-light: #FFF2ED;
+  
+  --secondary-teal: #10B190;
+  --secondary-teal-hover: #0D967A;
+  --secondary-teal-light: #EAF7F4;
+
+  --tata-blue: #486AAE;
+  --tata-blue-light: #EFF3FA;
+  
+  --bg-page: #F8F9FA;
+  --bg-card: #FFFFFF;
+  --border-color: #EAEAEA;
+  --border-focus: #FF6F61;
+  
+  --text-main: #212121;
+  --text-muted: #7C7C7C;
+  --text-subtle: #9E9E9E;
+  
+  --badge-admin-bg: #EFF3FA;
+  --badge-admin-text: #2B529A;
+  --badge-admin-border: #D4E0F4;
+  
+  --badge-agent-bg: #EAF7F4;
+  --badge-agent-text: #0D8269;
+  --badge-agent-border: #C2ECE3;
+  
+  --badge-head-bg: #FFF8E7;
+  --badge-head-text: #A16207;
+  --badge-head-border: #FDE68A;
+  
+  --danger-bg: #FEE2E2;
+  --danger-text: #991B1B;
+  --danger-border: #FECACA;
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 20px 40px -15px rgba(16, 24, 40, 0.08), 0 0 1px 1px rgba(16, 24, 40, 0.04);
+  --shadow-input-focus: 0 0 0 3px rgba(255, 111, 97, 0.2);
+  
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   LOGIN PAGE LAYOUT
+   ========================================================================== */
+
+.login-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 10%, #FFFFFF 0%, #F4F7F9 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(255, 111, 97, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.login-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -100px;
+  left: -100px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(16, 132, 126, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  padding: 36px 32px;
+  position: relative;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+/* Logo Header */
+.brand-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.brand-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.brand-logo {
+  height: 38px;
+  max-width: 140px;
+  object-fit: contain;
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-coral-light);
+  color: var(--primary-coral);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: 8px;
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+
+.card-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* User Tag (Step 2) */
+.user-identity-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F8FAFC;
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.chip-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chip-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.chip-email {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chip-edit-btn {
+  background: none;
+  border: none;
+  color: var(--secondary-teal);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chip-edit-btn:hover {
+  text-decoration: underline;
+}
+
+/* Role Badges */
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+
+.role-pill.admin {
+  background: var(--badge-admin-bg);
+  color: var(--badge-admin-text);
+  border-color: var(--badge-admin-border);
+}
+
+.role-pill.agent {
+  background: var(--badge-agent-bg);
+  color: var(--badge-agent-text);
+  border-color: var(--badge-agent-border);
+}
+
+.role-pill.head {
+  background: var(--badge-head-bg);
+  color: var(--badge-head-text);
+  border-color: var(--badge-head-border);
+}
+
+/* Form Controls */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input {
+  width: 100%;
+  height: 44px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-main);
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-input-focus);
+}
+
+.form-input::placeholder {
+  color: var(--text-subtle);
+}
+
+.input-icon-right {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-icon-right:hover {
+  color: var(--text-main);
+}
+
+/* Form Helper & Errors */
+.form-helper {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.alert-box {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alert-danger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid var(--danger-border);
+}
+
+.alert-success {
+  background: var(--badge-agent-bg);
+  color: var(--badge-agent-text);
+  border: 1px solid var(--badge-agent-border);
+}
+
+/* Buttons */
+.btn-primary {
+  width: 100%;
+  height: 44px;
+  background: var(--primary-coral);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 111, 97, 0.25);
+}
+
+.btn-primary:hover {
+  background: var(--primary-coral-hover);
+  box-shadow: 0 4px 8px rgba(226, 82, 68, 0.35);
+}
+
+.btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Onboarding Box */
+.onboarding-intro {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: #166534;
+}
+
+/* Footer note */
+.login-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.secure-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--secondary-teal);
+  font-weight: 500;
+}
+
+/* Step transition helpers */
+.step-pane {
+  display: none;
+  animation: fadeIn 0.25s ease-in-out forwards;
+}
+
+.step-pane.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Spinner */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

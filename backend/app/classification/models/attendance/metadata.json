@@ -1,0 +1,12 @@
+{
+  "category_code": "ATTENDANCE",
+  "sample_count": 150,
+  "intents": [
+    "AT01",
+    "AT02",
+    "AT03"
+  ],
+  "intent_count": 3,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}
