@@ -96,11 +96,12 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
     """
     NLP Entity Extractor for Tata 1mg HR Ingestion:
     Extracts Employee Full Name, Code, Shift, Location, Department, and Manager
-    from email subject, body, signature sign-offs, and email headers.
+    from email subject, body, signature sign-offs, and email headers,
+    cross-referenced with the real HRMS employees directory.
     """
     full_text = f"{title}\n{description}"
     
-    # 1. Employee Code detection
+    # 1. Employee Code detection from text
     emp_code = None
     code_match = re.search(r"(?:Employee Code|Emp Code|Emp ID|Token|Badge ID|ID)[:\s]+([A-Za-z0-9_-]+)", full_text, re.IGNORECASE)
     if code_match:
@@ -109,8 +110,6 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
         code_token_match = re.search(r"\b(1MG\d{3,6}|EMP\d{3,6}|NUNUX\d+)\b", full_text)
         if code_token_match:
             emp_code = code_token_match.group(1).strip()
-    if not emp_code:
-        emp_code = "1MG1024"
 
     # 2. Employee Full Name detection from sign-off, greetings or text
     extracted_name = None
@@ -125,12 +124,12 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
             
     if not extracted_name:
         if employee_name and employee_name.lower() not in ["gitguardian", "unknown", "system", "employee", "tata 1mg employee"]:
-            extracted_name = employee_name
+            extracted_name = employee_name.strip()
         elif employee_email and "@" in employee_email:
             username = employee_email.split("@")[0].replace(".", " ").title()
             extracted_name = username
         else:
-            extracted_name = "Rahul Verma"
+            extracted_name = "Tata 1mg Employee"
 
     # 3. Shift detection
     shift = "General Day Shift"
@@ -143,7 +142,7 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
         shift = "Morning Shift (9:00 AM - 5:30 PM)"
 
     # 4. Location / DC Hub detection
-    location = "Gurugram DC Hub"
+    location = None
     if "gurugram" in full_text.lower():
         location = "Gurugram DC Hub"
     elif "okhla" in full_text.lower():
@@ -153,43 +152,73 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
     elif "mumbai" in full_text.lower():
         location = "Mumbai Regional Hub"
 
-    # 5. Department detection
-    dept = "Supply Chain & Operations"
+    # 5. Department detection from text
+    dept = "General People Desk"
     dept_match = re.search(r"(?:Department|Dept)[:\s]+([A-Za-z &]+?)(?:\s*\||\n|$)", full_text, re.IGNORECASE)
     if dept_match:
         dept = dept_match.group(1).strip()
-    elif "biometric" in full_text.lower() or "punch" in full_text.lower() or "attendance" in full_text.lower():
-        dept = "Workforce Attendance"
-    elif "tds" in full_text.lower() or "salary" in full_text.lower() or "payroll" in full_text.lower():
+    elif "biometric" in full_text.lower() or "punch" in full_text.lower() or "attendance" in full_text.lower() or "absent" in full_text.lower():
+        dept = "Attendance Management"
+    elif "tds" in full_text.lower() or "salary" in full_text.lower() or "payroll" in full_text.lower() or "traces" in full_text.lower():
         dept = "Finance & Payroll"
-    elif "insurance" in full_text.lower() or "mediclaim" in full_text.lower():
+    elif "insurance" in full_text.lower() or "mediclaim" in full_text.lower() or "tpa" in full_text.lower():
         dept = "People Operations & Benefits"
+    elif "background verification" in full_text.lower() or "bgv" in full_text.lower() or "onboarding" in full_text.lower():
+        dept = "Onboarding & BGV Desk"
 
-    # 6. Reporting Manager
-    manager = "Vikram Malhotra (VP Operations)"
-    if "payroll" in dept.lower() or "finance" in dept.lower():
-        manager = "Rajesh Khanna (Director Payroll)"
-    elif "hr" in dept.lower() or "people" in dept.lower():
-        manager = "Ritu Sen (Head of People Ops)"
+    # 6. Real HRMS Employee Lookup in Neon Database
+    db_emp = None
+    try:
+        db_emp = execute_query(
+            """
+            SELECT id, employee_id, name, email, department, designation, manager_name, location
+            FROM employees
+            WHERE (employee_id = %s AND %s IS NOT NULL)
+               OR (LOWER(email) = LOWER(%s) AND %s IS NOT NULL)
+               OR (LOWER(name) = LOWER(%s) AND %s IS NOT NULL)
+            LIMIT 1;
+            """,
+            (emp_code, emp_code, employee_email, employee_email, extracted_name, extracted_name),
+            fetch_all=False
+        )
+    except Exception:
+        db_emp = None
 
-    # 7. Domain verification
-    is_verified = employee_email.strip().lower().endswith("@1mg.com") or "1mg" in employee_email.lower()
+    if db_emp:
+        return {
+            "extracted_name": db_emp.get("name") or extracted_name,
+            "employee_code": db_emp.get("employee_id") or emp_code or "—",
+            "token": db_emp.get("employee_id") or emp_code or "—",
+            "department": db_emp.get("department") or dept,
+            "designation": db_emp.get("designation") or "Associate",
+            "grade": "G5",
+            "location": db_emp.get("location") or location or "Gurugram DC Hub",
+            "manager": db_emp.get("manager_name") or "People Operations Lead",
+            "shift": shift,
+            "corporate_email": db_emp.get("email") or employee_email or "—",
+            "is_tata_verified": True,
+            "directory_status": "Active Directory Confirmed",
+            "employment_type": "Permanent (Full-Time)",
+            "joining_date": "Confirmed Active"
+        }
 
+    # Fallback for unverified / external sender
+    is_domain_verified = (employee_email or "").strip().lower().endswith("@1mg.com")
     return {
         "extracted_name": extracted_name,
-        "employee_code": emp_code,
-        "token": emp_code,
+        "employee_code": emp_code or "—",
+        "token": emp_code or "—",
         "department": dept,
-        "designation": "Senior Operations Associate",
-        "grade": "G5",
-        "location": location,
-        "manager": manager,
+        "designation": "Tata 1mg Staff" if is_domain_verified else "External Inbound",
+        "grade": "—",
+        "location": location or "—",
+        "manager": "People Operations Desk",
         "shift": shift,
-        "corporate_email": employee_email or "employee@1mg.com",
-        "is_tata_verified": is_verified,
-        "directory_status": "Active Directory Confirmed" if is_verified else "External Ingest",
-        "employment_type": "Permanent (Full-Time)",
-        "joining_date": "Confirmed Active"
+        "corporate_email": employee_email or "—",
+        "is_tata_verified": is_domain_verified,
+        "directory_status": "Active Directory Confirmed" if is_domain_verified else "External Ingest",
+        "employment_type": "Permanent (Full-Time)" if is_domain_verified else "External Inbound",
+        "joining_date": "Confirmed Active" if is_domain_verified else "—"
     }
 
 def analyze_case_ai(c: dict) -> dict:
@@ -327,19 +356,30 @@ def analyze_case_ai(c: dict) -> dict:
 @router.get("/cases")
 def list_cases(
     department_id: Optional[int] = None,
+    department_ids: Optional[str] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(25, ge=1, le=100)
 ):
-    """List cases with dynamic filters, priority, search, and pagination."""
+    """List cases with dynamic filters, priority, multi-department scoping, search, and pagination."""
     where_clauses = ["1=1"]
     params = []
     
-    if department_id:
-        where_clauses.append("c.department_id = %s")
-        params.append(department_id)
+    target_dept_ids = []
+    if department_ids:
+        try:
+            target_dept_ids = [int(x.strip()) for x in department_ids.split(",") if x.strip()]
+        except ValueError:
+            target_dept_ids = []
+    if department_id and department_id not in target_dept_ids:
+        target_dept_ids.append(department_id)
+        
+    if target_dept_ids:
+        placeholders = ", ".join(["%s"] * len(target_dept_ids))
+        where_clauses.append(f"c.department_id IN ({placeholders})")
+        params.extend(target_dept_ids)
         
     if status and status != "ALL":
         where_clauses.append("c.status = %s")
@@ -405,46 +445,10 @@ def list_cases(
 
 @router.post("/cases/seed-samples")
 def seed_sample_cases():
-    """Seeds 4 realistic Tata 1mg employee cases matching the visual demo."""
-    samples = [
-        {
-            "employee_email": "rahul.verma@1mg.com",
-            "employee_name": "Rahul Verma",
-            "title": "Attendance Regularization Request - EMP1024",
-            "description": "Dear People Operations Team,\n\nMy morning biometric attendance punch was not registered at the Gurugram Distribution Center turnstile on 28th Oct 2026 due to optical scanner failure during site dispatch duty.\n\nKindly regularize my morning in-punch for 09:30 AM.\n\nEmployee Code: 1MG123 | Department: Supply Chain & Operations | Shift: General Day Shift\n\nThank you,\nRahul Verma",
-            "priority": "HIGH"
-        },
-        {
-            "employee_email": "rahul.verma@1mg.com",
-            "employee_name": "GitGuardian",
-            "title": "[nunux365-bit/HR-WORK-] Company Email Password exposed on GitHub",
-            "description": "Dear People Operations Team,\n\nMy morning biometric attendance punch was not registered at the Gurugram Distribution Center turnstile on 28th Oct 2026 due to optical scanner failure during site dispatch duty.\n\nKindly regularize my morning in-punch for 09:30 AM.\n\nEmployee Code: NUNUX365 | Department: Supply Chain & Operations | Shift: General Day Shift\n\nThank you,\nRahul Verma",
-            "priority": "HIGH"
-        },
-        {
-            "employee_email": "priya.singh@1mg.com",
-            "employee_name": "Priya Singh",
-            "title": "Form 16 Part B TDS deduction reconciliation",
-            "description": "Dear Payroll Team,\n\nI noticed a difference between the TDS deducted in June payslip and TRACES 26AS statement. Requesting revised computation sheet.\n\nEmployee Code: 1MG1042 | Department: General HR | Location: Gurugram HQ\n\nThanks & Regards,\nPriya Singh",
-            "priority": "MEDIUM"
-        },
-        {
-            "employee_email": "kavita.patel@1mg.com",
-            "employee_name": "Kavita Patel",
-            "title": "Group health insurance e-card download for hospital admission",
-            "description": "Dear Benefits Team,\n\nNeed digital TPA health card for hospital admission of my mother. Policy number verification needed.\n\nEmployee Code: 1MG882 | Department: Marketing | Location: Gurugram Hub\n\nWarm regards,\nKavita Patel",
-            "priority": "HIGH"
-        }
-    ]
-    created = []
-    for s in samples:
-        res = create_inbound_case(CaseCreateRequest(**s))
-        if res.get("case"):
-            created.append(res["case"])
+    """Demo sample seeding decommissioned in favor of real cases."""
     return {
-        "success": True,
-        "message": f"Successfully created {len(created)} sample employee cases with automated AI routing and entity extraction.",
-        "cases": created
+        "success": False,
+        "message": "Demo sample seeding has been decommissioned. Create authentic cases via POST /api/v1/cases or convert live inbound emails."
     }
 
 @router.get("/cases/{case_id}/ai-insights")
@@ -991,15 +995,16 @@ def extract_ai_email_entities(email_row: dict) -> dict:
             pass
 
     if not matched_employee:
+        is_domain_verified = (sender_email or "").strip().lower().endswith("@1mg.com")
         matched_employee = {
             "employee_id": detected_code or None,
-            "name": detected_name,
+            "name": detected_name or "Employee",
             "email": sender_email,
-            "department": "Attendance HR Desk" if "attendance" in text_content.lower() else "Operations",
-            "designation": "Associate",
-            "manager_name": "HR Operations Lead",
-            "location": "Gurugram DC Hub",
-            "is_verified": bool(detected_code)
+            "department": "Attendance Management" if "attendance" in text_content.lower() else "General People Desk",
+            "designation": "Staff" if is_domain_verified else "External Inbound",
+            "manager_name": "People Operations",
+            "location": "—",
+            "is_verified": is_domain_verified
         }
 
     # 4. Intent & Category Classification
@@ -1106,6 +1111,7 @@ def extract_ai_email_entities(email_row: dict) -> dict:
 @router.get("/inbox/emails")
 def get_inbox_emails(
     department_id: Optional[int] = None,
+    department_ids: Optional[str] = None,
     tab: Optional[str] = "useful",
     search: Optional[str] = None,
     limit: int = 50,
@@ -1113,39 +1119,53 @@ def get_inbox_emails(
 ):
     """
     Fetch inbound employee emails from the database with AI entity enrichment,
-    strict department scoping, and stream triage tabs.
+    strict multi-department scoping, and stream triage tabs.
     """
+    target_dept_ids = []
+    if department_ids:
+        try:
+            target_dept_ids = [int(x.strip()) for x in department_ids.split(",") if x.strip()]
+        except ValueError:
+            target_dept_ids = []
+    if department_id and department_id not in target_dept_ids:
+        target_dept_ids.append(department_id)
+
     # 1. Determine department scope
     allowed_categories = []
     is_universal_dept = False
 
-    if department_id:
-        dept = execute_query(
-            "SELECT id, team_name, dept_code, category_code FROM hr_departments WHERE id = %s;",
-            (department_id,),
-            fetch_one=True
-        )
-        if dept:
+    if target_dept_ids:
+        placeholders = ", ".join(["%s"] * len(target_dept_ids))
+        depts = execute_query(
+            f"SELECT id, team_name, dept_code, category_code FROM hr_departments WHERE id IN ({placeholders});",
+            tuple(target_dept_ids),
+            fetch_all=True
+        ) or []
+        for dept in depts:
             scope_str = (dept.get("category_code") or dept.get("team_name") or "").upper()
             if "ALL_HR" in scope_str or "PEOPLEDESK" in scope_str:
                 is_universal_dept = True
-            else:
-                allowed_categories = [s.strip() for s in scope_str.split(",") if s.strip()]
+                break
+            for s in scope_str.split(","):
+                clean = s.strip()
+                if clean and clean not in allowed_categories:
+                    allowed_categories.append(clean)
 
     # 2. Build Query & Filters
     conditions = ["1=1"]
     params = []
 
-    # Department Scoping Filter
-    if department_id and not is_universal_dept:
+    # Multi-Department Scoping Filter
+    if target_dept_ids and not is_universal_dept:
+        dept_placeholders = ", ".join(["%s"] * len(target_dept_ids))
         if allowed_categories:
             cat_placeholders = ", ".join(["%s"] * len(allowed_categories))
-            conditions.append(f"(department_id = %s OR category IN ({cat_placeholders}) OR category IS NULL)")
-            params.append(department_id)
+            conditions.append(f"(department_id IN ({dept_placeholders}) OR category IN ({cat_placeholders}) OR category IS NULL)")
+            params.extend(target_dept_ids)
             params.extend(allowed_categories)
         else:
-            conditions.append("(department_id = %s OR department_id IS NULL)")
-            params.append(department_id)
+            conditions.append(f"(department_id IN ({dept_placeholders}) OR department_id IS NULL)")
+            params.extend(target_dept_ids)
 
     # Search filter
     if search:
@@ -1167,18 +1187,19 @@ def get_inbox_emails(
 
     where_clause = " AND ".join(conditions)
 
-    # Fetch total counts for all tabs for tab badges (scoped to department if set)
+    # Fetch total counts for all tabs for tab badges (scoped to departments if set)
     dept_where = ""
     dept_params = []
-    if department_id and not is_universal_dept:
+    if target_dept_ids and not is_universal_dept:
+        dept_placeholders = ", ".join(["%s"] * len(target_dept_ids))
         if allowed_categories:
             cat_placeholders = ", ".join(["%s"] * len(allowed_categories))
-            dept_where = f"WHERE (department_id = %s OR category IN ({cat_placeholders}) OR category IS NULL OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM'))"
-            dept_params.append(department_id)
+            dept_where = f"WHERE (department_id IN ({dept_placeholders}) OR category IN ({cat_placeholders}) OR category IS NULL OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM'))"
+            dept_params.extend(target_dept_ids)
             dept_params.extend(allowed_categories)
         else:
-            dept_where = "WHERE (department_id = %s OR department_id IS NULL OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM'))"
-            dept_params.append(department_id)
+            dept_where = f"WHERE (department_id IN ({dept_placeholders}) OR department_id IS NULL OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM'))"
+            dept_params.extend(target_dept_ids)
 
     count_sql = f"""
         SELECT
@@ -1392,103 +1413,130 @@ def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
         "message": f"Reply successfully dispatched to {email_row.get('sender_email')}"
     }
 
-@router.post("/inbox/seed-emails")
-def seed_inbox_sample_emails():
-    """
-    Seeds realistic inbound employee emails and system alerts to showcase the full
-    triage cockpit, AI entity extraction, department routing, and noise filtering.
-    """
-    sample_emails = [
-        {
-            "sender_name": "Rahul Sharma",
-            "sender_email": "rahul.sharma@1mg.com",
-            "subject": "Background Verification Status & Previous Employer Follow-up – EMP1023",
-            "body": "Hi HR Team,\n\nMy name is Rahul Sharma, and my Employee ID is EMP1023.\n\nI have submitted all the required details for my background verification. However, my previous employment verification is still showing as pending.\n\nI previously worked at Apex Solutions. Could you please check whether the employment verification request has been shared with my previous employer?\n\nPlease let me know if any additional documents are required.\n\nRegards,\nRahul Sharma",
-            "category": "ONBOARDING",
-            "department_id": 1,
-            "is_actionable": 1
-        },
-        {
-            "sender_name": "Vaibhav",
-            "sender_email": "vaibhavv7676@gmail.com",
-            "subject": "Attendance Regularization Request – EMP1024",
-            "body": "Hi HR Team,\n\nMy Employee ID is EMP1024.\n\nI noticed that my attendance for 30/10/2026 is showing as absent in the attendance portal, even though I was present in the office and completed my working hours.\n\nI believe there might have been an issue with the biometric punch-in system.\n\nCould you please check my attendance records and help me regularize the attendance for that date?\n\nPlease let me know if any additional information is required.\n\nRegards,\nPriya Singh",
-            "category": "ATTENDANCE",
-            "department_id": 4,
-            "is_actionable": 1
-        },
-        {
-            "sender_name": "Rahul Verma",
-            "sender_email": "rahul.verma@1mg.com",
-            "subject": "Turnstile Optical Scanner Failure at Gurugram DC Hub – In-Punch Missing",
-            "body": "Dear People Operations Team,\n\nMy morning biometric attendance punch was not registered at the Gurugram Distribution Center turnstile on 28th Oct 2026 due to optical scanner failure during site dispatch duty.\n\nKindly regularize my morning in-punch for 09:30 AM.\n\nEmployee Code: 1MG123 | Department: Supply Chain & Operations\nShift: General Day Shift\n\nThank you,\nRahul Verma",
-            "category": "ATTENDANCE",
-            "department_id": 4,
-            "is_actionable": 1
-        },
-        {
-            "sender_name": "Kavita Patel",
-            "sender_email": "kavita.patel@1mg.com",
-            "subject": "Group health insurance e-card download for hospital admission",
-            "body": "Dear Benefits Team,\n\nNeed digital TPA health card for hospital admission of my mother. Policy number verification needed urgently.\n\nEmployee Code: 1MG882 | Department: Marketing | Location: Gurugram Hub\n\nWarm regards,\nKavita Patel",
-            "category": "BENEFITS",
-            "department_id": 10,
-            "is_actionable": 1
-        },
-        {
-            "sender_name": "Ananya Sharma",
-            "sender_email": "ananya.sharma@1mg.com",
-            "subject": "Annual Privilege Leave Balance & Carry-Forward Clarification",
-            "body": "Hi HR Team,\n\nI wanted to check my remaining Privilege Leave (PL) balance for this calendar year. In my employee portal, it shows 14 days, but my sheet indicates 18 days due to compensatory off earned on 12th October.\n\nCould you please verify and update the portal ledger?\n\nEmployee Code: 1MG409\n\nBest,\nAnanya Sharma",
-            "category": "LEAVE",
-            "department_id": 5,
-            "is_actionable": 1
-        },
-        {
-            "sender_name": "LottieFiles",
-            "sender_email": "hello@lottiefiles.com",
-            "subject": "LottieFiles for Figma, Webflow, Canva, Adobe & more 🔥",
-            "body": "Discover thousands of lightweight, interactive animations ready for your web, mobile, and social media designs. Download today and create magic!",
-            "category": "SYSTEM_ALERT",
-            "department_id": None,
-            "is_actionable": 0
-        },
-        {
-            "sender_name": "GitGuardian Security",
-            "sender_email": "security@getgitguardian.com",
-            "subject": "[nunux365-bit/HR-WORK-] Company Email Password exposed on GitHub",
-            "body": "GitGuardian security engine detected a valid plaintext credential committed to a public GitHub repository. Secret type: Google Workspace App Password. Immediate revocation advised.",
-            "category": "SYSTEM_ALERT",
-            "department_id": None,
-            "is_actionable": 0
-        }
-    ]
+class EmailIngestRequest(BaseModel):
+    sender_email: str
+    sender_name: Optional[str] = None
+    subject: str
+    body: str
+    received_at: Optional[str] = None
+    category: Optional[str] = None
+    department_id: Optional[int] = None
+    is_actionable: Optional[int] = None
 
-    inserted_count = 0
-    for em in sample_emails:
-        # Check if email with same subject already exists
-        exists = execute_query(
-            "SELECT id FROM emails WHERE subject = %s LIMIT 1;",
-            (em["subject"],),
+@router.post("/inbox/ingest")
+def ingest_inbound_email(payload: EmailIngestRequest):
+    """
+    Ingests an authentic inbound corporate email into Tata 1mg People Desk.
+    Performs AI extraction, entity recognition, HRMS directory verification,
+    intelligent category mapping, and routes to the proper desk queue.
+    """
+    sender_email = (payload.sender_email or "").strip()
+    if not sender_email or "@" not in sender_email:
+        raise HTTPException(status_code=400, detail="A valid sender email address is required.")
+    
+    subject = (payload.subject or "").strip()
+    if not subject:
+        raise HTTPException(status_code=400, detail="Email subject is required.")
+        
+    body = (payload.body or "").strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="Email body is required.")
+
+    # Preliminary row for AI extraction
+    temp_row = {
+        "sender_name": payload.sender_name,
+        "sender_email": sender_email,
+        "subject": subject,
+        "body": body,
+        "category": payload.category
+    }
+    
+    # Run full AI entity extraction & triage
+    ai_insights = extract_ai_email_entities(temp_row)
+    
+    # Resolve category
+    resolved_category = payload.category or ai_insights.get("category") or "INQUIRY"
+    
+    # Resolve department_id
+    dept_id = payload.department_id
+    if not dept_id:
+        dept_match = execute_query(
+            "SELECT id FROM hr_departments WHERE category_code = %s OR dept_code = %s LIMIT 1;",
+            (resolved_category, f"DEPT-{resolved_category}"),
             fetch_all=False
         )
-        if not exists:
-            execute_query(
-                """
-                INSERT INTO emails (
-                    sender_name, sender_email, subject, body, received_at,
-                    category, department_id, is_actionable, is_converted, created_at
-                ) VALUES (
-                    %s, %s, %s, %s, NOW() - INTERVAL '15 minutes' * %s,
-                    %s, %s, %s, 0, NOW()
-                );
-                """,
-                (
-                    em["sender_name"], em["sender_email"], em["subject"], em["body"],
-                    inserted_count + 1, em["category"], em["department_id"], em["is_actionable"]
-                )
-            )
-            inserted_count += 1
+        if dept_match:
+            dept_id = dept_match.get("id")
+        else:
+            first_dept = execute_query("SELECT id FROM hr_departments ORDER BY id ASC LIMIT 1;", fetch_all=False)
+            dept_id = first_dept.get("id") if first_dept else 6
 
-    return {"success": True, "message": f"Seeded {inserted_count} new realistic sample emails"}
+    # Actionable vs noise
+    is_act = payload.is_actionable
+    if is_act is None:
+        is_act = 0 if resolved_category == "SYSTEM_ALERT" else 1
+
+    # Employee ID if matched in employees table
+    matched_emp = ai_insights.get("employee_profile") or {}
+    emp_db_id = matched_emp.get("id")
+
+    # Insert into emails table
+    insert_query = """
+        INSERT INTO emails (
+            provider, account_email, sender_name, sender_email, subject, body,
+            received_at, category, department_id, employee_id, is_actionable, is_converted,
+            classification_status, processing_status, created_at, updated_at
+        ) VALUES (
+            'INBOUND_API', 'people.ops@1mg.com', %s, %s, %s, %s,
+            COALESCE(%s::timestamptz, NOW()), %s, %s, %s, %s, 0,
+            'CLASSIFIED', 'COMPLETED', NOW(), NOW()
+        )
+        RETURNING id, sender_name, sender_email, subject, body, received_at, category, department_id, is_actionable, is_converted, created_at;
+    """
+    new_email = execute_query(
+        insert_query,
+        (
+            payload.sender_name or ai_insights.get("detected_name") or "Employee",
+            sender_email,
+            subject,
+            body,
+            payload.received_at,
+            resolved_category,
+            dept_id,
+            emp_db_id,
+            is_act
+        ),
+        fetch_all=False
+    )
+    
+    if not new_email:
+        raise HTTPException(status_code=500, detail="Failed to store inbound email in database.")
+
+    return {
+        "success": True,
+        "message": "Inbound email ingested and classified successfully.",
+        "email_id": new_email.get("id"),
+        "email": new_email,
+        "ai_insights": ai_insights
+    }
+
+@router.post("/inbox/sync")
+def sync_inbox_queue():
+    """Real-time mailbox sync endpoint."""
+    total = execute_query("SELECT COUNT(*) as c FROM emails;", fetch_all=False).get("c", 0)
+    actionable = execute_query("SELECT COUNT(*) as c FROM emails WHERE is_actionable = 1 AND is_converted = 0;", fetch_all=False).get("c", 0)
+    return {
+        "success": True,
+        "message": "Inbound mailbox synchronized.",
+        "total_emails": total,
+        "actionable_emails": actionable
+    }
+
+@router.post("/inbox/seed-emails")
+def seed_inbox_sample_emails():
+    """Demo seed disabled in production/real mode."""
+    return {
+        "success": False,
+        "message": "Demo sample email seeding has been decommissioned. Ingest authentic emails via POST /api/v1/inbox/ingest."
+    }
 

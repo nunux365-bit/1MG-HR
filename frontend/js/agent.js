@@ -45,27 +45,18 @@ function openResolveModalForCurrent() {
   openResolveModal(currentSelectedCaseId, caseNum);
 }
 
-// User Profile & Fallback Demo User (Scoped to Attendance Management Desk)
+// User Profile & Fallback Demo User (Multi-department aware)
 let currentUser = JSON.parse(localStorage.getItem('1mg_user') || '{}');
 if (!currentUser.email) {
   currentUser = {
-    id: 5,
+    id: 186,
     name: 'Vaibhav Yadav',
-    email: 'vaibhavv7676@gmail.com',
+    email: 'vaibhavx002@zohomail.in',
     role: 'HR_AGENT',
-    department_id: 6,
-    department_name: 'Attendance Management'
+    department_id: 4,
+    department_ids: [4],
+    department_name: 'Attendance HR'
   };
-  localStorage.setItem('1mg_user', JSON.stringify(currentUser));
-}
-// Heal any stale localStorage department mappings
-if (currentUser.department_name && (currentUser.department_name.toLowerCase().includes('attendance') || currentUser.department_id === 4)) {
-  currentUser.department_id = 6;
-  currentUser.department_name = 'Attendance Management';
-  localStorage.setItem('1mg_user', JSON.stringify(currentUser));
-} else if (!currentUser.department_id && currentUser.role !== 'ADMIN') {
-  currentUser.department_id = 6;
-  currentUser.department_name = 'Attendance Management';
   localStorage.setItem('1mg_user', JSON.stringify(currentUser));
 }
 
@@ -119,6 +110,7 @@ const CANNED_RESPONSES = {
 document.addEventListener('DOMContentLoaded', () => {
   initUserSession();
   initLiveClock();
+  initMailboxAutoSync();
   loadDepartments().then(() => {
     switchAgentView('inboxView');
   });
@@ -289,19 +281,10 @@ async function loadDepartments() {
       allDepartments = data.departments;
       populateDepartmentFilters();
 
-      // Auto-heal currentUser department_id to match live database hr_departments
-      if (currentUser.role !== 'ADMIN') {
-        const deptName = (currentUser.department_name || '').toLowerCase();
-        const matched = allDepartments.find(d => 
-          (deptName && deptName.includes('attendance') && d.team_name.toLowerCase().includes('attendance')) ||
-          (d.team_name.toLowerCase() === deptName) ||
-          (d.id === currentUser.department_id)
-        );
-        if (matched) {
-          currentUser.department_id = matched.id;
-          currentUser.department_name = matched.team_name;
-          localStorage.setItem('1mg_user', JSON.stringify(currentUser));
-        }
+      // Ensure currentUser department_ids is an array
+      if (!currentUser.department_ids && currentUser.department_id) {
+        currentUser.department_ids = [currentUser.department_id];
+        localStorage.setItem('1mg_user', JSON.stringify(currentUser));
       }
     }
   } catch (err) {
@@ -335,8 +318,12 @@ async function fetchCasesData() {
   const isAgent = currentUser.role !== 'ADMIN';
   let url = '/api/v1/cases?page=1&limit=100';
 
-  if (isAgent && currentUser.department_id) {
-    url += `&department_id=${currentUser.department_id}`;
+  if (isAgent) {
+    if (currentUser.department_ids && currentUser.department_ids.length > 0) {
+      url += `&department_ids=${currentUser.department_ids.join(',')}`;
+    } else if (currentUser.department_id) {
+      url += `&department_id=${currentUser.department_id}`;
+    }
   }
 
   try {
@@ -346,8 +333,13 @@ async function fetchCasesData() {
       let cases = data.cases;
 
       // Client-side guarantee for department isolation
-      if (isAgent && currentUser.department_id) {
-        cases = cases.filter(c => String(c.department_id) === String(currentUser.department_id));
+      if (isAgent) {
+        const allowedDeptIds = (currentUser.department_ids && currentUser.department_ids.length > 0)
+          ? currentUser.department_ids.map(String)
+          : (currentUser.department_id ? [String(currentUser.department_id)] : []);
+        if (allowedDeptIds.length > 0) {
+          cases = cases.filter(c => !c.department_id || allowedDeptIds.includes(String(c.department_id)));
+        }
       }
 
       allCases = cases;
@@ -431,13 +423,69 @@ function renderStreamSkeleton(containerEl, count = 4) {
   containerEl.innerHTML = html;
 }
 
-async function loadInboxEmails() {
+// Auto-sync timer state (30 seconds interval)
+let mailboxAutoSyncTimer = null;
+
+function initMailboxAutoSync() {
+  if (mailboxAutoSyncTimer) clearInterval(mailboxAutoSyncTimer);
+  
+  // Schedule every 30 seconds (30000 ms)
+  mailboxAutoSyncTimer = setInterval(async () => {
+    await performMailboxAutoSync();
+  }, 30000);
+  
+  console.log('[AutoSync] 30-second recurring mailbox synchronization active');
+}
+
+async function performMailboxAutoSync() {
+  const syncBadge = document.getElementById('autoSyncBadge');
+  const syncBtn = document.querySelector('.subbar-btn');
+  const syncIcon = syncBtn?.querySelector('svg');
+
+  if (syncIcon) {
+    syncIcon.style.transition = 'transform 0.5s ease';
+    syncIcon.style.transform = 'rotate(360deg)';
+  }
+  if (syncBadge) {
+    syncBadge.style.background = '#DCFCE7';
+    syncBadge.style.borderColor = '#86EFAC';
+    syncBadge.style.color = '#15803D';
+  }
+
+  try {
+    // 1. Trigger backend mailbox sync
+    await fetch('/api/v1/inbox/sync', { method: 'POST' });
+    // 2. Refresh inbound emails queue silently
+    await loadInboxEmails({ silent: true });
+  } catch (err) {
+    console.warn('[AutoSync] Notice:', err);
+  } finally {
+    setTimeout(() => {
+      if (syncIcon) syncIcon.style.transform = 'none';
+      if (syncBadge) {
+        syncBadge.style.background = '#E0F2FE';
+        syncBadge.style.borderColor = '#BAE6FD';
+        syncBadge.style.color = '#0284C7';
+      }
+    }, 600);
+  }
+}
+
+async function loadInboxEmails(options = {}) {
+  const isSilent = Boolean(options.silent);
   const streamList = document.getElementById('inboxEmailStreamList');
-  if (streamList) {
+  if (streamList && !isSilent) {
     renderStreamSkeleton(streamList, 4);
   }
 
-  const deptParam = (currentUser.role !== 'ADMIN' && currentUser.department_id) ? `&department_id=${currentUser.department_id}` : '';
+  let deptParam = '';
+  if (currentUser.role !== 'ADMIN') {
+    if (currentUser.department_ids && currentUser.department_ids.length > 0) {
+      deptParam = `&department_ids=${currentUser.department_ids.join(',')}`;
+    } else if (currentUser.department_id) {
+      deptParam = `&department_id=${currentUser.department_id}`;
+    }
+  }
   const searchInput = document.getElementById('inboxSearchInput');
   const searchParam = searchInput && searchInput.value ? `&search=${encodeURIComponent(searchInput.value.trim())}` : '';
 
@@ -446,7 +494,19 @@ async function loadInboxEmails() {
     const data = await res.json();
 
     if (data.success) {
-      allInboxEmails = data.emails || [];
+      const prevIds = new Set(allInboxEmails.map(e => e.id));
+      const freshEmails = data.emails || [];
+
+      // If new emails arrived in background, announce quietly
+      if (isSilent && prevIds.size > 0) {
+        const newlyArrived = freshEmails.filter(e => !prevIds.has(e.id));
+        if (newlyArrived.length > 0) {
+          const firstSubject = newlyArrived[0].subject || 'Employee Query';
+          showToast(`📬 ${newlyArrived.length} new email${newlyArrived.length > 1 ? 's' : ''} in queue · "${firstSubject.substring(0, 32)}..."`, 'info');
+        }
+      }
+
+      allInboxEmails = freshEmails;
 
       // Update Triage Tab Counts
       if (data.counts) {
@@ -473,25 +533,29 @@ async function loadInboxEmails() {
       if (allInboxEmails.length > 0) {
         if (!currentSelectedEmailId || !allInboxEmails.some(e => e.id === currentSelectedEmailId)) {
           selectInboxEmail(allInboxEmails[0].id);
-        } else {
+        } else if (!isSilent) {
           selectInboxEmail(currentSelectedEmailId);
         }
       } else {
         renderEmptyInboxCockpit();
       }
     } else {
-      showToast(data.detail || 'Failed to load inbound emails', 'error');
+      if (!isSilent) {
+        showToast(data.detail || 'Failed to load inbound emails', 'error');
+        if (streamList) {
+          streamList.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;">No connection to mail server.<br><button class="btn-primary" style="margin-top: 10px; width: auto; font-size: 12px; padding: 6px 14px;" onclick="loadInboxEmails()">Retry Sync</button></div>`;
+        }
+        renderEmptyInboxCockpit();
+      }
+    }
+  } catch (err) {
+    if (!isSilent) {
+      console.error('Error loading inbox emails:', err);
       if (streamList) {
-        streamList.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;">No connection to mail server.<br><button class="btn-primary" style="margin-top: 10px; width: auto; font-size: 12px; padding: 6px 14px;" onclick="loadInboxEmails()">Retry Sync</button></div>`;
+        streamList.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;">Failed to sync mailbox.<br><button class="btn-primary" style="margin-top: 10px; width: auto; font-size: 12px; padding: 6px 14px;" onclick="loadInboxEmails()">Retry Sync</button></div>`;
       }
       renderEmptyInboxCockpit();
     }
-  } catch (err) {
-    console.error('Error loading inbox emails:', err);
-    if (streamList) {
-      streamList.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px;">Failed to sync mailbox.<br><button class="btn-primary" style="margin-top: 10px; width: auto; font-size: 12px; padding: 6px 14px;" onclick="loadInboxEmails()">Retry Sync</button></div>`;
-    }
-    renderEmptyInboxCockpit();
   }
 }
 
@@ -972,9 +1036,10 @@ async function selectInboxEmail(emailId) {
   if (copilotLoc) copilotLoc.innerText = matchedEmp.location || '—';
   if (copilotDesig) copilotDesig.innerText = matchedEmp.designation || 'Employee';
   if (copilotStatus) {
+    const isVer = Boolean(matchedEmp && matchedEmp.is_verified);
     copilotStatus.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-      <span>${matchedEmp.is_verified ? 'Directory Verified against Central HRMS' : (ai.detected_name ? `Extracted: ${ai.detected_name}` : 'Awaiting HRMS verification')}</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${isVer ? '#15803D' : '#F59E0B'}" stroke-width="2.5">${isVer ? '<polyline points="20 6 9 17 4 12"></polyline>' : '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>'}</svg>
+      <span>${isVer ? 'Directory Verified against Central HRMS' : (ai.detected_name ? `Unverified Inbound · ${ai.detected_name}` : 'Unverified External Ingest')}</span>
     `;
   }
   const copilotConvertBtn = document.getElementById('inboxCopilotConvertBtn');
@@ -1230,41 +1295,106 @@ async function syncInboxMailbox(btn) {
   }
 
   showToast('Synchronizing mailbox with corporate IMAP...', 'info');
-  await loadInboxEmails();
-  showToast('Mailbox queue up to date', 'success');
+  try {
+    const res = await fetch('/api/v1/inbox/sync', { method: 'POST' });
+    const data = await res.json();
+    await loadInboxEmails();
+    showToast(data.message || 'Mailbox queue up to date', 'success');
+  } catch (err) {
+    await loadInboxEmails();
+    showToast('Mailbox refreshed', 'success');
+  } finally {
+    if (icon) {
+      setTimeout(() => {
+        icon.style.transform = 'none';
+      }, 600);
+    }
+  }
+}
 
-  if (icon) {
-    setTimeout(() => {
-      icon.style.transform = 'none';
-    }, 600);
+function openIngestEmailModal() {
+  const modal = document.getElementById('ingestEmailModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('ingestSenderEmail')?.focus();
+  }
+}
+
+function closeIngestEmailModal() {
+  const modal = document.getElementById('ingestEmailModal');
+  if (modal) modal.style.display = 'none';
+  const form = document.getElementById('ingestEmailForm');
+  if (form) form.reset();
+}
+
+async function handleIngestEmailSubmit(e) {
+  e.preventDefault();
+  const emailInput = document.getElementById('ingestSenderEmail');
+  const nameInput = document.getElementById('ingestSenderName');
+  const subjInput = document.getElementById('ingestSubject');
+  const bodyInput = document.getElementById('ingestBody');
+  const catInput = document.getElementById('ingestCategory');
+  const actInput = document.getElementById('ingestActionable');
+  const submitBtn = document.getElementById('ingestSubmitBtn');
+
+  const sender_email = (emailInput?.value || '').trim();
+  const sender_name = (nameInput?.value || '').trim();
+  const subject = (subjInput?.value || '').trim();
+  const body = (bodyInput?.value || '').trim();
+  const category = (catInput?.value || '').trim() || null;
+  const is_actionable = parseInt(actInput?.value || '1', 10);
+
+  if (!sender_email || !subject || !body) {
+    showToast('Please fill all required email fields', 'error');
+    return;
+  }
+
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <div class="sparkle-pulse-ring" style="width: 12px; height: 12px; border-width: 2px;"></div>
+      <span>Ingesting & Triaging...</span>
+    `;
+  }
+
+  try {
+    const res = await fetch('/api/v1/inbox/ingest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender_email,
+        sender_name,
+        subject,
+        body,
+        category,
+        is_actionable
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Real email ingested and AI triaged successfully!', 'success');
+      closeIngestEmailModal();
+      await loadInboxEmails();
+      if (data.email_id) {
+        selectInboxEmail(data.email_id);
+      }
+    } else {
+      showToast(data.detail || data.message || 'Failed to ingest email', 'error');
+    }
+  } catch (err) {
+    console.error('Error ingesting email:', err);
+    showToast('Failed to ingest email: ' + err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
   }
 }
 
 async function seedSampleInboxEmails(btn) {
-  const originalHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `
-      <div class="sparkle-pulse-ring" style="width: 12px; height: 12px; border-width: 2px;"></div>
-      <span>Seeding...</span>
-    `;
-  }
-  try {
-    const res = await fetch('/api/v1/inbox/seed-emails', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast(data.message || 'Seeded realistic employee emails!', 'success');
-      await loadInboxEmails();
-    }
-  } catch (err) {
-    console.error('Error seeding emails:', err);
-    showToast('Failed to seed sample emails', 'error');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-    }
-  }
+  openIngestEmailModal();
 }
 
 function toggleInboxCollapse() {
@@ -1950,25 +2080,12 @@ async function confirmResolve() {
 }
 
 // =========================================================================
-// 8. SAMPLE CASES SEED TRIGGER
+// 8. REAL CASE INTAKE NOTICE
 // =========================================================================
 async function triggerSeedCases(showToastMsg = true) {
-  try {
-    const res = await fetch('/api/v1/cases/seed-samples', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      if (showToastMsg) {
-        showToast('Successfully seeded 4 realistic employee tickets with AI entity extraction!', 'success');
-      }
-      await fetchCasesData();
-      renderInboxStream();
-      if (allCases.length > 0) {
-        selectInboxCase(allCases[0].id);
-      }
-    }
-  } catch (err) {
-    console.error('Error seeding cases:', err);
-    if (showToastMsg) showToast('Failed to seed sample inquiries', 'error');
+  openIngestEmailModal();
+  if (showToastMsg) {
+    showToast('Demo seeding decommissioned. Ingest real emails via the Ingest dialog.', 'info');
   }
 }
 

@@ -105,6 +105,60 @@ function populateDepartmentDropdowns() {
       modalSelect.appendChild(opt);
     });
   }
+
+  // 3. Multi-department checkbox containers for Add and Edit Modals
+  renderNewAgentDeptCheckboxes();
+  renderEditAgentDeptCheckboxes();
+}
+
+function renderNewAgentDeptCheckboxes() {
+  const container = document.getElementById('newAgentDeptsContainer');
+  if (!container) return;
+  container.innerHTML = allDepartments.map(d => `
+    <label class="dept-check-item" id="newDeptItem_${d.id}">
+      <input type="checkbox" name="newAgentDepts" value="${d.id}" onchange="updateDeptItemStyle(this)">
+      <span>${escapeHtml(d.team_name)}</span>
+      <span class="dept-code-pill">${escapeHtml(d.dept_code)}</span>
+    </label>
+  `).join('');
+}
+
+function renderEditAgentDeptCheckboxes() {
+  const container = document.getElementById('editAgentDeptsContainer');
+  if (!container) return;
+  container.innerHTML = allDepartments.map(d => `
+    <label class="dept-check-item" id="editDeptItem_${d.id}">
+      <input type="checkbox" name="editAgentDepts" value="${d.id}" onchange="updateDeptItemStyle(this)">
+      <span>${escapeHtml(d.team_name)}</span>
+      <span class="dept-code-pill">${escapeHtml(d.dept_code)}</span>
+    </label>
+  `).join('');
+}
+
+function updateDeptItemStyle(cb) {
+  if (cb && cb.parentElement) {
+    if (cb.checked) {
+      cb.parentElement.classList.add('selected');
+    } else {
+      cb.parentElement.classList.remove('selected');
+    }
+  }
+}
+
+function selectAllNewAgentDepts(check) {
+  const cbs = document.querySelectorAll('#newAgentDeptsContainer input[type="checkbox"]');
+  cbs.forEach(cb => {
+    cb.checked = check;
+    updateDeptItemStyle(cb);
+  });
+}
+
+function selectAllEditAgentDepts(check) {
+  const cbs = document.querySelectorAll('#editAgentDeptsContainer input[type="checkbox"]');
+  cbs.forEach(cb => {
+    cb.checked = check;
+    updateDeptItemStyle(cb);
+  });
 }
 
 // =========================================================================
@@ -168,134 +222,239 @@ async function loadUsers() {
       document.getElementById('userStatPending').innerText = data.stats.pending_setup || 0;
     }
 
-    // Render Rows
-    const users = data.users || [];
-    if (users.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 48px;">
-            <div style="font-size: 24px; margin-bottom: 8px;">👥</div>
-            <strong>No matching agents found</strong>
-            <p style="font-size: 13px; margin-top: 4px;">Try refining your search terms or add a new agent.</p>
-          </td>
-        </tr>
-      `;
-      updatePaginationControls(0, 0);
-      return;
-    }
-
-    tbody.innerHTML = users.map(u => {
-      const isHead = Boolean(u.is_dept_head);
-      const isPending = !u.has_password && u.role === 'HR_AGENT';
-      const initials = (u.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-      const userJson = escapeHtml(JSON.stringify(u));
-      const avatarBg = u.role === 'ADMIN' ? '#486AAE' : (isHead ? '#10B190' : '#FF6F61');
-      
-      return `
-        <tr>
-          <td>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 38px; height: 38px; border-radius: 50%; background: ${avatarBg}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
-                ${initials}
-              </div>
-              <div style="display: flex; flex-direction: column;">
-                <span style="font-weight: 700; color: var(--text-dark); font-size: 13.5px;">${escapeHtml(u.name)}</span>
-                <span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(u.email)}</span>
-              </div>
-            </div>
-          </td>
-
-          <td>
-            <span style="display: inline-block; padding: 4px 10px; background: #F8F9FA; border: 1px solid #EAEAEA; border-radius: 6px; font-size: 12px; font-weight: 600; color: #212121;">
-              ${escapeHtml(u.department_name || (u.role === 'ADMIN' ? 'All Departments' : 'Unassigned'))}
-            </span>
-          </td>
-
-          <td>
-            <span style="font-size: 13px; color: #475569; font-weight: 500;">${escapeHtml(u.designation || 'Specialist')}</span>
-          </td>
-
-          <!-- Interactive Role Scope (Click to Toggle / Change) -->
-          <td>
-            ${u.role === 'ADMIN' 
-              ? `<span class="badge-role-admin">👑 ADMIN</span>` 
-              : (isHead 
-                ? `<button type="button" class="badge-role-head" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to switch to Agent">⭐ DEPT HEAD <span class="swap-icon">⇄</span></button>` 
-                : `<button type="button" class="badge-role-agent" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to promote to Dept Head">🛡️ AGENT <span class="swap-icon">⇄</span></button>`)}
-          </td>
-
-          <td>
-            ${isPending 
-              ? `<span class="status-pill status-pending"><span class="status-dot dot-amber"></span> Pending Setup</span>`
-              : (u.status === 'ACTIVE' 
-                ? `<span class="status-pill status-active"><span class="status-dot dot-green"></span> Active</span>`
-                : `<span class="status-pill status-inactive"><span class="status-dot dot-gray"></span> Inactive</span>`)}
-          </td>
-
-          <!-- Actions: Resend Invite, Edit, Activate/Deactivate, Remove -->
-          <td style="text-align: right;">
-            <div style="display: inline-flex; gap: 6px; align-items: center;">
-              ${u.role !== 'ADMIN' ? `
-                <button 
-                  class="btn-action btn-action-resend"
-                  style="display: inline-flex; align-items: center; gap: 5px;"
-                  onclick="triggerResendInvite(${u.id}, '${escapeHtml(u.name)}')" 
-                  title="Resend Tata 1mg Welcome Email with Dynamic Link"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                  </svg>
-                  <span>Resend</span>
-                </button>
-
-                <button 
-                  class="btn-action btn-action-edit"
-                  style="display: inline-flex; align-items: center; gap: 5px;"
-                  onclick="openEditAgentModal('${userJson}')" 
-                  title="Edit Department, Designation or Role Scope"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                  <span>Edit</span>
-                </button>
-              ` : ''}
-
-              <button 
-                class="btn-action btn-action-toggle"
-                onclick="toggleUserStatus(${u.id}, '${u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')"
-              >
-                ${u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-              </button>
-
-              ${u.role !== 'ADMIN' ? `
-                <button 
-                  class="btn-action btn-action-remove"
-                  style="display: inline-flex; align-items: center; gap: 5px;"
-                  onclick="confirmRemoveUser(${u.id}, '${escapeHtml(u.name)}')" 
-                  title="Permanently remove staff member"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                  <span>Remove</span>
-                </button>
-              ` : ''}
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    updatePaginationControls(data.pagination.total, data.pagination.totalPages);
+    renderUsersTable(data.users || [], data.pagination.total, data.pagination.totalPages);
 
   } catch (err) {
     console.error('Error fetching users:', err);
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#EF4444;padding:30px;">Server connection error.</td></tr>`;
   }
+}
+
+// Deterministic Soft Gradient Palette for User Avatars
+const AVATAR_GRADIENTS = [
+  'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)', // Royal Blue
+  'linear-gradient(135deg, #10B981 0%, #047857 100%)', // Emerald Teal
+  'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)', // Purple Violet
+  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)', // Warm Amber
+  'linear-gradient(135deg, #EC4899 0%, #BE185D 100%)', // Rose Pink
+  'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)', // Deep Cyan
+];
+
+function getAvatarGradient(name, email, role) {
+  if (role === 'ADMIN') return 'linear-gradient(135deg, #6366F1 0%, #4338CA 100%)';
+  const str = (name || email || 'User').toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % AVATAR_GRADIENTS.length;
+  return AVATAR_GRADIENTS[idx];
+}
+
+function renderUsersTable(users, total, totalPages) {
+  const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return;
+
+  if (!users || users.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 48px;">
+          <div style="font-size: 24px; margin-bottom: 8px;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.8" style="margin: 0 auto;">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <strong style="color: #475569;">No matching staff found</strong>
+          <p style="font-size: 13px; margin-top: 4px; color: #94A3B8;">Try refining your search terms or add a new agent.</p>
+        </td>
+      </tr>
+    `;
+    updatePaginationControls(0, 0);
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => {
+    const isHead = Boolean(u.is_dept_head);
+    const isPending = !u.has_password && u.role === 'HR_AGENT';
+    const initials = (u.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const userJson = escapeHtml(JSON.stringify(u));
+    const avatarGradient = getAvatarGradient(u.name, u.email, u.role);
+    
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="user-avatar-circle" style="background: ${avatarGradient};">
+              ${initials}
+            </div>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 700; color: var(--text-dark); font-size: 13.5px;">${escapeHtml(u.name)}</span>
+              <span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(u.email)}</span>
+            </div>
+          </div>
+        </td>
+
+        <td>
+          <div class="dept-badges-wrapper">
+            ${u.role === 'ADMIN' 
+              ? `<span class="dept-badge-pill dept-pill-admin">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  <span>Universal (All Desks)</span>
+                </span>`
+              : (u.departments && u.departments.length > 0 
+                ? u.departments.map(d => `
+                  <span class="dept-badge-pill">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+                    </svg>
+                    <span>${escapeHtml(d.team_name)}</span>
+                  </span>`).join('')
+                : `<span class="dept-badge-pill dept-pill-muted">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>${escapeHtml(u.department_name || 'Unassigned')}</span>
+                  </span>`)}
+          </div>
+        </td>
+
+        <td>
+          <span style="font-size: 13px; color: #475569; font-weight: 500;">${escapeHtml(u.designation || 'Specialist')}</span>
+        </td>
+
+        <!-- Interactive Role Scope (Vector SVG Badges) -->
+        <td>
+          ${u.role === 'ADMIN' 
+            ? (u.id === 1 || (u.email && u.email.toLowerCase() === 'vaibhavx002@zohomail.in')
+              ? `<span class="badge-role-scope badge-scope-superadmin" title="Primary System Administrator (Protected)">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                  </svg>
+                  <span>SUPER ADMIN</span>
+                </span>`
+              : `<button type="button" class="badge-role-scope badge-scope-admin" onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)" title="Click to revoke Administrator role and switch to Agent">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+                  </svg>
+                  <span>ADMIN</span>
+                  <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
+                </button>`)
+            : (isHead 
+              ? `<button type="button" class="badge-role-scope badge-scope-head" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to switch to Support Agent">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  <span>DEPT HEAD</span>
+                  <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
+                </button>` 
+              : `<button type="button" class="badge-role-scope badge-scope-agent" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to promote to Department Head">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  <span>AGENT</span>
+                  <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
+                </button>`)}
+        </td>
+
+        <td>
+          ${isPending 
+            ? `<span class="status-pill status-pending"><span class="status-dot dot-amber"></span><span>Pending Setup</span></span>`
+            : (u.status === 'ACTIVE' 
+              ? `<span class="status-pill status-active"><span class="status-dot dot-green"></span><span>Active</span></span>`
+              : `<span class="status-pill status-inactive"><span class="status-dot dot-gray"></span><span>Inactive</span></span>`)}
+        </td>
+
+        <!-- Unified Action Toolbar (Clean Industry SVGs) -->
+        <td style="text-align: right;">
+          <div class="user-action-group">
+            ${u.role !== 'ADMIN' ? `
+              <button 
+                class="btn-action-pill btn-action-promote"
+                onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', false)"
+                title="Promote ${escapeHtml(u.name)} to Administrator"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-5-6.5 5 2-7.5-5.5-4.5h7z"/>
+                </svg>
+                <span>Make Admin</span>
+              </button>
+
+              <button 
+                class="btn-action-pill btn-action-resend"
+                onclick="triggerResendInvite(${u.id}, '${escapeHtml(u.name)}')" 
+                title="Resend Tata 1mg Welcome Email with Dynamic Link"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M22 2L11 13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                <span>Resend</span>
+              </button>
+            ` : (u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhavx002@zohomail.in') ? `
+              <button 
+                class="btn-action-pill btn-action-demote"
+                onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)"
+                title="Revoke Administrator role"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+                <span>Revoke Admin</span>
+              </button>
+            ` : '')}
+
+            <button 
+              class="btn-action-pill btn-action-edit"
+              onclick="openEditAgentModal('${userJson}')" 
+              title="Edit Role, Department, Designation or Status"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              <span>Edit</span>
+            </button>
+
+            ${u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhavx002@zohomail.in') ? `
+              <button 
+                class="btn-action-pill btn-action-toggle ${u.status === 'ACTIVE' ? 'deactivate' : 'activate'}"
+                onclick="toggleUserStatus(${u.id}, '${u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')"
+                title="${u.status === 'ACTIVE' ? 'Deactivate staff account' : 'Activate staff account'}"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  ${u.status === 'ACTIVE' 
+                    ? '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
+                    : '<circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/>'}
+                </svg>
+                <span>${u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
+              </button>
+
+              <button 
+                class="btn-action-pill btn-action-remove"
+                onclick="confirmRemoveUser(${u.id}, '${escapeHtml(u.name)}')" 
+                title="Permanently remove staff member"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                <span>Remove</span>
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  updatePaginationControls(total, totalPages);
 }
 
 function updatePaginationControls(total, totalPages) {
@@ -316,8 +475,68 @@ function updatePaginationControls(total, totalPages) {
 // =========================================================================
 // 3. ADD AGENT MODAL & WELCOME EMAIL DISPATCH
 // =========================================================================
+function handleNewAgentRoleChange(role) {
+  const deptLabel = document.getElementById('newAgentDeptLabel');
+  const desigInput = document.getElementById('newAgentDesignation');
+  if (role === 'ADMIN') {
+    if (deptLabel) deptLabel.innerText = 'Assigned Department (Optional for Admin)';
+    if (desigInput && (!desigInput.value || desigInput.value === 'Support Specialist')) {
+      desigInput.value = 'Administrator';
+    }
+  } else {
+    if (deptLabel) deptLabel.innerText = 'Assigned Department *';
+    if (desigInput && desigInput.value === 'Administrator') {
+      desigInput.value = 'Support Specialist';
+    }
+  }
+}
+
+function handleEditAgentRoleChange(role) {
+  const desigInput = document.getElementById('editAgentDesignation');
+  const isHeadCheckbox = document.getElementById('editAgentIsHead');
+  if (role === 'ADMIN') {
+    if (desigInput && (!desigInput.value || desigInput.value === 'Support Specialist')) {
+      desigInput.value = 'Administrator';
+    }
+    if (isHeadCheckbox) isHeadCheckbox.checked = true;
+  }
+}
+
+async function toggleAdminRole(userId, userName, isCurrentlyAdmin) {
+  const actionText = isCurrentlyAdmin 
+    ? `revoke Administrator privileges from "${userName}" and revert them to HR Agent?` 
+    : `promote "${userName}" to Full Administrator?\n\nThey will receive full access to the Admin Console, User Management, Department Configs, and System Audits.`;
+    
+  if (!confirm(`Are you sure you want to ${actionText}`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/v1/admin/users/${userId}/toggle-admin`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(data.message || 'User role updated successfully.', 'success');
+      loadUsers();
+      if (data.email_details && data.email_details.html) {
+        openEmailPreviewModal(data.email_details);
+      }
+    } else {
+      alert(data.detail || data.message || 'Failed to update user role.');
+    }
+  } catch (err) {
+    console.error('Error toggling admin role:', err);
+    alert('Error connecting to backend server.');
+  }
+}
+
 function openAddAgentModal() {
   document.getElementById('addAgentForm').reset();
+  selectAllNewAgentDepts(false);
+  const roleSelect = document.getElementById('newAgentRole');
+  if (roleSelect) roleSelect.value = 'HR_AGENT';
+  handleNewAgentRoleChange('HR_AGENT');
   const modal = document.getElementById('addAgentModal');
   if (modal) modal.style.display = 'flex';
 }
@@ -330,12 +549,22 @@ function closeAddAgentModal() {
 async function submitAddAgent(e) {
   e.preventDefault();
   
+  const role = document.getElementById('newAgentRole')?.value || 'HR_AGENT';
   const name = document.getElementById('newAgentName').value.trim();
   const email = document.getElementById('newAgentEmail').value.trim().toLowerCase();
-  const department_id = parseInt(document.getElementById('newAgentDept').value);
-  const designation = document.getElementById('newAgentDesignation').value.trim();
-  const is_dept_head = document.getElementById('newAgentIsHead').checked;
+  
+  const checkedBoxes = Array.from(document.querySelectorAll('#newAgentDeptsContainer input[name="newAgentDepts"]:checked'));
+  const department_ids = checkedBoxes.map(cb => parseInt(cb.value));
+  const department_id = department_ids[0] || null;
+  
+  const designation = document.getElementById('newAgentDesignation').value.trim() || (role === 'ADMIN' ? 'Administrator' : 'Support Specialist');
+  const is_dept_head = role === 'ADMIN' ? true : document.getElementById('newAgentIsHead').checked;
   const send_welcome_email = document.getElementById('newAgentSendEmail').checked;
+
+  if (role === 'HR_AGENT' && department_ids.length === 0) {
+    alert('Please select at least one assigned department for the HR Agent.');
+    return;
+  }
 
   const submitBtn = document.getElementById('btnSubmitNewAgent');
   submitBtn.disabled = true;
@@ -348,7 +577,9 @@ async function submitAddAgent(e) {
       body: JSON.stringify({
         name,
         email,
+        role,
         department_id,
+        department_ids,
         designation,
         is_dept_head,
         send_welcome_email
@@ -358,7 +589,7 @@ async function submitAddAgent(e) {
     const data = await res.json();
 
     if (!res.ok || !data.success) {
-      alert(data.detail || 'Failed to add agent.');
+      alert(data.detail || data.message || 'Failed to add user.');
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<span>Add Agent & Dispatch Invite</span>`;
       return;
@@ -367,11 +598,17 @@ async function submitAddAgent(e) {
     closeAddAgentModal();
     loadUsers();
 
+    if (data.email_details && data.email_details.sent) {
+      showToast(`✓ Welcome invitation email delivered to ${email}!`, 'success');
+    } else if (data.email_details && !data.email_details.sent) {
+      showToast(`⚠️ User added, but email failed: ${data.email_details.error || 'SMTP Error'}`, 'warning');
+    }
+
     // If welcome email was generated, open the preview modal
     if (data.email_details && data.email_details.html) {
       openEmailPreviewModal(data.email_details);
     } else {
-      alert(data.message || 'Agent successfully added!');
+      showToast(data.message || 'User successfully added!', 'success');
     }
 
   } catch (err) {
@@ -402,10 +639,24 @@ async function triggerResendInvite(userId, agentName) {
 }
 
 function openEmailPreviewModal(emailDetails) {
-  document.getElementById('previewModalSubject').innerText = emailDetails.subject || 'Tata 1mg Welcome Email';
-  document.getElementById('previewModalRecipient').innerText = emailDetails.recipient || '';
-  document.getElementById('previewModalSender').innerText = emailDetails.sender || 'vaibhavx002@zohomail.in';
-  document.getElementById('previewModalLink').innerText = emailDetails.activation_link || '';
+  const isSent = Boolean(emailDetails.sent);
+  const subjectEl = document.getElementById('previewModalSubject');
+  if (subjectEl) {
+    subjectEl.innerHTML = isSent 
+      ? `<span style="color: #15803D;">✓ Email Dispatched via Live SMTP</span> · ${escapeHtml(emailDetails.subject || 'Tata 1mg Welcome')}`
+      : `<span style="color: #D97706;">⚠️ Local Preview Mode</span> · ${escapeHtml(emailDetails.subject || 'Tata 1mg Welcome')}`;
+  }
+
+  const recipientEl = document.getElementById('previewModalRecipient');
+  if (recipientEl) {
+    recipientEl.innerHTML = `${escapeHtml(emailDetails.recipient || '')} ${isSent ? '<span style="color: #15803D; font-weight: 700;">(Delivered ✓)</span>' : '<span style="color: #DC2626; font-weight: 700;">(Undelivered ⚠️)</span>'}`;
+  }
+
+  const senderEl = document.getElementById('previewModalSender');
+  if (senderEl) senderEl.innerText = emailDetails.sender || 'vaibhavx002@zohomail.in';
+
+  const linkEl = document.getElementById('previewModalLink');
+  if (linkEl) linkEl.innerText = emailDetails.activation_link || '';
   
   const container = document.getElementById('emailHtmlContainer');
   if (container) {
@@ -455,7 +706,11 @@ async function toggleRoleScope(userId, name, currentIsHead) {
     });
     const data = await res.json();
     if (data.success) {
+      showToast(data.message || 'Role scope updated.', 'success');
       loadUsers();
+      if (data.email_details && data.email_details.html) {
+        openEmailPreviewModal(data.email_details);
+      }
     } else {
       alert(data.detail || 'Failed to change role scope.');
     }
@@ -502,14 +757,29 @@ function openEditAgentModal(userJsonStr) {
   document.getElementById('editAgentId').value = user.id;
   document.getElementById('editAgentName').value = user.name || '';
   document.getElementById('editAgentEmail').value = user.email || '';
+  const roleSelect = document.getElementById('editAgentRole');
+  if (roleSelect) {
+    roleSelect.value = user.role || 'HR_AGENT';
+  }
   document.getElementById('editAgentDesignation').value = user.designation || '';
   document.getElementById('editAgentIsHead').checked = Boolean(user.is_dept_head);
   document.getElementById('editAgentStatus').value = user.status || 'ACTIVE';
 
-  // Populate department select
+  // Populate multi-department checkboxes
+  const targetIds = (user.department_ids && user.department_ids.length > 0)
+    ? user.department_ids.map(Number)
+    : (user.department_id ? [Number(user.department_id)] : []);
+
+  const editCbs = document.querySelectorAll('#editAgentDeptsContainer input[name="editAgentDepts"]');
+  editCbs.forEach(cb => {
+    cb.checked = targetIds.includes(Number(cb.value));
+    updateDeptItemStyle(cb);
+  });
+
+  // Populate legacy department select if present
   const deptSelect = document.getElementById('editAgentDept');
   if (deptSelect) {
-    deptSelect.innerHTML = `<option value="">Select Department...</option>`;
+    deptSelect.innerHTML = `<option value="">Select Department (Optional for Admin)...</option>`;
     allDepartments.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
@@ -532,9 +802,19 @@ async function submitEditAgent(e) {
   e.preventDefault();
   const userId = document.getElementById('editAgentId').value;
   const name = document.getElementById('editAgentName').value.trim();
-  const department_id = parseInt(document.getElementById('editAgentDept').value);
+  const role = document.getElementById('editAgentRole')?.value || 'HR_AGENT';
+  
+  const checkedBoxes = Array.from(document.querySelectorAll('#editAgentDeptsContainer input[name="editAgentDepts"]:checked'));
+  const department_ids = checkedBoxes.map(cb => parseInt(cb.value));
+  const department_id = department_ids[0] || null;
+
+  if (role === 'HR_AGENT' && department_ids.length === 0) {
+    alert('Please select at least one assigned department for the HR Agent.');
+    return;
+  }
+
   const designation = document.getElementById('editAgentDesignation').value.trim();
-  const is_dept_head = document.getElementById('editAgentIsHead').checked;
+  const is_dept_head = role === 'ADMIN' ? true : document.getElementById('editAgentIsHead').checked;
   const status = document.getElementById('editAgentStatus').value;
 
   const btn = document.getElementById('btnSaveEditAgent');
@@ -547,7 +827,9 @@ async function submitEditAgent(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        role,
         department_id,
+        department_ids,
         designation,
         is_dept_head,
         status
@@ -557,8 +839,9 @@ async function submitEditAgent(e) {
     if (data.success) {
       closeEditAgentModal();
       loadUsers();
+      showToast('Staff member updated successfully.', 'success');
     } else {
-      alert(data.detail || 'Failed to update staff member.');
+      alert(data.detail || data.message || 'Failed to update staff member.');
     }
   } catch (err) {
     alert('Error connecting to backend server.');

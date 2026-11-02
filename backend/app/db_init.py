@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS hr_departments (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 2B. USER DEPARTMENTS (Multi-department assignment for Agents)
+CREATE TABLE IF NOT EXISTS user_departments (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    department_id INT NOT NULL REFERENCES hr_departments(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, department_id)
+);
+
 -- 3. CASE SEQUENCES TABLE (Collision-free 5-to-6 digit generator)
 CREATE TABLE IF NOT EXISTS case_sequences (
     prefix VARCHAR(20) PRIMARY KEY DEFAULT '1MG',

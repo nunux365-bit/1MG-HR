@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Console · Tata 1mg People Desk</title>
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/admin-static/css/admin.css">
+  <link rel="stylesheet" href="/css/style.css?v=2.5">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=2.5">
   <link rel="icon" type="image/png" href="/assets/logo.png">
 </head>
 <body class="admin-body">
@@ -166,8 +166,13 @@
       <div class="topbar-actions">
         <!-- 1-Click Role Switcher -->
         <button class="btn-switch-role" onclick="window.location.href='/agent.html'">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-          Switch to Agent View
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <span>Switch to Agent View</span>
         </button>
 
         <!-- Admin Profile -->
@@ -661,9 +666,14 @@
                 Add agents, assign to departments, designate Department Heads, and dispatch welcome invites
               </p>
             </div>
-            <button class="btn-primary" style="width: auto; padding: 9px 18px; font-size: 13.5px;" onclick="openAddAgentModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Add New Agent
+            <button class="btn-primary" style="width: auto; padding: 9px 18px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 7px;" onclick="openAddAgentModal()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+              </svg>
+              <span>+ Add New Agent</span>
             </button>
           </div>
 
@@ -713,12 +723,54 @@
             <table class="admin-table">
               <thead>
                 <tr>
-                  <th>Agent & Email</th>
-                  <th>Department</th>
-                  <th>Designation</th>
-                  <th>Role Scope</th>
-                  <th>Account Status</th>
-                  <th style="text-align: right;">Actions</th>
+                  <th>
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <span>Agent &amp; Email</span>
+                    </span>
+                  </th>
+                  <th>
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+                      </svg>
+                      <span>Department</span>
+                    </span>
+                  </th>
+                  <th>
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 7h-9M14 17H5M19 12H9"/>
+                      </svg>
+                      <span>Designation</span>
+                    </span>
+                  </th>
+                  <th>
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                      <span>Role Scope</span>
+                    </span>
+                  </th>
+                  <th>
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span>Account Status</span>
+                    </span>
+                  </th>
+                  <th style="text-align: right;">
+                    <span class="th-content" style="justify-content: flex-end;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                      </svg>
+                      <span>Actions</span>
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody id="usersTableBody">
@@ -843,6 +895,15 @@
         <div style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">System Role *</label>
+            <select id="newAgentRole" class="form-input" onchange="handleNewAgentRoleChange(this.value)">
+              <option value="HR_AGENT">HR Support Agent (Department Staff)</option>
+              <option value="ADMIN">Administrator (System &amp; Universal Access)</option>
+            </select>
+            <p class="form-helper">Administrators have universal control over all departments, users, settings, and audits.</p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Full Name *</label>
             <input type="text" id="newAgentName" class="form-input" placeholder="e.g. Rahul Sharma" required>
           </div>
@@ -853,18 +914,25 @@
             <p class="form-helper">Supports Gmail, Zoho Mail, 1mg corporate mail, or any domain</p>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Assigned Department *</label>
-              <select id="newAgentDept" class="form-input" required>
-                <option value="">Select Department...</option>
-              </select>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" id="newAgentDeptLabel" style="margin-bottom: 0;">Assigned Departments * (Multi-select)</label>
+              <div style="font-size: 11.5px; display: flex; gap: 8px;">
+                <button type="button" class="btn-link" style="color: var(--teal-primary); font-weight: 600; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;" onclick="selectAllNewAgentDepts(true)">Select All</button>
+                <span style="color: #CBD5E1;">|</span>
+                <button type="button" class="btn-link" style="color: #64748B; background: none; border: none; cursor: pointer; padding: 0;" onclick="selectAllNewAgentDepts(false)">Clear</button>
+              </div>
             </div>
+            <div id="newAgentDeptsContainer" class="dept-selector-box">
+              <!-- Dynamically populated checkboxes -->
+            </div>
+            <select id="newAgentDept" style="display: none;"></select>
+            <p class="form-helper" style="margin-top: 4px;">Staff can be assigned to multiple departments simultaneously to triage across queues.</p>
+          </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Designation / Specialization</label>
-              <input type="text" id="newAgentDesignation" class="form-input" placeholder="e.g. Attendance Specialist">
-            </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Designation / Title</label>
+            <input type="text" id="newAgentDesignation" class="form-input" placeholder="e.g. Support Specialist">
           </div>
 
           <!-- Head of Department Switch -->
@@ -1590,22 +1658,38 @@
           </div>
 
           <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">System Role *</label>
+            <select id="editAgentRole" class="form-input" onchange="handleEditAgentRoleChange(this.value)">
+              <option value="HR_AGENT">HR Support Agent (Department Staff)</option>
+              <option value="ADMIN">Administrator (Universal System Access)</option>
+            </select>
+            <p class="form-helper">Promoting to Administrator grants universal console and user management privileges.</p>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Email Address (Read-only)</label>
             <input type="email" id="editAgentEmail" class="form-input" disabled style="background: #F1F5F9; color: #64748B;">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Assigned Department</label>
-              <select id="editAgentDept" class="form-input" required>
-                <!-- Populated dynamically -->
-              </select>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" id="editAgentDeptLabel" style="margin-bottom: 0;">Assigned Departments (Multi-select)</label>
+              <div style="font-size: 11.5px; display: flex; gap: 8px;">
+                <button type="button" class="btn-link" style="color: var(--teal-primary); font-weight: 600; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0;" onclick="selectAllEditAgentDepts(true)">Select All</button>
+                <span style="color: #CBD5E1;">|</span>
+                <button type="button" class="btn-link" style="color: #64748B; background: none; border: none; cursor: pointer; padding: 0;" onclick="selectAllEditAgentDepts(false)">Clear</button>
+              </div>
             </div>
+            <div id="editAgentDeptsContainer" class="dept-selector-box">
+              <!-- Dynamically populated checkboxes -->
+            </div>
+            <select id="editAgentDept" style="display: none;"></select>
+            <p class="form-helper" style="margin-top: 4px;">Select all departments this staff member is authorized to manage.</p>
+          </div>
 
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Designation</label>
-              <input type="text" id="editAgentDesignation" class="form-input">
-            </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Designation / Title</label>
+            <input type="text" id="editAgentDesignation" class="form-input">
           </div>
 
           <!-- Role Scope Selection / Department Head Switch -->
@@ -1744,6 +1828,6 @@
   <!-- DYNAMIC TATA 1MG TOAST CONTAINER -->
   <div id="toastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
-  <script src="/admin-static/js/admin.js"></script>
+  <script src="/admin-static/js/admin.js?v=2.5"></script>
 </body>
 </html>

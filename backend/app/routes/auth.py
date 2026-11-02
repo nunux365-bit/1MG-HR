@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from backend.app.database import execute_query
@@ -32,6 +33,38 @@ class SetPasswordRequest(BaseModel):
     new_password: str
     confirm_password: str
 
+def _get_user_department_info(user_id: int, default_dept_id: Optional[int], default_dept_name: Optional[str], is_admin: bool):
+    dept_rows = execute_query(
+        """
+        SELECT ud.department_id, d.team_name, d.dept_code, d.sla_hours, d.color_accent
+        FROM user_departments ud
+        JOIN hr_departments d ON ud.department_id = d.id
+        WHERE ud.user_id = %s
+        ORDER BY d.team_name ASC;
+        """,
+        (user_id,),
+        fetch_all=True
+    ) or []
+    
+    if not dept_rows and default_dept_id:
+        dept_rows = [{
+            "department_id": default_dept_id,
+            "team_name": default_dept_name or "General HR",
+            "dept_code": "",
+            "sla_hours": 24,
+            "color_accent": "#007791"
+        }]
+        
+    dept_ids = [r["department_id"] for r in dept_rows]
+    dept_names = ", ".join([r["team_name"] for r in dept_rows]) if dept_rows else (default_dept_name or ("All Departments" if is_admin else "General HR"))
+    
+    return {
+        "departments": dept_rows,
+        "department_ids": dept_ids,
+        "department_name": "All Departments" if is_admin else dept_names,
+        "department_names": "All Departments" if is_admin else dept_names
+    }
+
 @router.post("/check-email")
 def check_email(payload: CheckEmailRequest):
     """
@@ -45,7 +78,7 @@ def check_email(payload: CheckEmailRequest):
     user = execute_query(
         """
         SELECT u.id, u.email, u.name, u.role, u.password_hash, u.is_dept_head, 
-               u.designation, u.status, d.team_name as department_name
+               u.department_id, u.designation, u.status, d.team_name as department_name
         FROM users u
         LEFT JOIN hr_departments d ON u.department_id = d.id
         WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE';
@@ -77,6 +110,7 @@ def check_email(payload: CheckEmailRequest):
     
     is_admin = (user["role"] == "ADMIN")
     has_password = bool(user["password_hash"])
+    dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
         "success": True,
@@ -86,7 +120,10 @@ def check_email(payload: CheckEmailRequest):
         "email": user["email"],
         "has_password": has_password,
         "is_dept_head": bool(user["is_dept_head"]),
-        "department_name": user.get("department_name") or ("All Departments" if is_admin else "General HR"),
+        "department_id": user.get("department_id"),
+        "department_ids": dept_info["department_ids"],
+        "departments": dept_info["departments"],
+        "department_name": dept_info["department_name"],
         "designation": user["designation"] or ("Administrator" if is_admin else "HR Agent"),
         "step": "ADMIN_PASSWORD" if is_admin else ("ENTER_PASSWORD" if has_password else "SET_NEW_PASSWORD")
     }
@@ -148,6 +185,7 @@ def login(payload: LoginRequest):
     
     # Generate simple session token
     session_token = secrets.token_urlsafe(32)
+    dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
         "success": True,
@@ -159,7 +197,9 @@ def login(payload: LoginRequest):
             "role": user["role"],
             "is_dept_head": bool(user["is_dept_head"]),
             "department_id": user["department_id"],
-            "department_name": user.get("department_name") or ("All Departments" if is_admin else "General HR"),
+            "department_ids": dept_info["department_ids"],
+            "departments": dept_info["departments"],
+            "department_name": dept_info["department_name"],
             "designation": user["designation"]
         },
         "redirect_url": "/admin.html" if is_admin else "/agent.html"
@@ -181,7 +221,13 @@ def set_password(payload: SetPasswordRequest):
         raise HTTPException(status_code=400, detail="Passwords do not match.")
     
     user = execute_query(
-        "SELECT id, email, name, role, is_dept_head, department_id, designation FROM users WHERE LOWER(email) = %s AND status = 'ACTIVE';",
+        """
+        SELECT u.id, u.email, u.name, u.role, u.is_dept_head, u.department_id, 
+               u.designation, d.team_name as department_name 
+        FROM users u 
+        LEFT JOIN hr_departments d ON u.department_id = d.id
+        WHERE LOWER(email) = %s AND status = 'ACTIVE';
+        """,
         (email_clean,),
         fetch_one=True
     )
@@ -198,6 +244,8 @@ def set_password(payload: SetPasswordRequest):
     )
     
     session_token = secrets.token_urlsafe(32)
+    is_admin = (user["role"] == "ADMIN")
+    dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
         "success": True,
@@ -210,6 +258,9 @@ def set_password(payload: SetPasswordRequest):
             "role": user["role"],
             "is_dept_head": bool(user["is_dept_head"]),
             "department_id": user["department_id"],
+            "department_ids": dept_info["department_ids"],
+            "departments": dept_info["departments"],
+            "department_name": dept_info["department_name"],
             "designation": user["designation"]
         },
         "redirect_url": "/admin.html" if user["role"] == "ADMIN" else "/agent.html"

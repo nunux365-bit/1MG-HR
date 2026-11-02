@@ -781,76 +781,142 @@ body.admin-body {
   background: #FFFBF9;
 }
 
-/* Role Scope Badges (Tata 1mg Colors) */
-.badge-role-admin {
+/* ==========================================================================
+   USER MANAGEMENT & ROLE BADGES (INDUSTRY-LEVEL VECTOR SVGS)
+   ========================================================================== */
+
+.th-content {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: var(--tata-blue-light);
-  color: #2B529A;
-  border: 1px solid var(--tata-blue-border);
+  gap: 6px;
+  color: #475569;
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.th-content svg {
+  color: #94A3B8;
+  flex-shrink: 0;
+}
+
+/* User Avatar with Deterministic Soft Gradient */
+.user-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12.5px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border: 1.5px solid #FFFFFF;
+  letter-spacing: 0.3px;
+}
+
+/* Role Scope Badges (Professional SVG Vector Badges) */
+.badge-role-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.badge-role-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--warning-amber-light);
-  color: #A16207;
-  border: 1px solid var(--warning-amber-border);
-  padding: 4px 11px;
-  border-radius: var(--radius-full);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.badge-role-head:hover {
-  background: #FDE68A;
-  color: #78350F;
-  transform: translateY(-1px);
-}
-
-.badge-role-agent {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--healthcare-teal-light);
-  color: #0D8269;
-  border: 1px solid var(--healthcare-teal-border);
-  padding: 4px 11px;
-  border-radius: var(--radius-full);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.badge-role-agent:hover {
-  background: #C2ECE3;
-  color: #065F4C;
-  transform: translateY(-1px);
-}
-
-.swap-icon {
+  border-radius: 20px;
   font-size: 11px;
-  font-weight: 800;
-  opacity: 0.75;
-  transition: transform 0.2s ease;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border: 1px solid transparent;
+  user-select: none;
+  background: transparent;
+  text-decoration: none;
 }
 
-.badge-role-head:hover .swap-icon,
-.badge-role-agent:hover .swap-icon {
+button.badge-role-scope {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scope-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.swap-icon-svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.65;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+button.badge-role-scope:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+button.badge-role-scope:hover .swap-icon-svg {
   transform: rotate(180deg);
   opacity: 1;
+}
+
+/* Super Admin Badge */
+.badge-scope-superadmin {
+  background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%);
+  color: #6B21A8;
+  border-color: #D8B4FE;
+  box-shadow: 0 1px 3px rgba(107, 33, 168, 0.1);
+}
+.badge-scope-superadmin .scope-icon {
+  color: #7E22CE;
+}
+
+/* Admin Role Scope */
+.badge-scope-admin {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #BFDBFE;
+}
+.badge-scope-admin:hover {
+  background: #DBEAFE;
+  border-color: #93C5FD;
+  color: #1E40AF;
+}
+.badge-scope-admin .scope-icon {
+  color: #2563EB;
+}
+
+/* Department Head Role Scope */
+.badge-scope-head {
+  background: #FFFBEB;
+  color: #B45309;
+  border-color: #FDE68A;
+}
+.badge-scope-head:hover {
+  background: #FEF3C7;
+  border-color: #FCD34D;
+  color: #92400E;
+}
+.badge-scope-head .scope-icon {
+  color: #D97706;
+}
+
+/* Support Agent Role Scope */
+.badge-scope-agent {
+  background: #F0FDFA;
+  color: #0F766E;
+  border-color: #99F6E4;
+}
+.badge-scope-agent:hover {
+  background: #CCFBF1;
+  border-color: #5EEAD4;
+  color: #115E59;
+}
+.badge-scope-agent .scope-icon {
+  color: #0D9488;
 }
 
 /* Account Status Pills */
@@ -862,24 +928,25 @@ body.admin-body {
   border-radius: var(--radius-full);
   font-size: 11.5px;
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .status-active {
-  background: #E6F7F0;
-  color: #0A6C44;
-  border: 1px solid #B4EBD5;
+  background: #ECFDF5;
+  color: #065F46;
+  border-color: #A7F3D0;
 }
 
 .status-pending {
-  background: #FFF3E0;
-  color: #B25E00;
-  border: 1px solid #FFE0B2;
+  background: #FFFBEB;
+  color: #92400E;
+  border-color: #FDE68A;
 }
 
 .status-inactive {
-  background: #F5F5F5;
-  color: #757575;
-  border: 1px solid #E0E0E0;
+  background: #F1F5F9;
+  color: #475569;
+  border-color: #CBD5E1;
 }
 
 .status-dot {
@@ -891,83 +958,157 @@ body.admin-body {
 
 .dot-green {
   background: #10B190;
-  box-shadow: 0 0 0 2px rgba(16, 177, 144, 0.2);
+  box-shadow: 0 0 0 2px rgba(16, 177, 144, 0.25);
+  animation: pulseGreen 2.5s infinite ease-in-out;
 }
 
 .dot-amber {
   background: #F59E0B;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
   animation: pulseAmber 2s infinite ease-in-out;
 }
 
 .dot-gray {
-  background: #9E9E9E;
+  background: #94A3B8;
+}
+
+@keyframes pulseGreen {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
 }
 
 @keyframes pulseAmber {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.9); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.6; }
 }
 
-/* Action Buttons in Table */
-.btn-action {
-  height: 32px;
-  padding: 0 11px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+/* ==========================================================================
+   UNIFIED ACTION BUTTON GROUP (HIGH-END ENTERPRISE TOOLBAR)
+   ========================================================================== */
+.user-action-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.btn-action-pill {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  transition: all 0.18s ease;
-  border: 1px solid transparent;
+  transition: all 0.16s ease;
   user-select: none;
-}
-
-.btn-action-resend {
-  background: var(--1mg-orange-light);
-  border-color: var(--1mg-orange-border);
-  color: var(--1mg-orange);
-}
-.btn-action-resend:hover {
-  background: var(--1mg-orange);
-  color: #FFFFFF;
-  transform: translateY(-1px);
-}
-
-.btn-action-edit {
-  background: #F8F9FA;
-  border-color: #E5E7EB;
-  color: var(--text-dark);
-}
-.btn-action-edit:hover {
-  background: #E5E7EB;
-  color: var(--text-dark);
-  transform: translateY(-1px);
-}
-
-.btn-action-toggle {
+  border: 1px solid transparent;
   background: #FFFFFF;
-  border-color: var(--border-light);
-  color: var(--text-muted);
-}
-.btn-action-toggle:hover {
-  background: #F8F9FA;
-  border-color: #CBD5E1;
-  color: var(--text-dark);
+  white-space: nowrap;
 }
 
-.btn-action-remove {
-  background: #FFF0F0;
-  border-color: #FFCDD2;
-  color: #D32F2F;
+.btn-action-pill svg {
+  width: 12.5px;
+  height: 12.5px;
+  stroke-width: 2.2;
+  flex-shrink: 0;
 }
-.btn-action-remove:hover {
-  background: #D32F2F;
-  border-color: #D32F2F;
-  color: #FFFFFF;
+
+.btn-action-pill:hover {
   transform: translateY(-1px);
+}
+
+/* Make Admin Action */
+.btn-action-pill.btn-action-promote {
+  color: #1D4ED8;
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+}
+.btn-action-pill.btn-action-promote:hover {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+/* Revoke Admin Action */
+.btn-action-pill.btn-action-demote {
+  color: #D97706;
+  background: #FFFBEB;
+  border-color: #FDE68A;
+}
+.btn-action-pill.btn-action-demote:hover {
+  background: #D97706;
+  border-color: #D97706;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+}
+
+/* Resend Invite Action */
+.btn-action-pill.btn-action-resend {
+  color: #0F766E;
+  background: #F0FDFA;
+  border-color: #CCFBF1;
+}
+.btn-action-pill.btn-action-resend:hover {
+  background: #0D9488;
+  border-color: #0D9488;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
+}
+
+/* Edit Details Action */
+.btn-action-pill.btn-action-edit {
+  color: #334155;
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+.btn-action-pill.btn-action-edit:hover {
+  background: #0F172A;
+  border-color: #0F172A;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+
+/* Deactivate Toggle Action */
+.btn-action-pill.btn-action-toggle.deactivate {
+  color: #64748B;
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+}
+.btn-action-pill.btn-action-toggle.deactivate:hover {
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+
+/* Activate Toggle Action */
+.btn-action-pill.btn-action-toggle.activate {
+  color: #047857;
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+}
+.btn-action-pill.btn-action-toggle.activate:hover {
+  background: #059669;
+  border-color: #059669;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+/* Remove Staff Action */
+.btn-action-pill.btn-action-remove {
+  color: #DC2626;
+  background: #FEF2F2;
+  border-color: #FECACA;
+}
+.btn-action-pill.btn-action-remove:hover {
+  background: #DC2626;
+  border-color: #DC2626;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
 }
 
 /* ==========================================================================
@@ -2006,4 +2147,96 @@ body.admin-body {
 .timeline-time {
   font-size: 10.5px;
   color: var(--text-muted);
+}
+
+/* =========================================================================
+   MULTI-DEPARTMENT SELECTION & BADGES
+   ========================================================================= */
+.dept-selector-box {
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dept-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 12.5px;
+  user-select: none;
+}
+
+.dept-check-item:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.dept-check-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #007791;
+  margin: 0;
+}
+
+.dept-check-item.selected {
+  background: #F0FDFA;
+  border-color: #0D9488;
+  color: #0F766E;
+  font-weight: 600;
+}
+
+.dept-check-item .dept-code-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.dept-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #F0FDFA;
+  border: 1px solid #99F6E4;
+  color: #0F766E;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dept-badge-pill.dept-pill-admin {
+  background: #F5F3FF;
+  border-color: #DDD6FE;
+  color: #6D28D9;
+}
+
+.dept-badge-pill.dept-pill-muted {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #64748B;
+}
+
+.dept-badges-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 280px;
 }
