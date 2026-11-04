@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Case Dossier · Tata 1mg People Desk</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-mark.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=3.0">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=3.0">
+  <link rel="stylesheet" href="/css/agent.css?v=4.8">
+  <style>
+    html, body {
+      min-height: 100% !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      background-color: #F8FAFC;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: #0F172A;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Top brand header */
+    .agent-top-navbar {
+      height: 56px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 60;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--1mg-orange);
+      background: #FFF7ED;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid #FFEDD5;
+    }
+
+    .user-cluster {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #10B190;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Case Page Wrap */
+    .case-page-wrap {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ==========================================================================
+       EXECUTIVE CASE COMMAND HEADER (UNIFIED HERO & WORKFLOW SUITE)
+       ========================================================================== */
+    .executive-case-header {
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+      padding: 16px 28px 0 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Top Row: Navigation Breadcrumbs & Utility Actions */
+    .exec-header-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .exec-breadcrumb-cluster {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748B;
+    }
+
+    .exec-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .exec-back-btn:hover {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #0F172A;
+      transform: translateX(-2px);
+    }
+
+    .exec-crumb-sep {
+      color: #CBD5E1;
+      font-weight: 400;
+    }
+
+    .exec-crumb-dept {
+      color: #475569;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+    }
+
+    .exec-case-code-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 800;
+      color: #EA580C;
+      background: #FFF7ED;
+      border: 1px solid #FFEDD5;
+      padding: 2px 9px;
+      border-radius: 6px;
+      letter-spacing: 0.2px;
+    }
+
+    /* Action Toolbar */
+    .exec-action-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .exec-tool-btn {
+      height: 32px;
+      padding: 0 11px;
+      border-radius: 7px;
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .exec-tool-btn:hover {
+      background: #F8FAFC;
+      border-color: #94A3B8;
+      color: #0F172A;
+    }
+
+    .exec-tool-btn-profile {
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: #1D4ED8;
+    }
+    .exec-tool-btn-profile:hover {
+      background: #DBEAFE;
+      border-color: #93C5FD;
+      color: #1E40AF;
+    }
+
+    .exec-btn-resolve {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 7px;
+      background: linear-gradient(135deg, #10B190 0%, #059669 100%);
+      border: 1px solid #0D9488;
+      font-size: 12px;
+      font-weight: 800;
+      color: #FFFFFF;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 1px 3px rgba(16, 177, 144, 0.25);
+      transition: all 0.15s ease;
+    }
+    .exec-btn-resolve:hover {
+      background: #059669;
+      box-shadow: 0 2px 6px rgba(16, 177, 144, 0.35);
+      transform: translateY(-1px);
+    }
+
+    /* Middle Row: Title & Metadata Telemetry */
+    .exec-header-main-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .exec-case-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0F172A;
+      margin: 0;
+      letter-spacing: -0.3px;
+      line-height: 1.25;
+    }
+
+    .exec-meta-pills-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: #64748B;
+    }
+
+    .exec-pill {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .exec-pill-channel {
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      color: #475569;
+    }
+
+    .exec-pill-dept {
+      background: #EFF6FF;
+      border: 1px solid #DBEAFE;
+      color: #2563EB;
+    }
+
+    .exec-meta-sep {
+      color: #CBD5E1;
+    }
+
+    .exec-meta-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #64748B;
+      font-size: 12px;
+    }
+    .exec-meta-time strong {
+      color: #1E293B;
+    }
+
+    .exec-turnaround-pill {
+      margin-left: 2px;
+    }
+
+    /* Stepper Row: Interactive Lifecycle Pipeline */
+    .exec-lifecycle-strip {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .exec-pipeline-track {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+
+    .exec-pipe-node {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 11px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      cursor: default;
+    }
+
+    .exec-pipe-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #F1F5F9;
+      color: #64748B;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1.5px solid #CBD5E1;
+      transition: all 0.2s ease;
+    }
+
+    .exec-pipe-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pipe-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748B;
+      line-height: 1.2;
+    }
+
+    .pipe-sub {
+      font-size: 10px;
+      font-weight: 600;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .exec-pipe-connector {
+      width: 32px;
+      height: 2px;
+      background: #E2E8F0;
+      margin: 0 4px;
+      transition: all 0.2s ease;
+    }
+
+    /* Pipeline Node States */
+    .exec-pipe-node.active {
+      background: #FFF7ED;
+      border: 1px solid #FFEDD5;
+      box-shadow: 0 1px 4px rgba(234, 88, 12, 0.08);
+    }
+    .exec-pipe-node.active .exec-pipe-dot {
+      background: linear-gradient(135deg, #FF6F61 0%, #EA580C 100%);
+      color: #FFFFFF;
+      border-color: transparent;
+      box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.22);
+    }
+    .exec-pipe-node.active .pipe-title {
+      color: #9A3412;
+      font-weight: 800;
+    }
+    .exec-pipe-node.active .pipe-sub {
+      color: #C2410C;
+    }
+
+    .exec-pipe-node.completed {
+      background: #F0FDF4;
+      border: 1px solid #DCFCE7;
+    }
+    .exec-pipe-node.completed .exec-pipe-dot {
+      background: #10B190;
+      color: #FFFFFF;
+      border-color: transparent;
+    }
+    .exec-pipe-node.completed .pipe-title {
+      color: #065F46;
+      font-weight: 700;
+    }
+    .exec-pipe-node.completed .pipe-sub {
+      color: #059669;
+    }
+    .exec-pipe-connector.completed {
+      background: #10B190;
+    }
+
+    /* Lifecycle Actions & Description */
+    .exec-lifecycle-actions-cluster {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .exec-lifecycle-desc {
+      font-size: 12.5px;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .exec-actions-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-workflow {
+      height: 35px;
+      padding: 0 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-workflow-start {
+      background: linear-gradient(135deg, #FF6F61 0%, #EA580C 100%);
+      color: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(234, 88, 12, 0.28);
+    }
+    .btn-workflow-start:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.38);
+    }
+
+    .btn-workflow-docs {
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border-color: #BFDBFE;
+    }
+    .btn-workflow-docs:hover {
+      background: #DBEAFE;
+      color: #1E40AF;
+    }
+
+    .btn-workflow-approve {
+      background: linear-gradient(135deg, #10B190 0%, #059669 100%);
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(16, 177, 144, 0.25);
+    }
+    .btn-workflow-approve:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(16, 177, 144, 0.35);
+    }
+
+    .btn-workflow-reject {
+      background: #FEF2F2;
+      color: #DC2626;
+      border-color: #FECACA;
+    }
+    .btn-workflow-reject:hover {
+      background: #FEE2E2;
+    }
+
+    .btn-workflow-resume {
+      background: #FFFBEB;
+      color: #B45309;
+      border-color: #FDE68A;
+    }
+    .btn-workflow-resume:hover {
+      background: #FEF3C7;
+    }
+
+    .btn-workflow-reopen {
+      background: #F1F5F9;
+      color: #334155;
+      border-color: #CBD5E1;
+    }
+    .btn-workflow-reopen:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+    }
+
+    /* Segmented Navigation Tabs */
+    .exec-tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border-top: 1px solid #F1F5F9;
+      margin-top: 2px;
+    }
+
+    .exec-tab-btn {
+      padding: 12px 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748B;
+      background: none;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      margin-bottom: -1px;
+    }
+    .exec-tab-btn:hover {
+      color: #0F172A;
+    }
+    .exec-tab-btn.active {
+      color: var(--1mg-orange);
+      border-bottom-color: var(--1mg-orange);
+      font-weight: 800;
+    }
+
+    .exec-tab-count {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #F1F5F9;
+      color: #64748B;
+    }
+    .exec-tab-btn.active .exec-tab-count {
+      background: #FFF7ED;
+      color: #EA580C;
+      border: 1px solid #FFEDD5;
+    }
+
+    /* Main Workspace Container */
+    .case-tab-content {
+      padding: 20px 28px 48px 28px;
+      flex: 1;
+    }
+
+    .case-info-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) 410px;
+      gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .case-info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .case-split-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 980px) {
+      .case-split-cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .case-main-column, .case-side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+      overflow: hidden;
+    }
+
+    .section-card-header {
+      padding: 14px 20px;
+      background: #F8FAFC;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .section-card-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #0F172A;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .section-card-body {
+      padding: 20px;
+    }
+
+    /* Inquiry Meta & Body */
+    .inquiry-meta-strip {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12.5px;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .inquiry-body-content {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #1E293B;
+      background: #FFFDFB;
+      border-left: 3px solid var(--1mg-orange);
+      padding: 16px 18px;
+      border-radius: 0 8px 8px 0;
+      white-space: pre-wrap;
+    }
+
+    /* Thread Stream */
+    .thread-stream-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 440px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .thread-bubble {
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.55;
+      position: relative;
+    }
+
+    .thread-bubble.employee-inbound {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-left: 3px solid #64748B;
+    }
+
+    .thread-bubble.agent-reply {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-left: 3px solid #10B190;
+    }
+
+    .thread-bubble.internal-note {
+      background: #FFFDF5;
+      border: 1px solid #FDE68A;
+      border-left: 3px solid #D97706;
+    }
+
+    .thread-bubble-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 11.5px;
+    }
+
+    .thread-actor {
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .thread-time {
+      color: #64748B;
+    }
+
+    /* Composer Modes */
+    .composer-mode-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #F1F5F9;
+      padding: 3px;
+      border-radius: 8px;
+    }
+
+    .composer-mode-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: none;
+      background: none;
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748B;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .composer-mode-btn.active {
+      background: #FFFFFF;
+      color: #0F172A;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .quick-reply-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #CBD5E1;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 13.5px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .quick-reply-textarea:focus {
+      border-color: var(--1mg-orange);
+      box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.12);
+    }
+
+    /* AI Drafter Tones */
+    .tone-selector-strip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-tone {
+      background: #FAF5FF;
+      border: 1px solid #E9D5FF;
+      color: #7C3AED;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-tone:hover, .btn-tone.active {
+      background: #7C3AED;
+      color: #FFFFFF;
+      border-color: #7C3AED;
+    }
+
+    /* Darwinbox 360 Bento */
+    .hrms-bento-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0 16px 0;
+    }
+
+    .hrms-mini-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .hrms-mini-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .hrms-mini-val {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-top: 3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Timeline Audit Nodes */
+    .audit-timeline {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .audit-node {
+      position: relative;
+      padding-left: 28px;
+      padding-bottom: 18px;
+    }
+
+    .audit-node::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 10px;
+      bottom: 0;
+      width: 2px;
+      background: #E2E8F0;
+    }
+
+    .audit-node:last-child::before {
+      display: none;
+    }
+
+    .audit-dot {
+      position: absolute;
+      left: 2px;
+      top: 3px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--1mg-orange);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 0 0 2px var(--1mg-orange);
+    }
+
+    /* Page Loader */
+    .page-loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 14px;
+      color: #64748B;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. BRAND NAVBAR -->
+  <header class="agent-top-navbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="/agent.html" class="brand-cluster">
+        <img src="/assets/logo-mark.svg" alt="Tata 1mg" style="height: 28px;">
+        <span class="brand-title">People Desk</span>
+        <span class="brand-sub">Case Command</span>
+      </a>
+      <div style="height: 20px; width: 1px; background: #E2E8F0;"></div>
+      <a href="/agent.html?view=casesView" class="btn-back-link" style="padding: 5px 10px; font-size: 12px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <span>Back to Workbench Queue</span>
+      </a>
+    </div>
+
+    <div class="user-cluster">
+      <div style="text-align: right;">
+        <div id="navAgentName" style="font-size: 13px; font-weight: 700; color: #0F172A;">Vaibhav Yadav</div>
+        <div id="navAgentEmail" style="font-size: 11px; color: #64748B;">people.ops@1mg.com</div>
+      </div>
+      <div class="user-avatar-badge" id="navAgentAvatar">V</div>
+      <button class="btn-secondary" style="height: 32px; padding: 0 10px; font-size: 11.5px;" onclick="handleSignOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- 2. MAIN CASE PAGE CONTAINER -->
+  <div class="case-page-wrap">
+
+    <!-- UNIFIED EXECUTIVE CASE COMMAND HEADER -->
+    <div class="executive-case-header">
+      <!-- Top Row: Breadcrumb Path + Action Toolbar -->
+      <div class="exec-header-top-row">
+        <div class="exec-breadcrumb-cluster">
+          <a href="/agent.html?view=casesView" class="exec-back-btn" title="Back to Workbench Queue">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>Back to Queue</span>
+          </a>
+          <span class="exec-crumb-sep">/</span>
+          <span class="exec-crumb-dept" id="breadcrumbDept">
+            <span class="dept-dot-accent" style="background: #2563EB;"></span>
+            <span>People Desk</span>
+          </span>
+          <span class="exec-crumb-sep">/</span>
+          <span class="exec-case-code-badge" id="heroCaseNumber">1MG00011</span>
+        </div>
+
+        <div class="exec-action-toolbar">
+          <button class="exec-tool-btn exec-tool-btn-profile" onclick="openEmployeeProfileModal(false)" title="Modify Employee HRMS Profile">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Edit Profile</span>
+          </button>
+          <button id="btnClaimTop" class="exec-tool-btn" onclick="claimThisCase()" title="Specialist Ownership">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="7" r="4"></circle><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path></svg>
+            <span>Assigned to You</span>
+          </button>
+          <button class="exec-tool-btn" onclick="openReassignModal()" title="Reassign Specialist">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+            <span>Reassign</span>
+          </button>
+          <button class="exec-tool-btn" onclick="window.print()" title="Print Case Dossier">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <span>Print</span>
+          </button>
+          <button id="btnResolveTop" class="exec-btn-resolve" onclick="openApproveModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Mark Resolved</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Row: Case Title + Metadata Badges -->
+      <div class="exec-header-main-row">
+        <h1 class="exec-case-title" id="heroCaseTitle">Loading case dossier...</h1>
+        
+        <div class="exec-meta-pills-strip">
+          <span id="heroStatusPill"></span>
+          <span id="heroPriorityPill"></span>
+          <div id="heroDeptPill" class="exec-pill exec-pill-dept">People Desk</div>
+          <div class="exec-pill exec-pill-channel" id="heroChannelPill">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            <span>Zoho Corporate Ingest</span>
+          </div>
+          <div class="exec-meta-sep">•</div>
+          <div class="exec-meta-time">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>Received: <strong id="heroCreatedTime">—</strong></span>
+          </div>
+          <div class="exec-meta-sep">•</div>
+          <div class="exec-meta-time">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 15 15"></polyline></svg>
+            <span>Target Deadline: <strong id="heroDueTime">—</strong></span>
+          </div>
+          <div id="heroTurnaroundBadge" class="exec-turnaround-pill"></div>
+        </div>
+      </div>
+
+      <!-- Bottom Row: Lifecycle Pipeline Stepper + Contextual Stage Action -->
+      <div class="exec-lifecycle-strip" id="caseLifecycleCockpit">
+        <div class="exec-pipeline-track">
+          <div class="exec-pipe-node" id="stepOpen">
+            <div class="exec-pipe-dot"><span class="dot-num">1</span></div>
+            <div class="exec-pipe-text">
+              <span class="pipe-title">Inbound Triage</span>
+              <span class="pipe-sub">Ticket Intake</span>
+            </div>
+          </div>
+          <div class="exec-pipe-connector" id="line1"></div>
+
+          <div class="exec-pipe-node" id="stepProgress">
+            <div class="exec-pipe-dot"><span class="dot-num">2</span></div>
+            <div class="exec-pipe-text">
+              <span class="pipe-title">Manual Verification</span>
+              <span class="pipe-sub">HRMS Sync</span>
+            </div>
+          </div>
+          <div class="exec-pipe-connector" id="line2"></div>
+
+          <div class="exec-pipe-node" id="stepWaiting">
+            <div class="exec-pipe-dot"><span class="dot-num">3</span></div>
+            <div class="exec-pipe-text">
+              <span class="pipe-title">Doc Request</span>
+              <span class="pipe-sub">Employee Info</span>
+            </div>
+          </div>
+          <div class="exec-pipe-connector" id="line3"></div>
+
+          <div class="exec-pipe-node" id="stepClosed">
+            <div class="exec-pipe-dot"><span class="dot-num">4</span></div>
+            <div class="exec-pipe-text">
+              <span class="pipe-title">Determination</span>
+              <span class="pipe-sub">Approve / Reject</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Contextual Action Area -->
+        <div class="exec-lifecycle-actions-cluster">
+          <div class="exec-lifecycle-desc" id="lifecycleStatusDesc">
+            <!-- Dynamic State Guidance -->
+          </div>
+          <div id="lifecycleActionsContainer" class="exec-actions-wrap">
+            <!-- Dynamic buttons based on status -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Segmented Navigation Tabs -->
+      <nav class="exec-tabs-bar">
+        <button class="exec-tab-btn active" id="tabInfoBtn" onclick="switchCaseTab('info')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <span>Case Info &amp; Communications</span>
+          <span class="exec-tab-count" id="badgeThreadCount">All Mails &amp; AI</span>
+        </button>
+
+        <button class="exec-tab-btn" id="tabAuditBtn" onclick="switchCaseTab('audit')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Forensic Audit &amp; Telemetry</span>
+          <span class="exec-tab-count" id="badgeAuditCount">Audit Trail</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="tabInfoPane" class="case-tab-content">
+      <div class="case-info-grid">
+
+        <!-- LEFT COLUMN: ALL MAILS & THREAD WORKSPACE -->
+        <div class="case-main-column">
+
+          <!-- TOP ROW: HRMS 360° PROFILE CARD + INBOUND INQUIRY CARD -->
+          <div class="case-split-cards">
+
+            <!-- Card 1A: HRMS Darwinbox Dossier / Employee 360° Profile -->
+            <div class="section-card">
+              <div class="section-card-header">
+                <div class="section-card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span>HRMS Darwinbox Dossier</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="sideEmpStatusBadge" class="exec-pill" style="font-size: 11px; font-weight: 700; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 999px;">
+                    ✓ Active
+                  </span>
+                  <button class="btn-secondary" style="height: 28px; padding: 0 9px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" onclick="openEmployeeProfileModal(false)">
+                    <span>✏️ Edit</span>
+                  </button>
+                </div>
+              </div>
+              <div class="section-card-body" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <!-- Profile Header -->
+                  <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                    <div class="emp-avatar-badge" id="sideEmpAvatar" style="width: 48px; height: 48px; font-size: 19px; font-weight: 800; background: linear-gradient(135deg, #FF6F61 0%, #EA580C 100%); color: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25); flex-shrink: 0;">V</div>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span id="sideEmpName" style="font-size: 17px; font-weight: 800; color: #0F172A;">Vaibhav Yadav</span>
+                        <span id="sideEmpActivePill" style="font-size: 10.5px; font-weight: 800; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1px 7px; border-radius: 4px;">✓ Active</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                        <span id="sideEmpDeptBadge" style="font-size: 11.5px; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 1px 8px; border-radius: 4px;">People Desk · Tata 1mg</span>
+                        <span id="sideEmpTypeBadge" style="font-size: 11px; font-weight: 600; color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 1px 7px; border-radius: 4px;">Permanent (Full-Time)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Verified Identity Banner -->
+                  <div id="sideVerifiedBanner" style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; font-size: 12px; color: #166534; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <span>Verified Tata 1mg Identity</span>
+                    </span>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12.5px; color: #0F172A;" id="sideTokenVal">Token: 1MG-10234</span>
+                  </div>
+
+                  <!-- 3-Mini Bento Strip -->
+                  <div class="hrms-bento-strip" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;">
+                    <div class="hrms-mini-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; text-align: center;">
+                      <div style="font-size: 10px; font-weight: 800; color: #64748B; letter-spacing: 0.5px;">EMP CODE</div>
+                      <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-top: 3px; font-family: 'JetBrains Mono', monospace;" id="sideBentoCode">1MG-10234</div>
+                    </div>
+                    <div class="hrms-mini-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; text-align: center;">
+                      <div style="font-size: 10px; font-weight: 800; color: #64748B; letter-spacing: 0.5px;">GRADE</div>
+                      <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-top: 3px;" id="sideBentoGrade">G5</div>
+                    </div>
+                    <div class="hrms-mini-card" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 10px; text-align: center;">
+                      <div style="font-size: 10px; font-weight: 800; color: #64748B; letter-spacing: 0.5px;">LOCATION</div>
+                      <div style="font-size: 13px; font-weight: 800; color: #0F172A; margin-top: 3px;" id="sideBentoLocation">Gurugram HQ</div>
+                    </div>
+                  </div>
+
+                  <!-- Key Value List -->
+                  <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; border-top: 1px solid #F1F5F9; padding-top: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Reporting Manager</span>
+                      <span style="font-weight: 700; color: #0F172A;" id="sideEmpManager">People Operations Lead</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Corporate Email</span>
+                      <div style="display: inline-flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: 700; color: #0F172A;" id="sideEmpEmail">Not Activated</span>
+                        <span id="sideEmpEmailStatus" style="font-size: 10px; font-weight: 800; background: #F1F5F9; color: #64748B; padding: 1px 5px; border-radius: 4px;">INACTIVE</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Personal Email</span>
+                      <span style="font-weight: 600; color: #334155;" id="sideEmpPersonalEmail">vaibhavx002@zohomail.in</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Mobile Number</span>
+                      <span style="font-weight: 600; color: #334155;" id="sideEmpMobile">— Not Provided</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Shift Schedule</span>
+                      <span style="font-weight: 700; color: #0F172A;" id="sideEmpShift">General Day Shift</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Employment Type</span>
+                      <span style="font-weight: 700; color: #0F172A;" id="sideEmpType">Permanent (Full-Time)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="color: #64748B;">Directory Status</span>
+                      <span style="font-weight: 700; color: #059669;" id="sideEmpDirectory">Active Directory Confirmed</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button class="btn-secondary" style="width: 100%; margin-top: 14px; height: 34px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #CBD5E1; border-radius: 8px;" onclick="openEmployeeProfileModal(false)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                  <span>✏️ Modify Employee Profile Details</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Card 1B: Inbound Email Inquiry (Admin Suite Luxury Layout) -->
+            <div class="section-card">
+              <div class="section-card-header">
+                <div class="section-card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                  <span>Inbound Email Inquiry</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px;" onclick="copyInboundBody()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <span>Copy Body</span>
+                  </button>
+                  <button class="btn-secondary" style="height: 28px; padding: 0 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; border-radius: 6px;" onclick="window.print()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    <span>Print</span>
+                  </button>
+                </div>
+              </div>
+              <div class="section-card-body" style="display: flex; flex-direction: column;">
+                <!-- Executive Email Sender & Ingest Header -->
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 12px; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="inquirySenderAvatar" style="width: 44px; height: 44px; border-radius: 50%; background: #0D9488; color: #FFFFFF; font-size: 17px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25); flex-shrink: 0;">V</div>
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 7px; flex-wrap: wrap;">
+                        <span id="inquirySenderName" style="font-size: 15px; font-weight: 800; color: #0F172A;">Vaibhav Yadav</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563EB" stroke="#FFFFFF" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="16 9 10.5 15 8 12.5" stroke="#FFFFFF" stroke-width="2.5"></polyline></svg>
+                        <span id="inquiryVerifiedIngestPill" style="font-size: 10.5px; font-weight: 800; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1px 7px; border-radius: 4px;">✓ Verified Corporate Ingest</span>
+                      </div>
+                      <div style="font-size: 12px; color: #64748B; margin-top: 2px;">
+                        <span id="inquiryFromEmail">vaibhavx002@zohomail.in</span>
+                      </div>
+                      <div style="font-size: 11.5px; color: #475569; margin-top: 2px;">
+                        <span>To: </span><span id="inquiryToAddress" style="color: #0F172A; font-weight: 600;">people.ops@1mg.com (Tata 1mg People Desk)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                    <span id="inquiryReceivedDate" style="font-size: 11.5px; color: #64748B; font-weight: 600;">03 Nov 2026, 03:35 pm</span>
+                    <span id="inquiryCategoryPill" style="font-size: 11px; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 4px;">PEOPLE DESK</span>
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid #F1F5F9; margin-bottom: 12px;"></div>
+
+                <!-- Subject Line -->
+                <div style="margin-bottom: 10px;">
+                  <div id="inquirySubject" style="font-size: 15px; font-weight: 800; color: #0F172A; line-height: 1.4;">Request for Salary Slip – October 2026</div>
+                </div>
+
+                <!-- Natural Clean Email Body View -->
+                <div id="inquiryBodyText" style="flex: 1; font-size: 13.5px; line-height: 1.7; color: #1E293B; background: #FAFAFC; border: 1px solid #F1F5F9; border-radius: 10px; padding: 18px 20px; white-space: pre-wrap; font-family: inherit; min-height: 220px; max-height: 380px; overflow-y: auto;">Loading employee email body...</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Card 2: Full Email & Conversation Thread -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="section-card-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span>Conversation Thread &amp; Exchange History</span>
+              </div>
+              <div style="font-size: 12px; color: #64748B;">
+                <span id="threadCountLabel">1 message</span>
+              </div>
+            </div>
+            <div class="section-card-body">
+              <div id="conversationStreamList" class="thread-stream-wrap">
+                <!-- Dynamically populated thread bubbles -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Omni-Composer (Reply / Note Dispatcher) -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="composer-mode-tabs">
+                <button type="button" class="composer-mode-btn active" id="modePublicBtn" onclick="setComposerMode('PUBLIC_REPLY')">
+                  <span>✉️ Public Reply to Employee</span>
+                </button>
+                <button type="button" class="composer-mode-btn" id="modeInternalBtn" onclick="setComposerMode('INTERNAL_NOTE')">
+                  <span>🔒 Internal Desk Note</span>
+                </button>
+              </div>
+
+              <select id="quickMacroSelect" class="canned-dropdown" onchange="applyCannedMacro(this.value)">
+                <option value="">⚡ Apply Quick Macro...</option>
+                <option value="attendance_reg">Regularize Punch (AT01)</option>
+                <option value="attendance_shift">Approve Shift Adjustment (AT03)</option>
+                <option value="payroll_tds">TDS Computation Verified (PR02)</option>
+                <option value="request_id">Request 1mg Employee ID Proof</option>
+                <option value="resolved">Mark Resolved &amp; Closed</option>
+              </select>
+            </div>
+            <div class="section-card-body">
+              <textarea id="composerTextarea" class="quick-reply-textarea" style="min-height: 120px;" placeholder="Compose official response to employee..."></textarea>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 12px; font-weight: 700; color: #64748B;">Status on send:</label>
+                  <select id="composerStatusSelect" class="dept-filter-select" style="height: 34px; padding: 0 10px; font-size: 12px; font-weight: 600;">
+                    <option value="IN_PROGRESS">Keep IN PROGRESS</option>
+                    <option value="WAITING_ON_EMPLOYEE">Set WAITING ON EMPLOYEE</option>
+                    <option value="RESOLVED" selected>Set RESOLVED</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 11.5px; color: #94A3B8;">Shortcut: Ctrl+Enter</span>
+                  <button id="btnSendReply" class="btn-primary" style="width: auto; padding: 0 20px; height: 38px; display: inline-flex; align-items: center; gap: 6px;" onclick="dispatchCaseReply()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    <span id="btnSendReplyText">Send Response to Employee</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: AI & CASE COPILOT -->
+        <div class="case-side-column">
+
+          <!-- Card 4: AI Intent Engine & Classifier -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="section-card-title" style="color: #6D28D9;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>AI Intent Engine</span>
+              </div>
+              <span id="aiConfidenceBadge" class="ai-intent-confidence" style="font-size: 11px; padding: 2px 7px; background: #FAF5FF; border: 1px solid #E9D5FF; color: #7C3AED; border-radius: 999px; font-weight: 800;">
+                99.2% Match
+              </span>
+            </div>
+            <div class="section-card-body">
+              <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                <div style="font-size: 11px; font-weight: 800; color: #7C3AED; letter-spacing: 0.5px;" id="aiIntentCode">PR01: MONTHLY SALARY CREDIT</div>
+                <div style="font-size: 13.5px; font-weight: 800; color: #0F172A; margin-top: 3px;" id="aiIntentTitle">Monthly Salary Credit &amp; Payslip Generation</div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #475569; margin-bottom: 10px;">
+                <span>Target SLA: <strong id="aiTargetSla">12 Hours</strong></span>
+                <span id="aiUrgencyBadge" style="font-weight: 800; color: #EA580C; background: #FFF7ED; padding: 1px 6px; border-radius: 4px;">HIGH URGENCY</span>
+              </div>
+
+              <!-- Issue & Request Summary -->
+              <div style="margin-bottom: 10px; font-size: 12px; line-height: 1.45; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 10px;">
+                <div style="font-weight: 700; color: #0F172A; margin-bottom: 2px;">• Problem: <span id="aiSummaryIssue" style="font-weight: normal; color: #334155;">Employee unable to download payslip.</span></div>
+                <div style="font-weight: 700; color: #0F172A;">• Action Needed: <span id="aiSummaryRequest" style="font-weight: normal; color: #334155;">Regenerate payslip in payroll portal.</span></div>
+              </div>
+
+              <div style="font-size: 11.5px; font-weight: 700; color: #64748B; margin-bottom: 4px;">AI RECOMMENDED ACTION:</div>
+              <div id="aiActionGuidance" style="font-size: 12px; line-height: 1.5; color: #334155; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 10px;">
+                Verify employee payslip generation in Darwinbox payroll master and check monthly credit schedule.
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5: HRMS Entity Matching (as in Screenshot 1) -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="section-card-title" style="color: #1D4ED8;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                <span>HRMS Entity Matching</span>
+              </div>
+            </div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; margin-bottom: 10px;">
+                <div>
+                  <div style="font-size: 10px; font-weight: 700; color: #64748B;">EMPLOYEE</div>
+                  <div id="aiMatchEmpName" style="font-weight: 800; color: #0F172A; margin-top: 2px;">Vaibhav Yadav</div>
+                </div>
+                <div>
+                  <div style="font-size: 10px; font-weight: 700; color: #64748B;">EMP CODE</div>
+                  <div id="aiMatchEmpCode" style="font-weight: 800; color: #0F172A; margin-top: 2px; font-family: monospace;">1MG-10234</div>
+                </div>
+                <div>
+                  <div style="font-size: 10px; font-weight: 700; color: #64748B;">LOCATION</div>
+                  <div id="aiMatchLocation" style="font-weight: 700; color: #334155; margin-top: 2px;">Gurugram HQ</div>
+                </div>
+                <div>
+                  <div style="font-size: 10px; font-weight: 700; color: #64748B;">SHIFT</div>
+                  <div id="aiMatchShift" style="font-weight: 700; color: #334155; margin-top: 2px;">General Day Shift</div>
+                </div>
+              </div>
+
+              <div id="aiMatchStatusBanner" style="font-size: 11.5px; font-weight: 700; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 6px; padding: 6px 10px; display: flex; align-items: center; gap: 5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Directory Verified against Central HRMS</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6: Case & SLA Cockpit (as in Screenshot 1) -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="section-card-title" style="color: #EA580C;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Case &amp; SLA Cockpit</span>
+              </div>
+            </div>
+            <div class="section-card-body">
+              <div style="margin-bottom: 10px;">
+                <div id="cockpitUrgencyText" style="font-size: 12px; font-weight: 800; color: #EA580C; margin-bottom: 3px;">
+                  HIGH (Immediate Action Recommended)
+                </div>
+                <div id="cockpitSummaryText" style="font-size: 12px; color: #64748B; line-height: 1.45;">
+                  Employee inquiry regarding salary credit, payslip download, or bank account deposit.
+                </div>
+              </div>
+
+              <div id="cockpitActionBtnWrap">
+                <button class="btn-primary" style="width: 100%; height: 36px; background: var(--1mg-orange); display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="startWorkingOnCase()">
+                  <span>⚡ Start Working on Case</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 7: Response Studio (Smart Drafter) -->
+          <div class="section-card" style="border-top: 3px solid #10B190;">
+            <div class="section-card-header">
+              <div class="section-card-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                <span>Response Studio (Smart Drafter)</span>
+              </div>
+              <div class="tone-selector-strip">
+                <button class="btn-tone active" onclick="switchAiTone('empathetic', this)">Empathetic</button>
+                <button class="btn-tone" onclick="switchAiTone('concise', this)">Concise</button>
+                <button class="btn-tone" onclick="switchAiTone('verify_docs', this)">Policy</button>
+              </div>
+            </div>
+            <div class="section-card-body">
+              <div id="aiToneDraftBox" style="font-size: 12px; line-height: 1.5; color: #334155; background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 8px; padding: 10px 12px; min-height: 85px; max-height: 180px; overflow-y: auto; margin-bottom: 10px;">
+                Generating smart AI response preview...
+              </div>
+
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-secondary" style="height: 32px; font-size: 11.5px; flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;" onclick="insertAiDraftIntoComposer()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  <span>Insert Draft</span>
+                </button>
+                <button class="btn-primary" style="height: 32px; width: auto; font-size: 11.5px; background: #7C3AED; display: inline-flex; align-items: center; justify-content: center; gap: 5px;" onclick="sendAiDraftDirectly()">
+                  <span>Direct Send</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 4. TAB 2: AUDIT SECTION (INITIALIZED FOR THE NEXT PHASE) -->
+    <div id="tabAuditPane" class="case-tab-content" style="display: none;">
+      <div style="max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
+        
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 22px 26px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-left: 4px solid var(--1mg-orange);">
+          <div>
+            <h2 style="font-size: 17px; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">🛡️ Forensic Audit Trail &amp; Regulatory Event Stream</h2>
+            <p style="font-size: 13px; color: #64748B; margin: 0;">Immutable chronological record of ticket transitions, agent actions, and corporate compliance timestamps.</p>
+          </div>
+          <span style="font-size: 12px; font-weight: 800; background: #FFF7ED; color: #EA580C; border: 1px solid #FFEDD5; padding: 4px 10px; border-radius: 999px;">
+            Stage 1 Initialized
+          </span>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-header">
+            <div class="section-card-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Logged Events</span>
+            </div>
+            <span style="font-size: 12px; color: #64748B;" id="auditEventsCountLabel">Loading events...</span>
+          </div>
+          <div class="section-card-body">
+            <div id="auditTimelineStream" class="audit-timeline">
+              <!-- Dynamically populated audit events -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: REASSIGN CASE -->
+  <div class="modal-overlay" id="reassignModal" style="display: none;">
+    <div class="modal-content" style="max-width: 480px; width: 90%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--1mg-orange)" stroke-width="2.5"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          <span>Reassign Case <span id="reassignModalNum" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeReassignModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Functional Department Desk</label>
+          <select id="reassignDeptSelect" class="form-input" onchange="populateSpecialistsForDept()" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-weight: 600;">
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Assign to Specialist</label>
+          <select id="reassignUserSelect" class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-weight: 600;">
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="btn-action" onclick="closeReassignModal()">Cancel</button>
+          <button id="btnSaveReassign" class="btn-primary" style="width: auto; padding: 7px 18px;" onclick="submitReassign()">Save Reassignment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REQUEST SUPPORTING DOCUMENTS -->
+  <div class="modal-overlay" id="requestDocModal" style="display: none;">
+    <div class="modal-content" style="max-width: 520px; width: 92%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Request Documents / Info <span id="requestDocModalNum" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeRequestDocModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Select Document Requirement Template</label>
+          <select id="requestDocTemplateSelect" class="form-input" onchange="onSelectDocTemplate(this.value)" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-weight: 600;">
+            <option value="id_proof">1mg Employee ID Card &amp; Department Confirmation</option>
+            <option value="punch_proof">Biometric Turnstile Swipe / Security Register Proof</option>
+            <option value="bank_stmt">Bank Credit Statement / Salary Account Proof</option>
+            <option value="medical_receipt">Medical Prescription &amp; Original Hospital Bills</option>
+            <option value="custom">Custom Document Request</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Email Message to Employee</label>
+          <textarea id="requestDocMessageText" class="quick-reply-textarea" style="min-height: 110px;" placeholder="Specify what documents are needed from the employee..."></textarea>
+        </div>
+        <div style="font-size: 11.5px; color: #64748B; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 6px; padding: 8px 12px;">
+          ℹ️ Sending this request will notify the employee via email and set ticket status to <strong>WAITING ON EMPLOYEE</strong>.
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button class="btn-action" onclick="closeRequestDocModal()">Cancel</button>
+          <button id="btnSendDocRequest" class="btn-primary" style="width: auto; padding: 7px 18px; background: #2563EB;" onclick="submitDocRequest()">
+            <span>Send Request &amp; Set Waiting</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: APPROVE & RESOLVE CASE -->
+  <div class="modal-overlay" id="approveCaseModal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; width: 92%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.8"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Approve &amp; Resolve Inquiry <span id="approveModalNum" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeApproveModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Approval Action Preset</label>
+          <select id="approvePresetSelect" class="form-input" onchange="onSelectApprovePreset(this.value)" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-weight: 600;">
+            <option value="attendance_approved">Attendance Regularization Approved on Darwinbox Master</option>
+            <option value="payslip_dispatched">Salary Slip Generated &amp; Dispatched</option>
+            <option value="tds_approved">TDS Calculation Verified &amp; Adjusted</option>
+            <option value="general_approved">Inquiry Verified &amp; Requested Action Completed</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Approval Remarks &amp; Confirmation Message</label>
+          <textarea id="approveRemarksText" class="quick-reply-textarea" style="min-height: 95px;" placeholder="Summarize approval actions taken on Darwinbox/HRMS..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button class="btn-action" onclick="closeApproveModal()">Cancel</button>
+          <button id="btnConfirmApprove" class="btn-primary" style="width: auto; padding: 7px 20px; background: #10B190;" onclick="submitApproveCase()">
+            <span>Confirm Approval &amp; Resolve</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REJECT & CLOSE CASE -->
+  <div class="modal-overlay" id="rejectCaseModal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; width: 92%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <span>Reject &amp; Close Inquiry <span id="rejectModalNum" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeRejectModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Reason for Rejection</label>
+          <select id="rejectReasonSelect" class="form-input" onchange="onSelectRejectReason(this.value)" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-weight: 600;">
+            <option value="policy_mismatch">Policy Non-Compliance: Submitted after allowed payroll cut-off</option>
+            <option value="turnstile_mismatch">Biometric turnstile access log mismatch</option>
+            <option value="missing_docs">Required supporting documents / proof not provided</option>
+            <option value="duplicate_case">Duplicate inquiry / already resolved</option>
+            <option value="other">Other reason</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: #0F172A; margin-bottom: 5px; display: block;">Rejection Explanation to Employee</label>
+          <textarea id="rejectRemarksText" class="quick-reply-textarea" style="min-height: 95px;" placeholder="Provide clear reason to employee explaining why request was rejected..."></textarea>
+        </div>
+        <div style="font-size: 11.5px; color: #991B1B; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 6px; padding: 8px 12px;">
+          ⚠️ This will mark the ticket as <strong>CLOSED (REJECTED)</strong> and notify the employee with the reason specified above.
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button class="btn-action" onclick="closeRejectModal()">Cancel</button>
+          <button id="btnConfirmReject" class="btn-primary" style="width: auto; padding: 7px 20px; background: #DC2626;" onclick="submitRejectCase()">
+            <span>Confirm Rejection &amp; Close</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RESOLVE CASE (LEGACY FALLBACK) -->
+  <div class="modal-overlay" id="resolveModal" style="display: none;">
+    <div class="modal-content" style="max-width: 440px; width: 90%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Resolve Case <span id="resolveModalNum" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeResolveModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+        <label style="font-size: 12px; font-weight: 700; color: #0F172A;">Resolution Notes</label>
+        <textarea id="resolveNotesText" class="quick-reply-textarea" style="min-height: 80px;" placeholder="Summarize resolution actions taken..."></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="btn-action" onclick="closeResolveModal()">Cancel</button>
+          <button class="btn-primary" style="width: auto; padding: 7px 18px; background: #10B190;" onclick="submitResolve()">Mark Resolved</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EMPLOYEE HRMS PROFILE INTAKE & VERIFICATION -->
+  <div class="modal-overlay" id="employeeProfileModal" style="display: none;">
+    <div class="modal-content" style="max-width: 560px; width: 94%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span id="employeeProfileModalTitle">Employee HRMS Intake &amp; Verification</span>
+        </h3>
+        <button class="modal-close" onclick="closeEmployeeProfileModal()">&times;</button>
+      </div>
+
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+
+        <!-- Dynamic Notice Banner -->
+        <div id="profileModalNotice" style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #1E40AF; line-height: 1.45;">
+          <strong>📋 Mandatory Intake Policy:</strong> Please verify and record the employee's HRMS credentials before processing work on this case.
+        </div>
+
+        <form id="employeeProfileForm" onsubmit="event.preventDefault(); submitEmployeeProfile();" style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Employee Full Name <span style="color: #DC2626;">*</span></label>
+              <input id="profileEmpName" type="text" required class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px;" placeholder="e.g. Vaibhav Yadav">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Employee ID / Code <span style="color: #DC2626;">*</span></label>
+              <input id="profileEmpCode" type="text" required class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px; font-family: monospace;" placeholder="e.g. 1MG-10234">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Functional Department <span style="color: #DC2626;">*</span></label>
+              <select id="profileDeptSelect" required class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 12.5px; font-weight: 600;">
+                <option value="">Select Department...</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Reporting Manager <span style="color: #DC2626;">*</span></label>
+              <input id="profileManager" type="text" required class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px;" placeholder="e.g. Vikram Malhotra (VP Operations)">
+            </div>
+          </div>
+
+          <!-- Company Email Section -->
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A;">Company Corporate Gmail / Email</label>
+              <label style="font-size: 11.5px; color: #2563EB; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input id="profileCompanyActive" type="checkbox" onchange="toggleCompanyEmailStatus(this.checked)" checked>
+                <span>Active &amp; Verified</span>
+              </label>
+            </div>
+            <input id="profileCompanyEmail" type="email" class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px;" placeholder="e.g. employee@1mg.com">
+            <span style="font-size: 11px; color: #64748B;">If deactivated or employee cannot access corporate mail, ticket will communicate via personal email.</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Personal Email</label>
+              <input id="profilePersonalEmail" type="email" class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px;" placeholder="e.g. personal@gmail.com">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 11.5px; font-weight: 700; color: #0F172A; margin-bottom: 4px; display: block;">Mobile Number <span style="font-size: 10.5px; color: #64748B; font-weight: normal;">(Optional)</span></label>
+              <input id="profileMobile" type="tel" class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #CBD5E1; padding: 0 10px; font-size: 13px;" placeholder="e.g. +91 98765 43210">
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid #E2E8F0; padding-top: 12px;">
+            <button type="button" class="btn-action" onclick="closeEmployeeProfileModal()">Cancel</button>
+            <button id="btnSaveEmployeeProfile" type="submit" class="btn-primary" style="width: auto; padding: 7px 20px; background: #2563EB;">
+              <span>Save &amp; Start Working on Case</span>
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- SCRIPTS -->
+  <script src="/agent-static/js/case-details.js?v=4.1"></script>
+</body>
+</html>
+

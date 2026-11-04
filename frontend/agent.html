@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Workbench · Tata 1mg People Desk</title>
-  <link rel="stylesheet" href="/css/style.css?v=2.5">
-  <link rel="stylesheet" href="/admin-static/css/admin.css?v=2.5">
-  <link rel="stylesheet" href="/css/agent.css?v=2.5">
+  <link rel="stylesheet" href="/css/style.css?v=2.9">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=2.9">
+  <link rel="stylesheet" href="/css/agent.css?v=5.0">
   <link rel="icon" type="image/png" href="/assets/logo.png">
 </head>
 <body class="admin-body">
@@ -63,6 +63,7 @@
             </svg>
           </div>
           <span class="nav-label">Case</span>
+          <span class="nav-badge-pill" id="caseBadge" style="display: none;">0</span>
         </a>
       </li>
 
@@ -78,6 +79,7 @@
             </svg>
           </div>
           <span class="nav-label">Reply</span>
+          <span class="nav-badge-pill" id="replyBadge" style="display: none;">0</span>
         </a>
       </li>
 
@@ -90,6 +92,7 @@
             </svg>
           </div>
           <span class="nav-label">Action</span>
+          <span class="nav-badge-pill" id="actionBadge" style="display: none;">0</span>
         </a>
       </li>
 
@@ -158,7 +161,10 @@
         <div class="user-profile-menu" style="padding: 4px 10px 4px 5px; display: flex; align-items: center; gap: 8px;">
           <div class="user-avatar" id="agentAvatar" style="width: 28px; height: 28px; font-size: 12px;">VY</div>
           <div style="display: flex; flex-direction: column; line-height: 1.2;">
-            <span style="font-size: 12.5px; font-weight: 700; color: var(--text-dark);" id="agentHeaderName">Vaibhav Yadav</span>
+            <div style="display: flex; align-items: center;">
+              <span style="font-size: 12.5px; font-weight: 700; color: var(--text-dark);" id="agentHeaderName">Vaibhav Yadav</span>
+              <span id="deptHeadBadge" style="display: none; font-size: 9.5px; font-weight: 700; background: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; padding: 1px 5px; border-radius: 4px; margin-left: 5px;">⭐ DEPT HEAD</span>
+            </div>
             <span style="font-size: 10.5px; color: var(--text-muted);" id="agentDeptTag">Attendance HR Desk</span>
           </div>
           <button onclick="handleSignOut()" style="background: none; border: none; cursor: pointer; color: #EF4444; font-size: 11.5px; font-weight: 700; margin-left: 4px;" title="Sign out">
@@ -170,7 +176,7 @@
     </header>
 
     <!-- CONTENT VIEWS -->
-    <main style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+    <main style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; height: calc(100vh - 56px);">
       
       <!-- ========================================================
            VIEW 1: INBOX (AGENT SPECIALIST EMAIL INBOUND COCKPIT)
@@ -214,6 +220,10 @@
             <div class="subbar-search-box">
               <input type="text" id="inboxSearchInput" class="stream-search-input" placeholder="Search emails, employee, subject..." oninput="handleInboxSearch()">
             </div>
+            <button id="btnMailboxStatus" class="btn-action subbar-btn" onclick="openMailboxConfigModal()" title="Department Mailbox Settings" style="display: none; align-items: center; gap: 6px; font-weight: 600;">
+              <span id="mailboxStatusDot" style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+              <span id="mailboxStatusLabel">Mailbox: Connected</span>
+            </button>
             <button class="btn-action subbar-btn" onclick="syncInboxMailbox(this)" title="Sync Inbound Mailbox" style="display: inline-flex; align-items: center; gap: 6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>Sync Mailbox</span>
@@ -291,26 +301,32 @@
             </div>
 
             <!-- Active Content Container (Shown only when an email is selected) -->
-            <div id="inboxActiveContent" style="display: none; flex-direction: column; height: 100%;">
+            <div id="inboxActiveContent" style="display: none; flex-direction: column; height: 100%; max-height: 100%; min-height: 0; overflow: hidden; position: relative;">
               
               <!-- Top Ribbon Meta Bar -->
               <div class="inspector-top-ribbon" id="inboxInspectorRibbon">
                 <div class="ribbon-meta-left">
-                  <span class="ribbon-case-pill" id="inboxRibbonEmailId" style="background: #E0F2FE; color: #0369A1; border-color: #BAE6FD;"></span>
-                  <span class="role-pill" id="inboxRibbonCategory" style="font-size: 11px;"></span>
+                  <span class="ribbon-case-pill" id="inboxRibbonEmailId">#EML-000</span>
+                  <span class="ribbon-dept-pill" id="inboxRibbonDesk">People Desk</span>
+                  <span class="role-pill" id="inboxRibbonCategory" style="display: none;"></span>
                   <span class="ribbon-sla-badge" id="inboxRibbonSla">
                     <span class="sla-dot-pulse"></span>
-                    <span id="inboxRibbonSlaText"></span>
+                    <span id="inboxRibbonSlaText">48h SLA</span>
                   </span>
-                  <span class="role-pill" id="inboxRibbonDesk" style="font-size: 11px;"></span>
+                  <span class="ribbon-read-pill" id="inboxRibbonReadStatus"></span>
+                  <span class="ribbon-agent-pill" id="inboxRibbonAssignee" style="display: none; font-size: 11px; font-weight: 600; background: #EEF2FF; color: #4F46E5; padding: 3px 8px; border-radius: 6px; border: 1px solid #C7D2FE; align-items: center; gap: 4px;"></span>
                 </div>
 
                 <div class="ribbon-actions-right">
-                  <button class="btn-action" id="inboxToggleNoiseBtn" onclick="toggleCurrentInboxNoise()" style="font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;" title="Toggle between Actionable and Noise">
+                  <button class="btn-ribbon-action" id="inboxTransferDeptBtn" onclick="openTransferDepartmentModal()" title="Transfer to another department desk or reassign to a teammate">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                    <span>Transfer / Reassign</span>
+                  </button>
+                  <button class="btn-ribbon-action" id="inboxToggleNoiseBtn" onclick="toggleCurrentInboxNoise()" title="Toggle between Actionable and Noise">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                     <span>Mark as Noise</span>
                   </button>
-                  <button class="btn-primary" id="inboxConvertCaseBtn" style="background: #EA580C; font-size: 12px; padding: 6px 14px; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" onclick="convertCurrentInboxEmail()" title="Convert this inbound email into an Active Tracked Case">
+                  <button class="btn-ribbon-primary" id="inboxConvertCaseBtn" onclick="convertCurrentInboxEmail()" title="Convert this inbound email into an Active Tracked Case">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     <span>Convert to Case</span>
                   </button>
@@ -326,30 +342,28 @@
                   <div class="mail-header-section">
                     <div class="mail-subject-row">
                       <h2 class="mail-subject-title" id="inboxSubjectTitle"></h2>
-                      <div class="mail-subject-pills">
-                        <span class="badge-tag-sm category" id="inboxHeaderCategoryPill">INQUIRY</span>
-                        <span class="badge-tag-sm sla" id="inboxHeaderSlaPill">12h SLA</span>
+                      <!-- Keep subtle fallback pills if needed, hidden by default for Apple minimalism -->
+                      <div class="mail-subject-pills" style="display: none;">
+                        <span class="badge-tag-sm category" id="inboxHeaderCategoryPill"></span>
+                        <span class="badge-tag-sm sla" id="inboxHeaderSlaPill"></span>
                       </div>
                     </div>
 
                     <div class="mail-sender-row">
                       <div class="mail-sender-identity">
-                        <div class="mail-avatar-lg" id="inboxSenderAvatar">R</div>
+                        <div class="mail-avatar-lg" id="inboxSenderAvatar"></div>
                         <div class="mail-sender-meta">
                           <div class="mail-sender-line1">
                             <span class="mail-sender-name" id="inboxHeaderSenderName"></span>
-                            <span class="mail-verified-tag 1mg-verified" id="inboxHeaderVerifiedTag">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                              <span>✓ 1mg Directory</span>
-                            </span>
-                            <span class="mail-intent-tag" id="inboxHeaderIntentTag">
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                              <span id="inboxHeaderIntentLabel">Inquiry</span>
+                            <span class="mail-verified-tag" id="inboxHeaderVerifiedTag" style="display: none;"></span>
+                            <span class="mail-intent-tag" id="inboxHeaderIntentTag" style="display: none;">
+                              <span class="intent-sparkle">✦</span>
+                              <span id="inboxHeaderIntentLabel"></span>
                             </span>
                           </div>
                           <div class="mail-sender-line2">
                             <span class="mail-sender-email" id="inboxHeaderSenderEmail"></span>
-                            <span class="mail-meta-dot">·</span>
+                            <span class="mail-meta-dot" id="inboxHeaderMetaDot" style="display: none;">·</span>
                             <span class="mail-recipient-desk" id="inboxHeaderRecipientDesk"></span>
                           </div>
                         </div>
@@ -375,8 +389,8 @@
                   <div class="mail-ai-digest-strip" id="inboxAiDigestStrip">
                     <div class="digest-strip-left">
                       <span class="digest-sparkle-pill">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                        <span>AI Highlights</span>
+                        <span class="sparkle-icon">✦</span>
+                        <span>Key Signals</span>
                       </span>
                       <div class="digest-pills-row" id="inboxAiDigestPills">
                         <!-- Populated by JS -->
@@ -396,47 +410,13 @@
                   <div class="mail-body-canvas" id="inboxEmailBody"></div>
                 </div>
 
-                <!-- Modern Quick Reply Composer Card -->
-                <div class="mail-reply-composer">
-                  <div class="reply-composer-header">
-                    <div class="reply-composer-title">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.5"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                      <span>Reply to <strong id="inboxReplyTargetName">Sender</strong></span>
-                    </div>
-                    <div class="reply-composer-presets">
-                      <select class="canned-dropdown" onchange="insertInboxPreset(this.value)">
-                        <option value="">⚡ Insert Quick Preset...</option>
-                        <option value="bgv_status">BGV: Resend Previous Employer (BG01)</option>
-                        <option value="attendance_reg">Regularize Punch (AT01)</option>
-                        <option value="attendance_shift">Approve Shift Adjustment (AT03)</option>
-                        <option value="payroll_tds">TDS Computation Verified (PR02)</option>
-                        <option value="info_needed">Request Badge Proof (Docs)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <textarea id="inboxQuickReplyInput" class="mail-reply-textarea" placeholder="Type direct reply to employee, or click 'Insert AI Draft' below..."></textarea>
-
-                  <div class="reply-composer-footer">
-                    <div class="reply-dispatch-route">
-                      <span class="smtp-dot"></span>
-                      <span>Direct dispatch via SMTP (people.ops@1mg.com)</span>
-                    </div>
-
-                    <div class="reply-action-group">
-                      <button class="btn-action btn-insert-ai-draft" onclick="insertInboxDraftToReply()" title="Insert response draft from AI Copilot">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                        <span>Insert AI Draft</span>
-                      </button>
-                      <button class="btn-primary btn-send-dispatch" onclick="sendInboxReply()">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                        <span>Send Response</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
               </div>
+
+              <!-- Floating Scroll to Top Pill (Apple / Superhuman Standard) -->
+              <button id="inboxScrollToTopBtn" class="mail-floating-scroll-pill" onclick="scrollMailToTop()" title="Back to Top">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <span>Back to Top</span>
+              </button>
 
             </div>
 
@@ -600,508 +580,571 @@
       </section>
 
       <!-- ========================================================
-           VIEW 2: CASE (CASES WORKSPACE COCKPIT: ACTIVE TICKETS, DOSSIER, AUDIT)
+           VIEW 2: CASE (CASE PROGRESSION & OPERATIONS COMMAND - ADMIN PARITY)
            ======================================================== -->
-      <section id="casesView" class="view-section">
+      <section id="casesView" class="view-section" style="padding: 24px 32px; overflow-y: auto; height: 100%;">
         
-        <!-- WORKBENCH CONTROL SUB-BAR (FULL-WIDTH CASES WORKSPACE BAR) -->
-        <div class="workbench-subbar">
-          <div class="subbar-left">
-            <button class="btn-collapse-stream" onclick="toggleStreamCollapse()" title="Collapse/Expand Queue">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-              <span>Collapse Queue</span>
-            </button>
-
-            <!-- Stream Filter Tabs Matching Reference Screenshot -->
-            <div class="stream-tabs-row">
-              <button class="stream-tab-btn active" id="tabAllCases" onclick="setInboxFilter('ALL', this)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <span>All Cases</span>
-                <span class="tab-count-pill" id="countAllBadge">0</span>
-              </button>
-              <button class="stream-tab-btn" id="tabAssignedMe" onclick="setInboxFilter('MINE', this)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                <span>Assigned to Me</span>
-                <span class="tab-count-pill" id="countMineBadge">0</span>
-              </button>
-              <button class="stream-tab-btn" id="tabUnclaimed" onclick="setInboxFilter('UNASSIGNED', this)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                <span>Unclaimed Pool</span>
-                <span class="tab-count-pill" id="countUnclaimedBadge">0</span>
-              </button>
-              <button class="stream-tab-btn" id="tabUrgent" onclick="setInboxFilter('URGENT', this)">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                <span>Urgent SLA</span>
-                <span class="tab-count-pill" id="countUrgentBadge">0</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="subbar-right">
-            <div class="subbar-search-box">
-              <input type="text" id="streamSearchInput" class="stream-search-input" placeholder="Filter cases, employee, code..." oninput="renderInboxStream()">
-            </div>
-            <button class="btn-action subbar-btn" onclick="loadCases()" title="Refresh Queue" style="display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Refresh</span>
-            </button>
-            <button class="btn-primary subbar-btn-new" onclick="openNewCaseModal()">
-              + New Case
-            </button>
-          </div>
-        </div>
-
-        <div class="cockpit-container" id="cockpitContainer">
+        <!-- ========================================================
+             1. COMMAND HUB TABLE VIEW (ADMIN PROGRESSION PARITY)
+             ======================================================== -->
+        <div id="casesTableView" style="display: flex; flex-direction: column;">
           
-          <!-- PANE 1: LEFT STREAM (INBOUND QUEUE) -->
-          <aside class="cockpit-stream-pane" id="streamPane">
-            
-            <!-- Stream Pane Meta Header -->
-            <div class="stream-pane-meta-header">
-              <div class="stream-meta-left">
-                <span class="stream-meta-title">Case Queue</span>
-                <span class="stream-meta-count" id="casesStreamCountPill">0 cases</span>
+          <!-- Case Hero Header Bar -->
+          <div class="dept-hero-header">
+            <div class="dept-hero-title-group">
+              <h2>
+                <span>Case Progression &amp; Operations Command</span>
+              </h2>
+              <p>Real-time query progression, SLA timer monitoring, automated specialist dispatch, and forensic case dossiers</p>
+              <div class="dept-hero-badges">
+                <span class="status-capsule active">SLA ENGINE ACTIVE</span>
+                <span class="smtp-capsule">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  Sequence: 1MG-XXXXX
+                </span>
               </div>
-              <div class="stream-meta-right">
-                <button class="stream-mini-btn" onclick="loadCases()" title="Refresh Queue">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </div>
+            <div class="dept-hero-actions">
+              <button class="btn-secondary" style="height: 40px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600;" onclick="exportCasesCsv()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Export CSV</span>
+              </button>
+              <button class="btn-secondary" style="height: 40px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600;" onclick="loadCases()" title="Refresh Case Registry">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Refresh</span>
+              </button>
+              <button class="btn-primary" style="width: auto; height: 40px; padding: 0 18px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 7px;" onclick="openNewCaseModal()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>+ Log Inbound Case</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4-Tile Interactive Bento Case KPI Summary Strip -->
+          <div class="bento-kpi-grid">
+            <div class="bento-kpi-card interactive-kpi active" data-bento-filter="ALL" onclick="filterCasesByBento('ALL', this)" title="Click to view all cases">
+              <div class="bento-kpi-info">
+                <div class="kpi-label">Total Inbound Queries</div>
+                <div class="kpi-val" id="caseKpiTotal">0</div>
+                <div class="kpi-sub">Lifetime queries logged</div>
+              </div>
+              <div class="bento-kpi-icon orange">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <div class="bento-kpi-card interactive-kpi" data-bento-filter="ACTIVE" onclick="filterCasesByBento('ACTIVE', this)" title="Click to filter active triage cases">
+              <div class="bento-kpi-info">
+                <div class="kpi-label">Active / In Progress</div>
+                <div class="kpi-val" id="caseKpiActive">0</div>
+                <div class="kpi-sub">Under active triage</div>
+              </div>
+              <div class="bento-kpi-icon blue">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+            </div>
+
+            <div class="bento-kpi-card interactive-kpi" data-bento-filter="BREACHED" onclick="filterCasesByBento('BREACHED', this)" title="Click to isolate overdue SLA breached cases">
+              <div class="bento-kpi-info">
+                <div class="kpi-label">SLA Breached</div>
+                <div class="kpi-val" id="caseKpiBreached" style="color: #DC2626;">0</div>
+                <div class="kpi-sub">Exceeded resolution target</div>
+              </div>
+              <div class="bento-kpi-icon amber" style="background: #FEF2F2; color: #DC2626;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="bento-kpi-card interactive-kpi" data-bento-filter="RESOLVED" onclick="filterCasesByBento('RESOLVED', this)" title="Click to view closed inquiries">
+              <div class="bento-kpi-info">
+                <div class="kpi-label">Resolved &amp; Closed</div>
+                <div class="kpi-val" id="caseKpiResolved">0</div>
+                <div class="kpi-sub" id="caseKpiRate">100% resolution rate</div>
+              </div>
+              <div class="bento-kpi-icon teal">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- DEPARTMENT QUEUE TABS BAR -->
+          <div class="case-queue-tabs-wrapper">
+            <div class="case-queue-tabs" id="caseQueueTabsBar">
+              <button class="queue-tab-btn active" onclick="selectAgentQueueTab('', this)">
+                <span>All Queues</span>
+                <span class="queue-tab-badge" id="queueBadgeAll">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filters & Omni-Search Strip -->
+          <div class="dept-filter-strip">
+            <div class="dept-search-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="caseSearchInput" placeholder="Search by Case # (e.g. 1MG00001), employee, title, or specialist..." oninput="handleAgentCaseSearch()">
+            </div>
+
+            <!-- Status Filter Pills -->
+            <div class="dept-pills-bar" id="caseStatusPillsBar">
+              <button class="filter-pill-btn active" onclick="filterAgentCasesByStatus('ALL', this)">All Statuses</button>
+              <button class="filter-pill-btn" onclick="filterAgentCasesByStatus('OPEN', this)">Open</button>
+              <button class="filter-pill-btn" onclick="filterAgentCasesByStatus('IN_PROGRESS', this)">In Progress</button>
+              <button class="filter-pill-btn" onclick="filterAgentCasesByStatus('WAITING_ON_EMPLOYEE', this)">Waiting on Employee</button>
+              <button class="filter-pill-btn" onclick="filterAgentCasesByStatus('RESOLVED', this)">Resolved</button>
+            </div>
+
+            <!-- Deep Filters: Priority, SLA Risk & Specialist -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <select id="casePriorityFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 130px;" onchange="renderAgentCasesTable()">
+                <option value="">All Priorities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+              <select id="caseSlaRiskFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 145px;" onchange="renderAgentCasesTable()">
+                <option value="">All SLA Health</option>
+                <option value="BREACHED">🚨 Breached</option>
+                <option value="URGENT">⚠️ Urgent (&lt; 2h)</option>
+                <option value="SAFE">⏱ Safely on Track</option>
+              </select>
+              <select id="caseSpecialistFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 165px;" onchange="renderAgentCasesTable()">
+                <option value="">All Specialists</option>
+                <option value="MINE">Assigned to Me</option>
+                <option value="UNASSIGNED">Unassigned Queue</option>
+              </select>
+              <button class="btn-secondary" style="height: 36px; padding: 0 10px; font-size: 12px;" onclick="resetAgentCaseFilters()" title="Reset all filters">
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Case Table Card Container -->
+          <div class="case-table-card">
+            <div class="case-table-header-toolbar">
+              <div class="case-table-meta-left">
+                <span class="case-count-pill" id="caseTableCountPill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                  <span id="caseTableCountText">0 Inbound Queries</span>
+                </span>
+                <span class="table-scroll-hint">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M18 8L22 12L18 16"></path>
+                    <path d="M6 8L2 12L6 16"></path>
+                    <path d="M2 12H22"></path>
+                  </svg>
+                  <span>Scroll table horizontally for AI Intent, HRMS Profile &amp; Forensic SLA Targets</span>
+                </span>
+              </div>
+              <div class="table-scroll-nav-controls">
+                <button type="button" class="btn-scroll-nav" onclick="scrollAgentCaseTable('left')" title="Scroll table left">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  <span>Scroll Left</span>
+                </button>
+                <button type="button" class="btn-scroll-nav" onclick="scrollAgentCaseTable('right')" title="Scroll table right">
+                  <span>Scroll Right</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
               </div>
             </div>
 
-            <!-- Cards Stream List -->
-            <div class="stream-cards-list" id="inboxStreamList">
-              <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px;">
-                <div class="spinner" style="margin-bottom: 8px;"></div>
-                Loading queue stream...
-              </div>
+            <div class="table-scroll-wrapper" id="caseTableScrollWrapper">
+              <table class="case-command-table">
+                <thead>
+                  <tr>
+                    <th style="min-width: 130px;">Case #</th>
+                    <th style="min-width: 280px;">Query Title &amp; Category</th>
+                    <th style="min-width: 210px;">AI Intent &amp; Match</th>
+                    <th style="min-width: 220px;">Employee &amp; HRMS Profile</th>
+                    <th style="min-width: 180px;">HR Department Desk</th>
+                    <th style="min-width: 110px;">Priority</th>
+                    <th style="min-width: 190px;">Assigned Specialist</th>
+                    <th style="min-width: 180px;">SLA Countdown &amp; Target</th>
+                    <th style="min-width: 135px;">Logged Time</th>
+                    <th style="min-width: 120px;">Status</th>
+                    <th style="min-width: 180px; text-align: right;">Forensic Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="agentCasesTableBody">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <!-- Collapsed Mini Rail View (Shown when stream is collapsed) -->
-            <div class="stream-collapsed-rail" id="streamCollapsedRail">
-              <button onclick="toggleStreamCollapse()" title="Expand Queue" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- ========================================================
+             2. FULL-PAGE CASE DOSSIER VIEW (ADMIN CASE-DETAILS PARITY)
+             ======================================================== -->
+        <div id="casesDossierView" style="display: none; flex-direction: column;">
+          
+          <!-- Case Nav Header with Back Button & Breadcrumbs -->
+          <div class="case-nav-header">
+            <div class="case-nav-left">
+              <button type="button" class="btn-back-link" onclick="closeAgentCaseDossier()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Back to Cases Queue</span>
               </button>
-              <div id="collapsedCardAvatars" style="display: flex; flex-direction: column; gap: 8px;"></div>
+              <div class="case-breadcrumbs">
+                <span>Cases</span>
+                <span>/</span>
+                <span id="dossierNavDept">People Desk</span>
+                <span>/</span>
+                <span class="current" id="dossierNavCaseNum">1MG-00011</span>
+              </div>
             </div>
 
-          </aside>
+            <div class="case-nav-right" style="display: flex; align-items: center; gap: 10px;">
+              <button class="btn-secondary" style="height: 36px; padding: 0 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" onclick="window.print()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                <span>Print Dossier</span>
+              </button>
+              <button class="btn-primary" style="height: 36px; width: auto; padding: 0 16px; font-size: 12.5px; background: #10B190; display: inline-flex; align-items: center; gap: 6px;" onclick="openResolveModalForCurrent()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Resolve Case</span>
+              </button>
+            </div>
+          </div>
 
-          <!-- PANE 2: CENTER INSPECTOR (DUAL COLUMN: HRMS DOSSIER + EMAIL READER) -->
-          <section class="cockpit-inspector-pane" id="inspectorPane">
+          <!-- Hero Case Header -->
+          <div class="case-hero-card">
+            <div class="case-hero-top-row">
+              <div class="case-badges-strip">
+                <span class="case-seq-badge" id="heroCaseSeqBadge">Case #1MG-00011</span>
+                <span id="heroStatusBadge"></span>
+                <span id="heroPriorityBadge"></span>
+                <span class="case-channel-capsule">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+                  <span>Zoho IMAP Inbound</span>
+                </span>
+                <span id="heroDeptBadge" class="dept-desk-pill" style="padding: 3px 9px; font-size: 11.5px;"></span>
+              </div>
+
+              <div class="case-hero-actions">
+                <button class="btn-secondary" id="btnHeroClaim" style="height: 38px; display: none; align-items: center; gap: 6px; font-weight: 700; font-size: 12.5px; background: #FFF7ED; color: #EA580C; border-color: #FFEDD5;" onclick="claimAndConvertCase()">
+                  <span>⚡ Claim Case</span>
+                </button>
+                <button class="btn-secondary" style="height: 38px; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 12.5px;" onclick="openReassignModalForCurrent()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>
+                  <span>Reassign</span>
+                </button>
+                <button class="btn-primary" style="height: 38px; width: auto; padding: 0 18px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;" onclick="openResolveModalForCurrent()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Mark Resolved</span>
+                </button>
+              </div>
+            </div>
+
+            <h1 class="case-hero-title" id="heroCaseTitle">Loading Query Title...</h1>
             
-            <!-- Industry-Grade Cockpit Empty State (Cases) -->
-            <div id="casesEmptyState" class="cockpit-empty-state">
-              <div class="empty-state-badge">
-                <div class="empty-state-icon-glow cases-glow"></div>
-                <div class="empty-state-icon-container">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                  </svg>
+            <div class="case-hero-subline">
+              <span>Logged on <strong id="heroCreatedTime">—</strong></span>
+              <span>•</span>
+              <span>Current SLA Target: <strong id="heroDueTime">—</strong></span>
+              <span>•</span>
+              <span id="heroTurnaroundBadge">12h Policy Target</span>
+            </div>
+          </div>
+
+          <!-- 4-Tile Executive Bento Telemetry Strip -->
+          <div class="case-summary-grid">
+            <!-- Tile 1: SLA Countdown & Target -->
+            <div class="summary-tile">
+              <div>
+                <div class="tile-header">
+                  <span class="tile-title">SLA Engine Adherence</span>
+                  <div class="tile-icon-pill" style="background: #FFFBEB; color: #D97706;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </div>
                 </div>
+                <div style="font-size: 20px; font-weight: 800; color: #0F172A;" id="tileSlaCountdown">Within SLA</div>
+                <div style="font-size: 12px; color: #64748B; margin-top: 4px;" id="tileSlaExactDate">Target: 24h</div>
               </div>
-              <h3 class="empty-state-title">No Case Selected</h3>
-              <p class="empty-state-subtitle">
-                Select an active case dossier from the left queue to inspect verified HRMS identity, track SLA deadlines, and resolve employee requests.
-              </p>
-              <div class="empty-state-shortcuts-tip">
-                <span class="tip-pill"><span class="kbd">↑</span> <span class="kbd">↓</span> Navigate Cases</span>
-                <span class="tip-pill"><span class="kbd">[</span> Toggle Rail</span>
-                <span class="tip-pill"><span class="kbd">R</span> Resolve Case</span>
+              <div style="margin-top: 14px;">
+                <div style="height: 6px; width: 100%; background: #F1F5F9; border-radius: 999px; overflow: hidden;">
+                  <div id="tileSlaProgressBar" style="height: 100%; width: 65%; background: var(--1mg-orange); border-radius: 999px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94A3B8; margin-top: 4px;">
+                  <span>Inflow Logged</span>
+                  <span id="tileSlaPolicyText">24h Standard Policy</span>
+                </div>
               </div>
             </div>
 
-            <!-- Active Content Container (Shown only when a case is selected) -->
-            <div id="casesActiveContent" style="display: none; flex-direction: column; height: 100%;">
-
-              <!-- Top Ribbon Meta Bar -->
-              <div class="inspector-top-ribbon" id="inspectorRibbon">
-                <div class="ribbon-meta-left">
-                  <span class="ribbon-case-pill" id="ribbonCaseNumber"></span>
-                  <span class="role-pill" id="ribbonDeptPill" style="font-size: 11px;"></span>
-                  <span class="ribbon-sla-badge" id="ribbonSlaBadge">
-                    <span class="sla-dot-pulse"></span>
-                    <span id="ribbonSlaText"></span>
-                  </span>
-                  <span class="role-pill" id="ribbonAgentPill" style="font-size: 11px;"></span>
-                </div>
-
-                <div class="ribbon-actions-right">
-                  <div class="ribbon-tab-group">
-                    <button class="inspector-view-tab active" id="tabInquiryView" onclick="setInspectorView('inquiry')">
-                      Inquiry & Profile
-                    </button>
-                    <button class="inspector-view-tab" id="tabAuditView" onclick="setInspectorView('audit')">
-                      Audit & Timeline
-                    </button>
+            <!-- Tile 2: Employee Profile -->
+            <div class="summary-tile">
+              <div>
+                <div class="tile-header">
+                  <span class="tile-title">Employee &amp; HRMS Profile</span>
+                  <div class="tile-icon-pill" style="background: #EFF6FF; color: #2563EB;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                   </div>
-                  <button class="btn-resolve-quick" onclick="openResolveModalForCurrent()" title="Resolve and close case" style="display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span>Resolve Case</span>
-                  </button>
+                </div>
+                <div style="font-size: 16px; font-weight: 800; color: #0F172A;" id="tileEmpName">Tata 1mg Staff</div>
+                <div style="font-size: 12px; color: #64748B; margin-top: 2px;" id="tileEmpEmail">employee@1mg.com</div>
+              </div>
+              <div style="margin-top: 12px; font-size: 11.5px; color: #475569; display: flex; flex-direction: column; gap: 3px;">
+                <div><strong id="tileEmpDept">Department: —</strong></div>
+                <div id="tileEmpManager">Manager: —</div>
+              </div>
+            </div>
+
+            <!-- Tile 3: AI Intent & Routing -->
+            <div class="summary-tile">
+              <div>
+                <div class="tile-header">
+                  <span class="tile-title">AI Intent &amp; Confidence</span>
+                  <div class="tile-icon-pill" style="background: #FAF5FF; color: #7C3AED;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="ai-intent-code-badge" style="font-size: 13px; padding: 2px 8px;" id="tileAiCode">PR01</span>
+                  <span style="font-size: 13px; font-weight: 800; color: #059669; background: #ECFDF5; padding: 2px 7px; border-radius: 4px;" id="tileAiConfidence">99% Match</span>
+                </div>
+                <div style="font-size: 13px; font-weight: 700; color: #1E293B; margin-top: 6px;" id="tileAiIntentTitle">Automated Classification</div>
+              </div>
+              <div style="margin-top: 10px; font-size: 11.5px; color: #B45309;" id="tileAiUrgency">
+                Urgency: NORMAL
+              </div>
+            </div>
+
+            <!-- Tile 4: Assigned Specialist -->
+            <div class="summary-tile">
+              <div>
+                <div class="tile-header">
+                  <span class="tile-title">Assigned Specialist</span>
+                  <div class="tile-icon-pill" style="background: #ECFDF5; color: #059669;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle></svg>
+                  </div>
+                </div>
+                <div style="font-size: 16px; font-weight: 800; color: #0F172A;" id="tileSpecialistName">Unassigned</div>
+                <div style="font-size: 12px; color: #64748B; margin-top: 2px;" id="tileSpecialistEmail">Central Desk</div>
+              </div>
+              <div style="margin-top: 12px;">
+                <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 11px; padding: 3px 8px; border-radius: 4px;" id="tileSpecialistCapacity">
+                  Active Support Staff
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two-Column Operational Workspace -->
+          <div class="case-workspace-layout">
+            
+            <!-- Left Main Column -->
+            <div class="case-main-column">
+              
+              <!-- Card 1: Inbound Inquiry & Telemetry -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="section-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    <span>Inbound Employee Inquiry &amp; Telemetry</span>
+                  </div>
+                  <span class="case-dept-category-tag" id="dossierQueryCategory">Category: General</span>
+                </div>
+                <div class="section-card-body">
+                  <div class="inquiry-meta-strip">
+                    <div><strong>From:</strong> <span id="dossierMetaFrom">—</span></div>
+                    <div><strong>To:</strong> <span id="dossierMetaTo">people.ops@1mg.com</span></div>
+                    <div><strong>Received:</strong> <span id="dossierMetaReceived">—</span></div>
+                  </div>
+                  <div class="inquiry-body-content" id="dossierInquiryBody"></div>
                 </div>
               </div>
 
-              <!-- Inquiry Title & Ingest Tag -->
-              <div class="inspector-title-header">
-                <h2 class="inspector-title-text" id="inspectorTitle"></h2>
-                <div class="inspector-subtitle-meta">
-                  <span id="inspectorIngestType">Corporate Ingest</span> · 
-                  <span id="inspectorReceivedTime"></span>
+              <!-- Card 2: AI Multi-Tone Response Studio -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="section-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                    <span>AI Multi-Tone Response Studio</span>
+                  </div>
+                  <div class="tone-selector-strip" style="margin: 0;">
+                    <button class="btn-tone active" onclick="switchDossierTone('empathetic', this)">Empathetic</button>
+                    <button class="btn-tone" onclick="switchDossierTone('concise', this)">Concise</button>
+                    <button class="btn-tone" onclick="switchDossierTone('verify_docs', this)">Policy &amp; Docs</button>
+                  </div>
+                </div>
+                <div class="section-card-body">
+                  <div id="dossierAiDraftBox" style="font-size: 13px; line-height: 1.6; color: #334155; background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px;"></div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn-secondary" style="height: 34px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px;" onclick="insertDossierAiDraft()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      <span>Insert Draft into Composer</span>
+                    </button>
+                    <button class="btn-primary" style="height: 34px; width: auto; font-size: 12px; background: #7C3AED; display: inline-flex; align-items: center; gap: 5px;" onclick="sendDossierAiDraftDirectly()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                      <span>Direct Send AI Reply &amp; Resolve</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <!-- Dual-Column Inspector Body -->
-              <div class="inspector-dual-content" id="inspectorDualContent">
-                
-                <!-- COLUMN 1: LIVE HRMS EMPLOYEE VERIFIED DOSSIER CARD -->
-                <div class="hrms-dossier-card" id="hrmsDossierCard">
-                  
-                  <!-- Profile Header -->
-                  <div class="dossier-profile-header">
-                    <div class="dossier-avatar-lg" id="dossierAvatar">U</div>
-                    <div class="dossier-name-block">
-                      <div class="dossier-employee-name">
-                        <span id="dossierName"></span>
-                        <span class="status-pill status-active" style="font-size: 10px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 4px;">
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <span>Active</span>
-                        </span>
-                      </div>
-                      <div class="dossier-designation" id="dossierDesignation"></div>
-                      <div style="font-size: 11px; color: var(--text-muted);" id="dossierOrg"></div>
-                    </div>
+              <!-- Card 3: Omni-Composer -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="composer-mode-tabs" style="margin: 0;">
+                    <button type="button" class="composer-mode-btn active" id="dossierModePublic" onclick="setDossierComposerMode('PUBLIC_REPLY')">
+                      <span>✉️ Public Reply to Employee</span>
+                    </button>
+                    <button type="button" class="composer-mode-btn" id="dossierModeInternal" onclick="setDossierComposerMode('INTERNAL_NOTE')">
+                      <span>🔒 Internal Team Note</span>
+                    </button>
                   </div>
-
-                  <!-- Verified Tata 1mg Identity Shield Box -->
-                  <div class="dossier-verified-banner" id="dossierVerifiedBanner">
-                    <svg class="verified-shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                      <polyline points="9 12 11 14 15 10"></polyline>
-                    </svg>
-                    <div>
-                      <div class="verified-banner-title">Verified Tata 1mg Identity</div>
-                      <div class="verified-banner-token" id="dossierTokenBadge"></div>
-                      <div style="font-size: 10.5px; color: #15803D; margin-top: 1px;">• Directory Matched</div>
-                    </div>
-                  </div>
-
-                  <!-- 3-Column Mini Bento Grid -->
-                  <div class="dossier-bento-grid">
-                    <div>
-                      <div class="bento-cell-label">EMP CODE</div>
-                      <div class="bento-cell-value" id="bentoEmpCode">—</div>
-                    </div>
-                    <div>
-                      <div class="bento-cell-label">GRADE</div>
-                      <div class="bento-cell-value" id="bentoGrade">—</div>
-                    </div>
-                    <div>
-                      <div class="bento-cell-label">LOCATION</div>
-                      <div class="bento-cell-value" id="bentoLocation">—</div>
-                    </div>
-                  </div>
-
-                  <!-- Profile Key-Value Rows -->
-                  <div class="dossier-details-list">
-                    <div class="dossier-row">
-                      <span class="dossier-row-label">Reporting Manager</span>
-                      <span class="dossier-row-value" id="dossierManager">—</span>
-                    </div>
-
-                    <div class="dossier-row">
-                      <span class="dossier-row-label">Corporate Email</span>
-                      <span class="dossier-row-value" style="display: inline-flex; align-items: center; gap: 6px;">
-                        <span id="dossierEmail">—</span>
-                        <button onclick="copyToClipboard(document.getElementById('dossierEmail').innerText)" title="Copy Email" style="background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; padding: 2px;">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
-                      </span>
-                    </div>
-
-                    <div class="dossier-row">
-                      <span class="dossier-row-label">Date of Joining</span>
-                      <span class="dossier-row-value" id="dossierJoiningDate">Confirmed Active</span>
-                    </div>
-
-                    <div class="dossier-row">
-                      <span class="dossier-row-label">Employment Type</span>
-                      <span class="dossier-row-value" id="dossierEmpType">Permanent (Full-Time)</span>
-                    </div>
-
-                    <div class="dossier-row">
-                      <span class="dossier-row-label">Directory Status</span>
-                      <span class="dossier-row-value" style="color: #16A34A;" id="dossierDirectoryStatus">
-                        Active Directory Confirmed
-                      </span>
-                    </div>
-                  </div>
-
+                  <select class="canned-dropdown" onchange="insertDossierPreset(this.value)">
+                    <option value="">⚡ Apply Quick Macro...</option>
+                    <option value="attendance_reg">Regularize Punch (AT01)</option>
+                    <option value="attendance_shift">Approve Shift Adjustment (AT03)</option>
+                    <option value="payroll_tds">TDS Computation Verified (PR02)</option>
+                    <option value="info_needed">Request Badge Proof (Docs)</option>
+                    <option value="resolved">Mark Resolved &amp; Closed</option>
+                  </select>
                 </div>
-
-                <!-- COLUMN 2: INBOUND EMAIL THREAD & EMBEDDED QUICK COMPOSER -->
-                <div class="inbound-reader-container" id="inboundReaderContainer">
-                  
-                  <div class="email-message-card">
-                  
-                    <!-- Sender Row -->
-                    <div class="email-sender-row">
-                      <div class="sender-info-block">
-                        <div class="sender-avatar" id="emailSenderAvatar">U</div>
-                        <div>
-                          <div style="display: flex; align-items: center; gap: 6px;">
-                            <span style="font-size: 13.5px; font-weight: 700; color: var(--text-dark);" id="emailSenderName"></span>
-                            <span style="color: #10B190; display: inline-flex; align-items: center;">
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            </span>
-                          </div>
-                          <div class="sender-email-text" id="emailSenderEmail"></div>
-                          <div class="email-recipient-desk" id="emailRecipientDesk"></div>
-                        </div>
-                      </div>
-
-                      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                        <span class="email-badge-verified" style="display: inline-flex; align-items: center; gap: 4px;">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                          <span>Verified Corporate Ingest</span>
-                        </span>
-                        <span style="font-size: 11px; color: var(--text-muted);" id="emailTimestamp"></span>
-                        <div style="display: flex; gap: 6px;">
-                          <button class="btn-action" style="padding: 3px 7px; font-size: 11px; display: inline-flex; align-items: center;" onclick="copyEmailBody()" title="Copy Message">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                          </button>
-                          <button class="btn-action" style="padding: 3px 7px; font-size: 11px; display: inline-flex; align-items: center;" onclick="window.print()" title="Print">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Email Subject Tag -->
-                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                      <span style="font-size: 13.5px; font-weight: 800; color: var(--text-dark);" id="emailSubjectLine"></span>
-                      <span class="role-pill" id="emailCategoryTag" style="font-size: 10px;"></span>
-                    </div>
-
-                    <!-- Email Body -->
-                    <div class="email-body-content" id="emailBodyContent"></div>
-
-                    <!-- Extracted Metadata Chips Box -->
-                    <div class="email-meta-highlight-box" id="emailMetaHighlightBox">
-                      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                        <span><strong>Employee Code:</strong> <span id="metaCode">—</span></span>
-                        <span><strong>Department:</strong> <span id="metaDept">—</span></span>
-                        <span><strong>Shift:</strong> <span id="metaShift">—</span></span>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <!-- Embedded Quick Reply Box -->
-                  <div class="embedded-reply-box">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                      <span style="font-size: 12.5px; font-weight: 700; color: var(--text-dark);">
-                        Quick Reply to Employee
-                      </span>
-                      <select class="canned-dropdown" onchange="insertQuickPreset(this.value)">
-                        <option value="">Insert Quick Preset...</option>
-                        <option value="attendance_reg">Regularize Punch (AT01)</option>
-                        <option value="attendance_shift">Approve Shift Adjustment (AT03)</option>
-                        <option value="payroll_tds">TDS Computation Verified (PR02)</option>
-                        <option value="info_needed">Request Badge Proof (Docs)</option>
-                        <option value="resolved">Mark Resolved & Closed</option>
+                <div class="section-card-body">
+                  <textarea id="dossierReplyInput" class="quick-reply-textarea" style="min-height: 110px;" placeholder="Type response to employee, or switch to Internal Note for private desk notes..."></textarea>
+                  <div class="composer-footer-row" style="margin-top: 12px;">
+                    <div class="composer-footer-left">
+                      <label style="font-size: 11.5px; font-weight: 700; color: #64748B;">Status on send:</label>
+                      <select id="dossierReplyStatusSelect" class="dept-filter-select composer-status-select">
+                        <option value="IN_PROGRESS">Keep IN PROGRESS</option>
+                        <option value="RESOLVED" selected>RESOLVE &amp; Close</option>
+                        <option value="WAITING_ON_EMPLOYEE">Waiting on Employee</option>
                       </select>
                     </div>
-
-                    <textarea id="quickReplyInput" class="quick-reply-textarea" placeholder="Type quick response to employee or click 'Insert Draft to Reply Box' from AI Copilot..."></textarea>
-
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted);">Status:</label>
-                        <select id="quickReplyStatusSelect" class="dept-filter-select" style="font-size: 11.5px; padding: 3px 8px;">
-                          <option value="IN_PROGRESS">Keep IN PROGRESS</option>
-                          <option value="RESOLVED" selected>RESOLVE & Close</option>
-                          <option value="WAITING_ON_EMPLOYEE">Waiting on Employee</option>
-                        </select>
-                      </div>
-
-                      <button class="btn-primary" style="width: auto; padding: 7px 18px; font-size: 12.5px;" onclick="sendEmbeddedReply()">
-                        Send Reply
+                    <div class="composer-footer-right">
+                      <span class="composer-shortcut-hint" style="margin-right: 8px;">⌘ + Enter to send</span>
+                      <button type="button" id="btnSendDossierReply" class="btn-primary btn-send-composer" onclick="sendDossierReply()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <span id="btnSendDossierReplyLabel">Send Reply</span>
                       </button>
                     </div>
                   </div>
-
                 </div>
-
               </div>
 
-              <!-- Forensic Audit Content (Toggled when Audit & Actions tab clicked) -->
-              <div class="inspector-audit-content" id="inspectorAuditContent" style="display: none; padding: 20px; overflow-y: auto; flex: 1;">
-                <div style="font-size: 14px; font-weight: 700; color: var(--text-dark); margin-bottom: 12px;">
-                  Forensic Audit Trail & Case History
+              <!-- Card 4: Forensic Audit Trail & Timeline -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="section-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Forensic Audit Trail &amp; Case History</span>
+                  </div>
+                  <span style="font-size: 11.5px; color: #64748B;">Immutable Security Log</span>
                 </div>
-                <div id="inspectorAuditLogsList" style="display: flex; flex-direction: column; gap: 8px;">
-                  <div style="font-size: 12px; color: var(--text-muted);">No audit logs yet.</div>
+                <div class="section-card-body">
+                  <div class="timeline-list" id="dossierTimelineList"></div>
                 </div>
               </div>
 
             </div>
 
-          </section>
-
-          <!-- PANE 3: COLLAPSIBLE RIGHT-HAND AI COPILOT (TOGGLED VIA ✦ AI PANEL) -->
-          <aside class="cockpit-ai-copilot-pane" id="aiCopilotPanel">
-            
-            <div class="ai-copilot-header">
-              <div class="copilot-header-brand">
-                <span class="copilot-sparkle-badge">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
-                </span>
-                <span class="copilot-header-title">AI & CASE COPILOT</span>
-                <span class="copilot-status-dot" title="Active Case Copilot"></span>
-              </div>
-              <button onclick="toggleAiPanel()" class="copilot-close-btn" title="Close AI Panel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
-            </div>
-
-            <div class="ai-copilot-body">
+            <!-- Right Side Column -->
+            <div class="case-side-column">
               
-              <!-- MODULE 1: AI INTENT ENGINE -->
-              <div class="copilot-section-card">
-                <div class="copilot-card-top">
-                  <div class="copilot-title-group">
-                    <span class="copilot-icon-badge intent">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <circle cx="12" cy="6"></circle>
-                        <circle cx="12" cy="2"></circle>
-                      </svg>
-                    </span>
-                    <span class="copilot-section-heading">AI Intent Engine</span>
+              <!-- Card A: Verified Tata 1mg Identity & HRMS Dossier -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="section-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span>HRMS Employee Dossier</span>
                   </div>
-                  <span class="ai-confidence-badge" id="copilotConfidenceBadge">
-                    <span>—</span>
-                  </span>
+                  <span class="status-pill status-active" style="font-size: 10px;">Active Directory</span>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2px;">
-                  <span class="ai-intent-pill" id="copilotIntentPill">
-                    <span class="intent-dot"></span>
-                    <span>Awaiting selection</span>
-                  </span>
-                </div>
-                <div class="ai-sla-tracker" id="copilotSlaInfo">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                  <span>Target SLA: <strong>Pending selection</strong></span>
+                <div class="section-card-body">
+                  <!-- Avatar + Name -->
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+                    <div class="dossier-avatar-lg" id="sideEmpAvatar">U</div>
+                    <div>
+                      <div style="font-size: 15px; font-weight: 800; color: #0F172A;" id="sideEmpName">Tata 1mg Staff</div>
+                      <div style="font-size: 11.5px; color: #64748B;" id="sideEmpDesig">Operations Specialist</div>
+                    </div>
+                  </div>
+
+                  <!-- Verified Shield Box -->
+                  <div class="dossier-verified-banner" style="margin-bottom: 14px;">
+                    <svg class="verified-shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+                    <div>
+                      <div class="verified-banner-title">Verified Tata 1mg Identity</div>
+                      <div class="verified-banner-token" id="sideEmpToken">Token: 1MG-10234</div>
+                      <div class="verified-banner-sub">• Directory Matched · Darwinbox Live</div>
+                    </div>
+                  </div>
+
+                  <!-- Bento Grid -->
+                  <div class="dossier-bento-grid" style="margin-bottom: 14px;">
+                    <div class="bento-cell"><div class="bento-cell-label">EMP CODE</div><div class="bento-cell-value" id="sideBentoCode">—</div></div>
+                    <div class="bento-cell"><div class="bento-cell-label">GRADE</div><div class="bento-cell-value" id="sideBentoGrade">—</div></div>
+                    <div class="bento-cell"><div class="bento-cell-label">LOCATION</div><div class="bento-cell-value" id="sideBentoLocation">—</div></div>
+                  </div>
+
+                  <!-- Details Rows -->
+                  <div class="dossier-details-list">
+                    <div class="dossier-row"><span class="dossier-row-label">Reporting Manager</span><span class="dossier-row-value" id="sideEmpManager">—</span></div>
+                    <div class="dossier-row"><span class="dossier-row-label">Corporate Email</span><span class="dossier-row-value" id="sideEmpEmail">—</span></div>
+                    <div class="dossier-row"><span class="dossier-row-label">Shift Schedule</span><span class="dossier-row-value" id="sideEmpShift">General Day Shift</span></div>
+                    <div class="dossier-row"><span class="dossier-row-label">Date of Joining</span><span class="dossier-row-value" id="sideEmpDoj">Confirmed Active</span></div>
+                    <div class="dossier-row"><span class="dossier-row-label">Employment Type</span><span class="dossier-row-value" id="sideEmpType">Permanent (Full-Time)</span></div>
+                  </div>
                 </div>
               </div>
 
-              <!-- MODULE 2: HRMS ENTITY MATCHING -->
-              <div class="copilot-section-card">
-                <div class="copilot-card-top">
-                  <div class="copilot-title-group">
-                    <span class="copilot-icon-badge hrms">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    </span>
-                    <span class="copilot-section-heading">HRMS Entity Matching</span>
+              <!-- Card B: Quick Actions & Workflow Center -->
+              <div class="section-card">
+                <div class="section-card-header">
+                  <div class="section-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Quick Operations Hub</span>
                   </div>
                 </div>
-                <div class="copilot-hrms-grid">
-                  <div class="copilot-hrms-cell">
-                    <span class="copilot-hrms-label">Employee</span>
-                    <span class="copilot-hrms-value" id="copilotExtractedName">—</span>
-                  </div>
-                  <div class="copilot-hrms-cell">
-                    <span class="copilot-hrms-label">Emp Code</span>
-                    <span class="copilot-hrms-value" id="copilotExtractedCode">—</span>
-                  </div>
-                  <div class="copilot-hrms-cell">
-                    <span class="copilot-hrms-label">Location</span>
-                    <span class="copilot-hrms-value" id="copilotExtractedLocation">—</span>
-                  </div>
-                  <div class="copilot-hrms-cell">
-                    <span class="copilot-hrms-label">Shift</span>
-                    <span class="copilot-hrms-value" id="copilotExtractedShift">—</span>
-                  </div>
-                </div>
-                <div class="copilot-verify-banner">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  <span>Directory Verified against Central HRMS</span>
-                </div>
-              </div>
-
-              <!-- MODULE 3: CASE & SLA COCKPIT -->
-              <div class="copilot-section-card conversion-card-box">
-                <div class="copilot-card-top">
-                  <div class="copilot-title-group">
-                    <span class="copilot-icon-badge conversion">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                      </svg>
-                    </span>
-                    <span class="copilot-section-heading" style="color: #9A3412;">Case & SLA Cockpit</span>
-                  </div>
-                </div>
-                <div style="font-size: 11.5px; color: #7C2D12; line-height: 1.45;" id="copilotUrgencyDesc">
-                  Select a case from the queue to inspect SLA and intelligence details.
-                </div>
-                <button class="btn-convert-case-primary" onclick="claimAndConvertCase()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  <span>Claim & Convert to Active Case</span>
-                </button>
-              </div>
-
-              <!-- MODULE 4: RESPONSE STUDIO (3-TONE SMART DRAFTER) -->
-              <div class="copilot-section-card" style="border-color: #E9D5FF;">
-                <div class="copilot-card-top">
-                  <div class="copilot-title-group">
-                    <span class="copilot-icon-badge studio">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-                      </svg>
-                    </span>
-                    <span class="copilot-section-heading" style="color: #6B21A8;">Response Studio (Smart Drafter)</span>
-                  </div>
-                </div>
-
-                <!-- 3-Tone Switcher Tabs -->
-                <div class="tone-selector-tabs">
-                  <button class="tone-tab-btn active" onclick="switchResponseTone('empathetic', this)">
-                    Empathetic
+                <div class="section-card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                  <button class="btn-secondary" style="width: 100%; height: 38px; justify-content: flex-start; gap: 8px; font-size: 12.5px;" onclick="openReassignModalForCurrent()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                    <span>Reassign Specialist / Desk</span>
                   </button>
-                  <button class="tone-tab-btn" onclick="switchResponseTone('concise', this)">
-                    Concise
-                  </button>
-                  <button class="tone-tab-btn" onclick="switchResponseTone('verify_docs', this)">
-                    Verify Docs
-                  </button>
-                </div>
-
-                <!-- Live Generated Draft -->
-                <div class="response-draft-box" id="copilotDraftContent">
-                  Select an inquiry to generate multi-tone AI draft replies.
-                </div>
-
-                <!-- Actions: Insert or Direct Send -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                  <button class="btn-ai-insert-draft" onclick="insertCopilotDraftToReply()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span>Insert Draft to Reply Box</span>
-                  </button>
-                  <button class="btn-ai-send-direct" onclick="sendCopilotDraftDirectly()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    <span>Send AI Reply & Resolve</span>
+                  <button class="btn-secondary" style="width: 100%; height: 38px; justify-content: flex-start; gap: 8px; font-size: 12.5px;" onclick="openResolveModalForCurrent()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Mark Resolved &amp; Close</span>
                   </button>
                 </div>
               </div>
 
             </div>
 
-          </aside>
+          </div>
 
         </div>
 
@@ -1111,102 +1154,601 @@
            VIEW 3: REPLY (Dedicated Communication Center)
            ======================================================== -->
       <section id="replyView" class="view-section">
-        <div class="data-card" style="padding: 14px 20px; margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
-              <label style="font-size: 13px; font-weight: 700; color: var(--text-dark); white-space: nowrap;">
-                Active Case:
-              </label>
-              <select id="replyCaseSelect" class="dept-filter-select" style="flex: 1; font-weight: 700;" onchange="loadReplyThread()">
-                <option value="">Loading active cases...</option>
-              </select>
-            </div>
-            <div id="replyCaseSummaryStrip"></div>
-          </div>
-        </div>
-
-        <div class="reply-workspace">
-          <div class="reply-pane">
-            <div class="reply-thread-header">
-              <span style="font-weight: 700; font-size: 14px;">Conversation Thread & Audit History</span>
-              <button class="btn-action" style="padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" onclick="loadReplyThread()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                <span>Refresh</span>
+        
+        <!-- SUBBAR -->
+        <div class="reply-subbar">
+          <div class="reply-subbar-left">
+            <span class="reply-subbar-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <span>Communication Hub</span>
+            </span>
+            <div class="stream-tabs-row" style="margin-left: 8px;">
+              <button class="stream-tab-btn active" id="replyFilterAll" onclick="setReplyFilter('ALL', this)">
+                <span>All Queue</span>
+                <span class="tab-count-pill" id="replyFilterAllCount">0</span>
+              </button>
+              <button class="stream-tab-btn" id="replyFilterPending" onclick="setReplyFilter('PENDING', this)">
+                <span>Needs Reply</span>
+                <span class="tab-count-pill" id="replyFilterPendingCount">0</span>
               </button>
             </div>
-            <div class="reply-thread-list" id="replyThreadList"></div>
           </div>
 
-          <div class="reply-pane reply-composer-pane">
-            <div class="composer-toolbar">
-              <div class="composer-mode-pills">
-                <button id="modePublicBtn" class="mode-pill-btn active" onclick="setReplyMode('PUBLIC_REPLY')" style="display: inline-flex; align-items: center; gap: 5px;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                  <span>Public Reply</span>
-                </button>
-                <button id="modeInternalBtn" class="mode-pill-btn internal" onclick="setReplyMode('INTERNAL_NOTE')" style="display: inline-flex; align-items: center; gap: 5px;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  <span>Internal Note</span>
-                </button>
-              </div>
+          <div class="reply-subbar-right">
+            <div class="subbar-search-box" style="width: 260px;">
+              <input type="text" id="replySearchInput" class="stream-search-input" placeholder="Filter active case or employee..." oninput="handleReplySearch(this.value)">
             </div>
-            <div class="composer-body-area">
-              <input type="text" id="replySubjectInput" class="inbox-search-input" placeholder="Subject..." style="background-image: none; padding-left: 12px;">
-              <textarea id="replyMessageText" class="composer-textarea" placeholder="Compose response to employee..."></textarea>
-              <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
-                <button id="sendReplyBtn" class="btn-primary" style="width: auto; padding: 8px 20px;" onclick="submitReply()">Send Response</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ========================================================
-           VIEW 4: ACTION (Productivity Toolkit & Manual Intake)
-           ======================================================== -->
-      <section id="actionView" class="view-section">
-        <div class="action-grid">
-          <div class="action-card">
-            <div class="action-card-header">
-              <div class="action-card-icon coral">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-              </div>
-              <div>
-                <div class="action-card-title">Manual Inbound Intake</div>
-                <div class="action-card-desc">Log employee queries received via walk-in or phone call</div>
-              </div>
-            </div>
-            <form id="manualIntakeForm" onsubmit="handleManualIntake(event)" style="display: flex; flex-direction: column; gap: 10px;">
-              <input type="email" id="actionNewEmail" class="inbox-search-input" style="background-image: none; padding-left: 10px;" placeholder="Employee Email *" required>
-              <input type="text" id="actionNewName" class="inbox-search-input" style="background-image: none; padding-left: 10px;" placeholder="Full Name">
-              <input type="text" id="actionNewTitle" class="inbox-search-input" style="background-image: none; padding-left: 10px;" placeholder="Subject *" required>
-              <textarea id="actionNewDesc" class="composer-textarea" style="min-height: 80px;" placeholder="Query description..." required></textarea>
-              <button type="submit" class="btn-primary">+ Create & Route Ticket</button>
-            </form>
-          </div>
-
-          <div class="action-card">
-            <div class="action-card-header">
-              <div class="action-card-icon" style="background: #E0F2FE; color: #0284C7;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-              </div>
-              <div>
-                <div class="action-card-title">Real-Time Inbound Email Intake</div>
-                <div class="action-card-desc">Ingest authentic employee correspondence via API / Webhook</div>
-              </div>
-            </div>
-            <p style="font-size: 13px; color: var(--text-body); line-height: 1.5;">
-              Receive authentic emails routed to corporate HR addresses (e.g. <code>people.ops@1mg.com</code> or <code>attendance.hr@1mg.com</code>). Each inbound message is automatically classified, matched with HRMS records, and queued.
-            </p>
-            <button class="btn-action" style="padding: 10px 16px; font-size: 13px; font-weight: 700; background: #F0FDF4; color: #16A34A; border-color: #BBF7D0; display: inline-flex; align-items: center; gap: 6px;" onclick="openIngestEmailModal()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>+ Ingest Inbound Email</span>
+            <button class="btn-action subbar-btn" onclick="initReplyWorkspace()" title="Refresh Workspace" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh</span>
+            </button>
+            <button class="btn-primary subbar-btn-new" onclick="openIngestEmailModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="Ingest Employee Inbound Correspondence">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ Ingest Mail</span>
             </button>
           </div>
         </div>
+
+        <!-- 3-PANE COCKPIT CONTAINER -->
+        <div class="reply-cockpit-container">
+          
+          <!-- COLUMN 1: CASE STREAM QUEUE -->
+          <aside class="reply-stream-pane">
+            <div class="reply-stream-header">
+              <span class="reply-stream-header-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>Active Tickets</span>
+              </span>
+              <span class="tab-count-pill" id="replyStreamTotalCount">0</span>
+            </div>
+            <!-- Hidden backward-compatibility select element for any external calls -->
+            <select id="replyCaseSelect" style="display: none;" onchange="loadReplyThread()">
+              <option value="">Loading active cases...</option>
+            </select>
+            <!-- Rendered cards list -->
+            <div class="reply-cases-list" id="replyCasesList">
+              <div style="text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 12px;">Loading tickets...</div>
+            </div>
+          </aside>
+
+          <!-- COLUMN 2: CENTER THREAD & RESPONSE STUDIO -->
+          <main class="reply-center-pane">
+            
+            <!-- Thread Header Bar -->
+            <div class="reply-thread-header-bar" id="replyThreadHeaderBar">
+              <div class="reply-thread-title-area">
+                <div class="reply-thread-ref-row">
+                  <span class="reply-thread-case-number" id="replyHeaderCaseRef">CASE-—</span>
+                  <span class="reply-thread-case-title" id="replyHeaderCaseTitle">Select a ticket from the queue</span>
+                  <span id="replyHeaderPriorityBadge" style="display: none;" class="reply-card-priority normal">Normal</span>
+                  <span id="replyHeaderStatusBadge" style="display: none;" class="badge badge-assigned">Open</span>
+                </div>
+                <div class="reply-thread-recipient-meta" id="replyHeaderMeta">
+                  Select a case from the queue to start communication.
+                </div>
+              </div>
+              <div class="reply-thread-header-actions" id="replyHeaderActions" style="display: none;">
+                <button class="btn-secondary" style="padding: 5px 10px; font-size: 11.5px; height: 32px; display: inline-flex; align-items: center; gap: 5px;" onclick="openReassignModalForCurrent()" title="Transfer to another specialist or desk">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                  <span>Reassign</span>
+                </button>
+                <button class="btn-secondary" style="padding: 5px 10px; font-size: 11.5px; height: 32px; display: inline-flex; align-items: center; gap: 5px;" onclick="openResolveModalForCurrent()" title="Mark Resolved">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Resolve</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrollable Conversation & Audit Thread -->
+            <div class="reply-thread-list" id="replyThreadList">
+              <div class="reply-empty-state" id="replyEmptyPlaceholder">
+                <div class="reply-empty-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><polyline points="17 8 12 13 7 8"></polyline></svg>
+                </div>
+                <div class="reply-empty-title">Communication Center Ready</div>
+                <div class="reply-empty-desc">
+                  Select an active ticket from the left queue to view the complete omnichannel audit trail, inspect employee history, and dispatch responses.
+                </div>
+                <button class="btn-secondary" onclick="openIngestEmailModal()" style="font-size: 12px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  <span>+ Ingest Inbound Email</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Smart Response Studio Composer -->
+            <div class="reply-composer-pane" id="replyComposerPane" style="display: none;">
+              <!-- Toolbar -->
+              <div class="composer-toolbar-row">
+                <div class="composer-mode-pills">
+                  <button id="modePublicBtn" class="mode-pill-btn active" onclick="setReplyMode('PUBLIC_REPLY')" type="button">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    <span>Public Response</span>
+                  </button>
+                  <button id="modeInternalBtn" class="mode-pill-btn internal" onclick="setReplyMode('INTERNAL_NOTE')" type="button">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span>Internal Note</span>
+                  </button>
+                </div>
+
+                <div class="composer-helpers-row">
+                  <!-- ⚡ AI Copilot Draft -->
+                  <button type="button" class="ai-draft-sparkle-btn" onclick="generateAiReplyDraft()" title="Generate AI response draft using intelligence engine">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>
+                    <span>⚡ AI Draft</span>
+                  </button>
+
+                  <!-- 📋 Canned Templates -->
+                  <select id="replyCannedSelect" class="canned-template-select" onchange="applyCannedTemplate(this.value)">
+                    <option value="">📋 Canned HR Snippets...</option>
+                    <option value="attendance_regularized">Biometric Punch Regularized</option>
+                    <option value="payroll_reconciled">Payroll Discrepancy Reconciliation</option>
+                    <option value="mediclaim_ecard">Mediclaim E-Card Verified</option>
+                    <option value="request_more_info">Request Additional Employee Info</option>
+                    <option value="resolved_standard">Case Resolved & Closed Notice</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Input Area -->
+              <input type="text" id="replySubjectInput" class="reply-subject-field" placeholder="Subject...">
+              <textarea id="replyMessageText" class="reply-textarea-field" placeholder="Compose response to employee..."></textarea>
+
+              <!-- Footer Actions -->
+              <div class="composer-footer-row">
+                <div class="composer-footer-left">
+                  <label class="composer-status-label" id="replyResolveLabel">
+                    <input type="checkbox" id="replyAutoResolveCheck" checked>
+                    <span>Mark Resolved &amp; Close on dispatch</span>
+                  </label>
+                </div>
+                <div class="composer-footer-right">
+                  <button type="button" class="btn-secondary" style="height: 34px; padding: 0 12px; font-size: 12px;" onclick="clearReplyDraft()">Clear</button>
+                  <button type="button" id="sendReplyBtn" class="btn-primary" style="height: 34px; padding: 0 18px; font-size: 12.5px; width: auto;" onclick="submitReply()">Send Response</button>
+                </div>
+              </div>
+            </div>
+
+          </main>
+
+          <!-- COLUMN 3: RIGHT HRMS 360° DOSSIER -->
+          <aside class="reply-dossier-pane" id="replyDossierPane">
+            <div class="dossier-card-title">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Verified Employee Dossier</span>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="reply-dossier-card" id="replyDossierCard">
+              <div class="dossier-profile-header">
+                <div class="dossier-avatar-large" id="replyDossierAvatar">EMP</div>
+                <div class="dossier-name-area">
+                  <div class="dossier-employee-name" id="replyDossierName">—</div>
+                  <div class="dossier-employee-id" id="replyDossierCode">ID: —</div>
+                </div>
+              </div>
+
+              <div id="replyDossierVerifiedBadge" class="dossier-verified-badge" style="display: none;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>HRMS Record Confirmed</span>
+              </div>
+
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Department</span>
+                <span class="dossier-field-val" id="replyDossierDept">—</span>
+              </div>
+
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Official Email</span>
+                <span class="dossier-field-val" id="replyDossierEmail">—</span>
+              </div>
+
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Reporting Manager</span>
+                <span class="dossier-field-val" id="replyDossierManager">—</span>
+              </div>
+            </div>
+
+            <!-- Case SLA & Metadata Card -->
+            <div class="reply-dossier-card">
+              <div class="dossier-card-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>SLA &amp; Operations</span>
+              </div>
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Ticket Priority</span>
+                <span class="dossier-field-val" id="replyDossierPriority">—</span>
+              </div>
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Resolution Due (SLA)</span>
+                <span class="dossier-field-val" id="replyDossierSla">—</span>
+              </div>
+              <div class="dossier-field-row">
+                <span class="dossier-field-label">Opened At</span>
+                <span class="dossier-field-val" id="replyDossierCreated">—</span>
+              </div>
+            </div>
+
+            <!-- Quick Action Shortcuts -->
+            <div class="reply-dossier-card">
+              <div class="dossier-card-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>Quick Actions</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn-secondary" style="width: 100%; height: 34px; justify-content: flex-start; gap: 8px; font-size: 12px;" onclick="openReassignModalForCurrent()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                  <span>Reassign Specialist / Desk</span>
+                </button>
+                <button class="btn-secondary" style="width: 100%; height: 34px; justify-content: flex-start; gap: 8px; font-size: 12px;" onclick="openResolveModalForCurrent()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>Mark Resolved &amp; Close</span>
+                </button>
+              </div>
+            </div>
+
+          </aside>
+
+        </div>
+
+      </section>
+
+      <!-- ========================================================
+           VIEW 4: ACTION (SLA RADAR & OPERATIONS DASHBOARD)
+           ======================================================== -->
+      <section id="actionView" class="view-section">
+        
+        <!-- SUBBAR -->
+        <div class="sla-subbar">
+          <div class="sla-subbar-left">
+            <span class="sla-subbar-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span>SLA Performance Radar &amp; Operations</span>
+            </span>
+            <div class="stream-tabs-row" style="margin-left: 8px;">
+              <button class="stream-tab-btn active" id="slaTabAll" onclick="setSlaFilter('ALL', this)">
+                <span>All Open</span>
+                <span class="tab-count-pill" id="slaFilterAllCount">0</span>
+              </button>
+              <button class="stream-tab-btn" id="slaTabWarning" onclick="setSlaFilter('WARNING', this)">
+                <span>At Risk (&lt;4h)</span>
+                <span class="tab-count-pill" id="slaFilterWarningCount" style="background: #FFEDD5; color: #EA580C;">0</span>
+              </button>
+              <button class="stream-tab-btn" id="slaTabBreached" onclick="setSlaFilter('BREACHED', this)">
+                <span>Breached SLA</span>
+                <span class="tab-count-pill" id="slaFilterBreachedCount" style="background: #FEE2E2; color: #DC2626;">0</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="sla-subbar-right">
+            <div class="subbar-search-box" style="width: 260px;">
+              <input type="text" id="slaSearchInput" class="stream-search-input" placeholder="Search ticket, employee, dept..." oninput="handleSlaSearch(this.value)">
+            </div>
+            <button class="btn-action subbar-btn" onclick="loadSlaDashboard()" title="Refresh SLA Metrics" style="display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Refresh SLA</span>
+            </button>
+            <button class="btn-primary subbar-btn-new" onclick="openIngestEmailModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="Ingest Employee Inbound Correspondence">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ Ingest Mail</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- MAIN DASHBOARD SCROLL CONTENT -->
+        <div class="sla-dashboard-content">
+          
+          <!-- 1. 4-CARD BENTO SLA KPIS -->
+          <div class="sla-bento-grid">
+            
+            <!-- KPI 1: Compliance Rate -->
+            <div class="sla-kpi-card">
+              <div class="sla-kpi-top">
+                <span class="sla-kpi-label">SLA Compliance Rate</span>
+                <div class="sla-kpi-icon teal">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+              <div class="sla-kpi-val" id="slaComplianceVal">98.5%</div>
+              <div class="sla-kpi-subtext">
+                <span style="color: #0D8269; font-weight: 700;">✓ Optimal</span>
+                <span>· Target: &gt; 95.0% threshold</span>
+              </div>
+            </div>
+
+            <!-- KPI 2: Critical Breaches -->
+            <div class="sla-kpi-card">
+              <div class="sla-kpi-top">
+                <span class="sla-kpi-label">Breached Tickets</span>
+                <div class="sla-kpi-icon coral">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+              </div>
+              <div class="sla-kpi-val" id="slaBreachedVal" style="color: #DC2626;">0</div>
+              <div class="sla-kpi-subtext">
+                <span>Overdue cases requiring escalation</span>
+              </div>
+            </div>
+
+            <!-- KPI 3: At-Risk Shift Radar -->
+            <div class="sla-kpi-card">
+              <div class="sla-kpi-top">
+                <span class="sla-kpi-label">At-Risk (&lt; 4h Left)</span>
+                <div class="sla-kpi-icon amber">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </div>
+              </div>
+              <div class="sla-kpi-val" id="slaAtRiskVal" style="color: #D97706;">0</div>
+              <div class="sla-kpi-subtext">
+                <span>Expiring within active shift window</span>
+              </div>
+            </div>
+
+            <!-- KPI 4: Mean Resolution Turnaround -->
+            <div class="sla-kpi-card">
+              <div class="sla-kpi-top">
+                <span class="sla-kpi-label">Avg Resolution Turnaround</span>
+                <div class="sla-kpi-icon blue">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                </div>
+              </div>
+              <div class="sla-kpi-val" id="slaAvgTurnaroundVal">2.4h</div>
+              <div class="sla-kpi-subtext">
+                <span>Benchmark: 12h Attendance / 24h Payroll</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 2. TWO-COLUMN OPERATIONAL COCKPIT -->
+          <div class="sla-dashboard-layout">
+            
+            <!-- LEFT: LIVE SLA COUNTDOWN & PRIORITY QUEUE -->
+            <div class="sla-radar-card">
+              <div class="sla-card-header">
+                <div class="sla-card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <span>Live SLA Countdown &amp; Priority Radar</span>
+                </div>
+                <div style="font-size: 11.5px; color: var(--text-muted);">
+                  Sorted by closest breach deadline
+                </div>
+              </div>
+
+              <div class="sla-table-container">
+                <table class="sla-countdown-table">
+                  <thead>
+                    <tr>
+                      <th>Case Ref</th>
+                      <th>Employee &amp; Dept</th>
+                      <th>Inquiry Subject</th>
+                      <th>Priority</th>
+                      <th>SLA Countdown</th>
+                      <th>Status</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="slaRadarTableBody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        Loading SLA radar...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- RIGHT: BENCHMARKS & FAST INTAKE TOOLKIT -->
+            <aside class="sla-side-toolkit">
+              
+              <!-- Card A: Department SLA Benchmark Targets -->
+              <div class="sla-side-card">
+                <div class="sla-card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"></path></svg>
+                  <span>Department SLA Benchmarks</span>
+                </div>
+
+                <div class="sla-benchmark-item">
+                  <div class="sla-benchmark-header">
+                    <span class="sla-benchmark-name">Attendance &amp; Biometric HR</span>
+                    <span class="sla-benchmark-target">12h Target · 99.2%</span>
+                  </div>
+                  <div class="sla-progress-track">
+                    <div class="sla-progress-fill" style="width: 99.2%;"></div>
+                  </div>
+                </div>
+
+                <div class="sla-benchmark-item">
+                  <div class="sla-benchmark-header">
+                    <span class="sla-benchmark-name">Payroll &amp; Tax Finance</span>
+                    <span class="sla-benchmark-target">24h Target · 97.8%</span>
+                  </div>
+                  <div class="sla-progress-track">
+                    <div class="sla-progress-fill" style="width: 97.8%;"></div>
+                  </div>
+                </div>
+
+                <div class="sla-benchmark-item">
+                  <div class="sla-benchmark-header">
+                    <span class="sla-benchmark-name">Benefits &amp; Mediclaim Insurance</span>
+                    <span class="sla-benchmark-target">24h Target · 98.5%</span>
+                  </div>
+                  <div class="sla-progress-track">
+                    <div class="sla-progress-fill" style="width: 98.5%;"></div>
+                  </div>
+                </div>
+
+                <div class="sla-benchmark-item">
+                  <div class="sla-benchmark-header">
+                    <span class="sla-benchmark-name">Central People Desk &amp; Policy</span>
+                    <span class="sla-benchmark-target">48h Target · 100%</span>
+                  </div>
+                  <div class="sla-progress-track">
+                    <div class="sla-progress-fill" style="width: 100%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card B: Manual Walk-in / Phone Intake -->
+              <div class="sla-side-card">
+                <div class="sla-card-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  <span>Manual Walk-in / Phone Intake</span>
+                </div>
+                <form id="manualIntakeForm" onsubmit="handleManualIntake(event)" style="display: flex; flex-direction: column; gap: 8px;">
+                  <input type="email" id="actionNewEmail" class="sla-form-input" placeholder="Employee Email *" required>
+                  <input type="text" id="actionNewName" class="sla-form-input" placeholder="Full Name">
+                  <input type="text" id="actionNewTitle" class="sla-form-input" placeholder="Subject *" required>
+                  <textarea id="actionNewDesc" class="sla-form-textarea" placeholder="Query description..." required></textarea>
+                  <button type="submit" class="btn-primary" style="height: 36px; font-size: 12.5px;">+ Create &amp; Route Ticket</button>
+                </form>
+              </div>
+
+              <!-- Card C: Inbound Email Webhook Ingest -->
+              <div class="sla-side-card" style="background: #F0F9FF; border-color: #BAE6FD;">
+                <div class="sla-card-title" style="color: #0369A1;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  <span>Inbound Mailbox Webhook</span>
+                </div>
+                <p style="font-size: 11.5px; color: #0C4A6E; line-height: 1.45; margin: 0;">
+                  Ingest corporate HR correspondence from <code>people.ops@1mg.com</code>. Inbound emails are AI-classified and tracked against SLA targets.
+                </p>
+                <button type="button" class="btn-action" style="padding: 7px 12px; font-size: 12px; font-weight: 700; background: #FFFFFF; color: #0284C7; border-color: #7DD3FC; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="openIngestEmailModal()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <span>+ Ingest Inbound Email</span>
+                </button>
+              </div>
+
+            </aside>
+
+          </div>
+
+        </div>
+
       </section>
 
     </main>
+  </div>
+
+  <!-- MODAL: REASSIGN / TRANSFER EMAIL TO ANOTHER DEPARTMENT OR AGENT -->
+  <div class="modal-overlay" id="transferEmailModal" style="display: none; z-index: 1040;">
+    <div class="modal-content" style="max-width: 520px; width: 92%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px;">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          <span id="transferModalTitle">Transfer Desk or Reassign Colleague</span>
+        </h3>
+        <button class="modal-close" onclick="closeTransferDepartmentModal()">&times;</button>
+      </div>
+      <form id="transferEmailForm" onsubmit="handleTransferDepartmentSubmit(event)" style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px;">
+        <input type="hidden" id="transferEmailId">
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Email Subject</label>
+          <div id="transferEmailSubjectDisplay" style="font-size: 13px; font-weight: 600; color: var(--text-dark); background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 6px; margin-top: 4px; word-break: break-word;"></div>
+        </div>
+        <div>
+          <label id="transferDeptLabel" style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Department Desk *</label>
+          <select id="transferTargetDeptSelect" class="dept-filter-select" style="width: 100%; margin-top: 4px; padding: 9px 12px; font-size: 13px; font-weight: 600;" onchange="handleTransferDeptChange()" required>
+            <option value="">Select target HR department...</option>
+          </select>
+          <span id="transferDeptHint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">Stay on current desk to reassign to a teammate, or select another department to route ahead.</span>
+        </div>
+        <div>
+          <label id="transferAgentLabel" style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Assign to Colleague / Specialist</label>
+          <select id="transferTargetAgentSelect" class="dept-filter-select" style="width: 100%; margin-top: 4px; padding: 9px 12px; font-size: 13px;">
+            <option value="">Auto-assign or leave in desk pool</option>
+          </select>
+          <span id="transferAgentHint" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">Select a specialist to own this thread or leave unassigned for the desk pool.</span>
+        </div>
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-dark);">Handover / Routing Notes (Optional)</label>
+          <textarea id="transferRoutingNotes" class="quick-reply-textarea" style="min-height: 70px; margin-top: 4px;" placeholder="e.g. Reassigned to Barkha to verify PF deduction records, or transferred to Payroll for salary slip."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+          <button type="button" class="btn-action" onclick="closeTransferDepartmentModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnConfirmTransfer" style="background: #2563EB; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+            <span>Confirm Reassignment</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DEPARTMENT HEAD MAILBOX & APP PASSWORD CONFIGURATION -->
+  <div class="modal-overlay" id="mailboxConfigModal" style="display: none; z-index: 1050;">
+    <div class="modal-content" style="max-width: 520px; width: 92%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; color: #4F46E5;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <div>
+            <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B;">Department Mailbox Access</h3>
+            <span style="font-size: 12px; color: #64748B;">Configure Mail App Password for direct inbound ingestion</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeMailboxConfigModal()">&times;</button>
+      </div>
+
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; margin-top: 14px; display: flex; gap: 10px; align-items: flex-start;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <div style="font-size: 12px; color: #1E40AF; line-height: 1.45;">
+          <strong>Department Head Authority:</strong> As Department Head, configure your mail app password to fetch, view, and route incoming employee queries sent to your department.
+        </div>
+      </div>
+
+      <form id="mailboxConfigForm" onsubmit="handleMailboxConfigSubmit(event)" style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px;">
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Department Desk</label>
+          <div id="mailboxConfigDeptDisplay" style="font-size: 13px; font-weight: 600; color: #334155; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
+            Attendance HR Desk
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Department Mailbox Email *</label>
+          <input type="email" id="mailboxConfigEmailInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; background-image: none; margin-top: 4px; font-size: 13px;" placeholder="e.g. attendance.desk@1mg.com" required>
+          <span style="font-size: 11px; color: #64748B; margin-top: 4px; display: block;">The official corporate inbox address where employees send tickets/queries.</span>
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Mail App Password *</label>
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #2563EB; text-decoration: underline; font-weight: 600;">Generate Google App Password ↗</a>
+          </div>
+          <div style="position: relative; margin-top: 4px;">
+            <input type="password" id="mailboxConfigAppPassInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; padding-right: 36px; background-image: none; font-size: 13px; letter-spacing: 1px;" placeholder="e.g. abcd efgh ijkl mnop (16 characters)" required>
+            <button type="button" onclick="toggleMailboxPassVisibility()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748B; font-size: 14px;" id="btnToggleMailPass">👁️</button>
+          </div>
+          <span style="font-size: 11px; color: #64748B; margin-top: 4px; display: block;">For Google Workspace/Gmail, create a 16-character App Password under Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords.</span>
+        </div>
+
+        <!-- Collapsible Advanced Settings -->
+        <details style="border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 12px; background: #F8FAFC;">
+          <summary style="font-size: 12px; font-weight: 600; color: #475569; cursor: pointer;">Advanced IMAP Settings (Auto-detected)</summary>
+          <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <div style="flex: 2;">
+              <label style="font-size: 11px; font-weight: 600; color: #475569;">IMAP Host</label>
+              <input type="text" id="mailboxConfigHostInput" class="topbar-search-input" style="width: 100%; padding-left: 10px; background-image: none; margin-top: 2px; font-size: 12px;" placeholder="imap.gmail.com">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px; font-weight: 600; color: #475569;">IMAP Port</label>
+              <input type="number" id="mailboxConfigPortInput" class="topbar-search-input" style="width: 100%; padding-left: 10px; background-image: none; margin-top: 2px; font-size: 12px;" value="993">
+            </div>
+          </div>
+        </details>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn-action" onclick="closeMailboxConfigModal()">Later</button>
+          <button type="submit" class="btn-primary" id="btnSaveMailboxConfig" style="background: #10B981; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>Connect &amp; Fetch Emails</span>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- MODAL: INGEST REAL INBOUND EMAIL -->
@@ -1340,6 +1882,37 @@
     </div>
   </div>
 
+  <!-- MODAL: REASSIGN CASE -->
+  <div class="modal-overlay" id="reassignModal" style="display: none;">
+    <div class="modal-content" style="max-width: 480px; width: 90%;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--1mg-orange)" stroke-width="2.5"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+          <span>Reassign Case <span id="reassignCaseNumberDisplay" style="color: var(--1mg-orange);"></span></span>
+        </h3>
+        <button class="modal-close" onclick="closeReassignModal()">&times;</button>
+      </div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; display: block;">Functional Department Desk</label>
+          <select id="reassignDeptSelect" class="form-input" onchange="populateSpecialistsForDept()" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid var(--border-light); padding: 0 10px; font-size: 13px; font-weight: 600;">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; display: block;">Assign to Specialist</label>
+          <select id="reassignUserSelect" class="form-input" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid var(--border-light); padding: 0 10px; font-size: 13px; font-weight: 600;">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button class="btn-action" onclick="closeReassignModal()">Cancel</button>
+          <button id="btnSubmitReassign" class="btn-primary" style="width: auto; padding: 7px 18px;" onclick="submitReassignAction()">Save Reassignment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: CASE DOSSIER -->
   <div class="modal-overlay" id="caseDossierModal" style="display: none;">
     <div class="modal-content" style="max-width: 720px; width: 90%;">
@@ -1355,6 +1928,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- SCRIPTS -->
-  <script src="/js/agent.js?v=2.5"></script>
+  <script src="/js/agent.js?v=5.0"></script>
 </body>
 </html>

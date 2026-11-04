@@ -472,3 +472,255 @@ def send_welcome_email(
         "activation_link": activation_link,
         "html": html
     }
+
+def send_raw_smtp_email(
+    recipient_email: str,
+    subject: str,
+    html_content: str,
+    plain_text: str,
+    custom_user: str = None,
+    custom_password: str = None,
+    custom_host: str = None,
+    custom_port: int = None,
+    from_name: str = "Tata 1mg People Desk"
+) -> dict:
+    """
+    General-purpose resilient SMTP dispatcher. Uses provided custom credentials (e.g. Dept Head Gmail),
+    falling back to system SMTP configuration.
+    """
+    sys_host, sys_port, sys_user, sys_password, _ = get_smtp_config()
+    host = (custom_host or sys_host).strip()
+    port = int(custom_port or sys_port or 587)
+    user = (custom_user or sys_user).strip()
+    password = (custom_password or sys_password).strip()
+
+    from_header = f"{from_name} <{user}>"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = from_header
+    msg["To"] = recipient_email
+    msg["Reply-To"] = user
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain="1mg.com")
+    msg["MIME-Version"] = "1.0"
+    msg["X-Mailer"] = "Tata 1mg People Desk Dispatcher"
+
+    msg.attach(MIMEText(plain_text, "plain", "utf-8"))
+    msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+    if not host or not user or not password:
+        return {"sent": False, "method": "SKIPPED", "error": "SMTP credentials not provided."}
+
+    # Attempt 1: Port 587 STARTTLS (or 465 SSL)
+    try:
+        if port == 465:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(host, port, context=ctx, timeout=12) as server:
+                server.login(user, password)
+                server.sendmail(user, [recipient_email], msg.as_string())
+            method = "SMTP_SSL_465"
+        else:
+            with smtplib.SMTP(host, port, timeout=12) as server:
+                server.starttls()
+                server.login(user, password)
+                server.sendmail(user, [recipient_email], msg.as_string())
+            method = "SMTP_TLS_587"
+        print(f"[EmailService Success] Dispatched '{subject}' to {recipient_email} via {method}")
+        return {"sent": True, "method": method, "recipient": recipient_email}
+    except Exception as e1:
+        # Fallback port
+        fallback_port = 465 if port != 465 else 587
+        try:
+            if fallback_port == 465:
+                ctx = ssl.create_default_context()
+                with smtplib.SMTP_SSL(host, 465, context=ctx, timeout=12) as server:
+                    server.login(user, password)
+                    server.sendmail(user, [recipient_email], msg.as_string())
+                method = "SMTP_SSL_465_FALLBACK"
+            else:
+                with smtplib.SMTP(host, 587, timeout=12) as server:
+                    server.starttls()
+                    server.login(user, password)
+                    server.sendmail(user, [recipient_email], msg.as_string())
+                method = "SMTP_TLS_587_FALLBACK"
+            print(f"[EmailService Success] Fallback dispatched '{subject}' to {recipient_email} via {method}")
+            return {"sent": True, "method": method, "recipient": recipient_email}
+        except Exception as e2:
+            err = f"SMTP dispatch failed: {e1} | {e2}"
+            print(f"[EmailService Error] {err}")
+            return {"sent": False, "method": "FAILED", "error": err}
+
+def send_employee_id_request_email(
+    recipient_email: str,
+    original_subject: str,
+    recipient_name: str = "Colleague",
+    department_name: str = "People Desk",
+    custom_user: str = None,
+    custom_password: str = None
+) -> dict:
+    """
+    Sends an automated verification email to external senders asking them to reply with their Employee ID.
+    """
+    subject = f"Action Required: Confirm Your Tata 1mg Employee ID — Re: {original_subject[:45]}"
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px; color: #1E293B;">
+  <div style="max-width: 580px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background: linear-gradient(135deg, #FF6F61 0%, #E55342 100%); padding: 22px 28px; color: #FFFFFF;">
+      <h2 style="margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.2px;">Tata 1mg People Desk</h2>
+      <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">Inbound Verification & Identity Confirmation</p>
+    </div>
+    <div style="padding: 28px;">
+      <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px;">Hello <strong>{recipient_name}</strong>,</p>
+      <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 18px;">
+        We received your email inquiry regarding: <br>
+        <span style="display: inline-block; background: #F1F5F9; padding: 6px 12px; border-radius: 6px; font-weight: 600; color: #0F172A; margin-top: 6px;">{original_subject}</span>
+      </p>
+      <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 14px 16px; border-radius: 6px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 13.5px; color: #92400E; font-weight: 600;">⚠️ Identity Verification Required</p>
+        <p style="margin: 6px 0 0; font-size: 13px; color: #78350F; line-height: 1.5;">
+          Because your inquiry was sent from an external address (<code>{recipient_email}</code>), our system requires your official Tata 1mg Employee ID to match your HRMS profile and process your request under our verified SLA.
+        </p>
+      </div>
+      <p style="font-size: 14px; font-weight: 600; color: #0F172A; margin: 20px 0 8px;">How to proceed:</p>
+      <div style="background: #F8FAFC; border: 1px dashed #CBD5E1; padding: 14px 18px; border-radius: 8px;">
+        <p style="margin: 0; font-size: 13.5px; color: #1E293B;">
+          👉 Simply <strong>reply directly to this email</strong> and include your <strong>Official Employee ID</strong> (e.g., <code>EMP1024</code> or <code>1MG123</code>).
+        </p>
+      </div>
+      <p style="font-size: 13px; color: #64748B; line-height: 1.5; margin: 22px 0 0;">
+        Once received, our <strong>{department_name}</strong> specialist will immediately link your inquiry to your active employee record and begin work on your ticket.
+      </p>
+    </div>
+    <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px 28px; text-align: center; font-size: 11.5px; color: #94A3B8;">
+      Tata 1mg People Desk · Operations & Central HR Services
+    </div>
+  </div>
+</body>
+</html>"""
+
+    plain = f"""Hello {recipient_name},
+
+We received your inquiry regarding: "{original_subject}".
+
+Because your inquiry was received from an external address ({recipient_email}), we need to verify your official Tata 1mg employee profile.
+
+HOW TO PROCEED:
+Please reply directly to this email with your Official Tata 1mg Employee ID (e.g. EMP1024 or 1MG123).
+
+Once received, our {department_name} desk will link your records and process your request under our priority turnaround SLA.
+
+Warm regards,
+Tata 1mg People Desk"""
+
+    return send_raw_smtp_email(
+        recipient_email=recipient_email,
+        subject=subject,
+        html_content=html,
+        plain_text=plain,
+        custom_user=custom_user,
+        custom_password=custom_password
+    )
+
+def send_case_confirmation_email(
+    recipient_email: str,
+    employee_name: str,
+    case_number: str,
+    case_subject: str,
+    department_name: str = "People Desk",
+    target_sla: str = "24h SLA",
+    priority: str = "NORMAL",
+    assigned_specialist: str = "Assigned HR Specialist",
+    custom_user: str = None,
+    custom_password: str = None
+) -> dict:
+    """
+    Sends an official Tata 1mg Case Confirmation & Tracking ticket email to the employee.
+    """
+    subject = f"[{case_number}] Case Registered: {case_subject[:50]}"
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px; color: #1E293B;">
+  <div style="max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background: linear-gradient(135deg, #10B190 0%, #059669 100%); padding: 22px 28px; color: #FFFFFF;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85;">Official Support Ticket</div>
+      <h2 style="margin: 4px 0 0; font-size: 20px; font-weight: 700;">Tata 1mg Case Registered</h2>
+    </div>
+    <div style="padding: 28px;">
+      <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px;">Hello <strong>{employee_name}</strong>,</p>
+      <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px;">
+        Your inquiry has been officially converted into a tracked support ticket in Tata 1mg People Desk.
+      </p>
+
+      <!-- Case Summary Card -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px 20px; margin-bottom: 22px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+          <tr>
+            <td style="padding: 6px 0; color: #64748B; width: 140px;">Case Number:</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0F172A; font-family: monospace; font-size: 14.5px;">{case_number}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748B;">Subject:</td>
+            <td style="padding: 6px 0; font-weight: 600; color: #1E293B;">{case_subject}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748B;">Assigned Team:</td>
+            <td style="padding: 6px 0; color: #1E293B; font-weight: 600;">{department_name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748B;">Specialist:</td>
+            <td style="padding: 6px 0; color: #1E293B;">{assigned_specialist}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748B;">Target SLA:</td>
+            <td style="padding: 6px 0; color: #15803D; font-weight: 700;">Within {target_sla}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748B;">Status:</td>
+            <td style="padding: 6px 0;"><span style="background: #DCFCE7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;">ACTIVE / IN-PROGRESS</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="font-size: 13.5px; line-height: 1.6; color: #334155; margin: 0 0 16px;">
+        Our team is actively reviewing your request. If any additional documents or clarifications are required, your assigned specialist will reach out directly on this thread.
+      </p>
+      <p style="font-size: 13px; color: #64748B; margin: 18px 0 0;">
+        You can reply to this email at any time to add comments or attach supporting documents to this ticket.
+      </p>
+    </div>
+    <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px 28px; text-align: center; font-size: 11.5px; color: #94A3B8;">
+      Tata 1mg People Desk · SLA Guaranteed Corporate Support
+    </div>
+  </div>
+</body>
+</html>"""
+
+    plain = f"""Hello {employee_name},
+
+Your inquiry has been registered as an official case in Tata 1mg People Desk.
+
+CASE DETAILS:
+• Case Number: {case_number}
+• Subject: {case_subject}
+• Department: {department_name}
+• Assigned Specialist: {assigned_specialist}
+• Target SLA: Within {target_sla}
+• Status: ACTIVE / IN-PROGRESS
+
+Our department team is currently reviewing your ticket. You may reply directly to this email to add more information or attachments.
+
+Best regards,
+Tata 1mg People Desk"""
+
+    return send_raw_smtp_email(
+        recipient_email=recipient_email,
+        subject=subject,
+        html_content=html,
+        plain_text=plain,
+        custom_user=custom_user,
+        custom_password=custom_password
+    )

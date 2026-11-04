@@ -42,6 +42,11 @@ if os.path.exists(frontend_dir):
     if os.path.exists(admin_dir):
         app.mount("/admin-static", StaticFiles(directory=admin_dir), name="admin-static")
 
+    # Mount dedicated agent static subfolder
+    agent_dir = os.path.join(frontend_dir, "agent")
+    if os.path.exists(agent_dir):
+        app.mount("/agent-static", StaticFiles(directory=agent_dir), name="agent-static")
+
 @app.get("/")
 def serve_index():
     index_file = os.path.join(frontend_dir, "index.html")
@@ -61,6 +66,23 @@ def serve_admin():
     if os.path.exists(admin_index):
         return FileResponse(admin_index)
     return FileResponse(os.path.join(frontend_dir, "admin.html"))
+
+@app.get("/admin/case-details")
+@app.get("/admin/case-details.html")
+@app.get("/case-details.html")
+def serve_case_details():
+    admin_case = os.path.join(frontend_dir, "admin", "case-details.html")
+    if os.path.exists(admin_case):
+        return FileResponse(admin_case)
+    return FileResponse(os.path.join(frontend_dir, "case-details.html"))
+
+@app.get("/agent/case-details")
+@app.get("/agent/case-details.html")
+def serve_agent_case_details():
+    agent_case = os.path.join(frontend_dir, "agent", "case-details.html")
+    if os.path.exists(agent_case):
+        return FileResponse(agent_case)
+    return FileResponse(os.path.join(frontend_dir, "agent.html"))
 
 @app.get("/agent")
 @app.get("/agent/")

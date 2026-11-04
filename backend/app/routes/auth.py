@@ -78,7 +78,8 @@ def check_email(payload: CheckEmailRequest):
     user = execute_query(
         """
         SELECT u.id, u.email, u.name, u.role, u.password_hash, u.is_dept_head, 
-               u.department_id, u.designation, u.status, d.team_name as department_name
+               u.department_id, u.designation, u.status, u.mail_configured,
+               d.team_name as department_name, d.dept_gmail, d.dept_app_password
         FROM users u
         LEFT JOIN hr_departments d ON u.department_id = d.id
         WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE';
@@ -94,7 +95,7 @@ def check_email(payload: CheckEmailRequest):
             INSERT INTO users (email, name, role, is_dept_head, designation, status)
             VALUES (%s, 'Administrator', 'ADMIN', TRUE, 'System Administrator', 'ACTIVE')
             ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', status = 'ACTIVE'
-            RETURNING id, email, name, role, password_hash, is_dept_head, designation, status;
+            RETURNING id, email, name, role, password_hash, is_dept_head, designation, status, mail_configured;
             """,
             (email_clean,),
             fetch_one=True,
@@ -110,6 +111,10 @@ def check_email(payload: CheckEmailRequest):
     
     is_admin = (user["role"] == "ADMIN")
     has_password = bool(user["password_hash"])
+    is_dept_head = bool(user.get("is_dept_head"))
+    dept_has_pw = bool(user.get("dept_app_password"))
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
@@ -119,7 +124,10 @@ def check_email(payload: CheckEmailRequest):
         "name": user["name"],
         "email": user["email"],
         "has_password": has_password,
-        "is_dept_head": bool(user["is_dept_head"]),
+        "is_dept_head": is_dept_head,
+        "mail_configured": mail_configured,
+        "needs_mail_setup": needs_mail_setup,
+        "dept_gmail": user.get("dept_gmail") or "",
         "department_id": user.get("department_id"),
         "department_ids": dept_info["department_ids"],
         "departments": dept_info["departments"],
@@ -140,7 +148,8 @@ def login(payload: LoginRequest):
     user = execute_query(
         """
         SELECT u.id, u.email, u.name, u.role, u.password_hash, u.is_dept_head,
-               u.department_id, u.designation, u.status, d.team_name as department_name
+               u.department_id, u.designation, u.status, u.mail_configured,
+               d.team_name as department_name, d.dept_gmail, d.dept_app_password
         FROM users u
         LEFT JOIN hr_departments d ON u.department_id = d.id
         WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE';
@@ -185,6 +194,10 @@ def login(payload: LoginRequest):
     
     # Generate simple session token
     session_token = secrets.token_urlsafe(32)
+    is_dept_head = bool(user.get("is_dept_head"))
+    dept_has_pw = bool(user.get("dept_app_password"))
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
@@ -195,7 +208,10 @@ def login(payload: LoginRequest):
             "name": user["name"],
             "email": user["email"],
             "role": user["role"],
-            "is_dept_head": bool(user["is_dept_head"]),
+            "is_dept_head": is_dept_head,
+            "mail_configured": mail_configured,
+            "needs_mail_setup": needs_mail_setup,
+            "dept_gmail": user.get("dept_gmail") or "",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
             "departments": dept_info["departments"],
@@ -223,7 +239,8 @@ def set_password(payload: SetPasswordRequest):
     user = execute_query(
         """
         SELECT u.id, u.email, u.name, u.role, u.is_dept_head, u.department_id, 
-               u.designation, d.team_name as department_name 
+               u.designation, u.mail_configured, d.team_name as department_name,
+               d.dept_gmail, d.dept_app_password
         FROM users u 
         LEFT JOIN hr_departments d ON u.department_id = d.id
         WHERE LOWER(email) = %s AND status = 'ACTIVE';
@@ -245,6 +262,10 @@ def set_password(payload: SetPasswordRequest):
     
     session_token = secrets.token_urlsafe(32)
     is_admin = (user["role"] == "ADMIN")
+    is_dept_head = bool(user.get("is_dept_head"))
+    dept_has_pw = bool(user.get("dept_app_password"))
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
@@ -256,7 +277,10 @@ def set_password(payload: SetPasswordRequest):
             "name": user["name"],
             "email": user["email"],
             "role": user["role"],
-            "is_dept_head": bool(user["is_dept_head"]),
+            "is_dept_head": is_dept_head,
+            "mail_configured": mail_configured,
+            "needs_mail_setup": needs_mail_setup,
+            "dept_gmail": user.get("dept_gmail") or "",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
             "departments": dept_info["departments"],

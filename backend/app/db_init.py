@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS users (
     department_id INT,
     designation VARCHAR(150),
     status VARCHAR(20) DEFAULT 'ACTIVE',          -- 'ACTIVE', 'INACTIVE'
+    mail_app_password VARCHAR(255),
+    mail_configured BOOLEAN DEFAULT FALSE,
+    mail_last_synced_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -45,6 +48,11 @@ CREATE TABLE IF NOT EXISTS hr_departments (
     ai_model_status VARCHAR(20) DEFAULT 'UNTRAINED',
     model_accuracy NUMERIC(5,2) DEFAULT 0.0,
     trained_at TIMESTAMPTZ,
+    dept_app_password VARCHAR(255),
+    imap_host VARCHAR(255),
+    imap_port INT DEFAULT 993,
+    mail_sync_status VARCHAR(50) DEFAULT 'NOT_CONFIGURED',
+    mail_last_synced_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

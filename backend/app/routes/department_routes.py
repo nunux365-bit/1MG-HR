@@ -38,6 +38,8 @@ class DepartmentUpdatePayload(BaseModel):
     default_priority: Optional[str] = None
     description: Optional[str] = None
     color_accent: Optional[str] = None
+    dept_app_password: Optional[str] = None
+    imap_host: Optional[str] = None
 
 class SaveKeywordsPayload(BaseModel):
     strong_keywords: List[str]
@@ -237,6 +239,14 @@ def update_department(dept_id: int, payload: DepartmentUpdatePayload):
     if payload.color_accent is not None:
         updates.append("color_accent = %s")
         params.append(payload.color_accent)
+    if payload.dept_app_password is not None:
+        clean_pw = payload.dept_app_password.strip().replace(" ", "")
+        updates.append("dept_app_password = %s")
+        params.append(clean_pw)
+        updates.append("mail_sync_status = 'CONNECTED'")
+    if payload.imap_host is not None:
+        updates.append("imap_host = %s")
+        params.append(payload.imap_host.strip())
         
     if not updates:
         return {"success": True, "message": "No changes provided."}

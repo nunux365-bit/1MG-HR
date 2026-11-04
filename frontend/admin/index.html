@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Console · Tata 1mg People Desk</title>
-  <link rel="stylesheet" href="/css/style.css?v=2.5">
-  <link rel="stylesheet" href="/admin-static/css/admin.css?v=2.5">
+  <link rel="stylesheet" href="/css/style.css?v=3.0">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=3.0">
   <link rel="icon" type="image/png" href="/assets/logo.png">
+  <!-- Chart.js 4.4.1 for Tata 1mg Analytics Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="admin-body">
 
@@ -195,93 +197,326 @@
     <!-- CONTENT VIEWS -->
     <main class="admin-content-view">
       
-      <!-- 1. DASHBOARD VIEW -->
+      <!-- 1. DASHBOARD VIEW (TATA 1MG OPERATIONS COMMAND CENTER) -->
       <section id="dashboardView" class="view-section active">
-        <div class="stats-grid">
-          <!-- Total Cases -->
-          <div class="stat-card card-coral">
-            <div class="stat-content">
-              <div class="stat-label">TOTAL CASES</div>
-              <div class="stat-value" id="statTotalCases">0</div>
-              <div class="stat-subtext">All historical inquiries</div>
+        
+        <!-- DASHBOARD HERO & CONTROL BAR -->
+        <div class="dash-hero-header">
+          <div class="dash-hero-title-group">
+            <div class="dash-title-row">
+              <h2>Operations Command Center</h2>
+              <span class="live-pulse-badge">
+                <span class="pulse-dot"></span>
+                LIVE PULSE
+              </span>
             </div>
-            <div class="stat-icon-badge coral">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
+            <p>Real-time employee query triage, queue velocity, and SLA adherence across Tata 1mg</p>
+          </div>
+          
+          <div class="dash-hero-actions">
+            <!-- Timeframe Filter Buttons -->
+            <div class="dash-timeframe-picker">
+              <button class="time-btn" data-timeframe="24h" onclick="changeDashboardTimeframe('24h', this)">24 Hours</button>
+              <button class="time-btn active" data-timeframe="7d" onclick="changeDashboardTimeframe('7d', this)">7 Days</button>
+              <button class="time-btn" data-timeframe="30d" onclick="changeDashboardTimeframe('30d', this)">30 Days</button>
+            </div>
+
+            <!-- Sync IMAP Mailbox Button -->
+            <button class="btn-secondary dash-action-btn" id="btnSyncMailbox" onclick="triggerMailboxSync()" title="Poll Zoho Mailbox for inbound employee queries">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
               </svg>
+              <span>Sync Mailbox</span>
+            </button>
+
+            <!-- Seed Demo Cases Button (Helpful for testing) -->
+            <button class="btn-secondary dash-action-btn" onclick="seedDemoCases()" title="Seed realistic sample employee queries for testing">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+              <span>+ Demo Seed</span>
+            </button>
+
+            <!-- Export CSV -->
+            <button class="btn-secondary dash-action-btn" onclick="exportCasesCsv()" title="Export cases report as CSV">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 6-TILE BENTO KPI METRICS STRIP -->
+        <div class="dash-kpi-grid">
+          <!-- 1. Total Cases -->
+          <div class="dash-kpi-card coral">
+            <div class="kpi-top">
+              <span class="kpi-tag">TOTAL INFLOW</span>
+              <div class="kpi-icon-pill coral">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number" id="statTotalCases">0</span>
+              <span class="kpi-trend positive" id="statTotalTrend">↑ 14%</span>
+            </div>
+            <div class="kpi-foot">All employee inquiries logged</div>
+          </div>
+
+          <!-- 2. In Progress / Active Triage -->
+          <div class="dash-kpi-card amber">
+            <div class="kpi-top">
+              <span class="kpi-tag">ACTIVE TRIAGE</span>
+              <div class="kpi-icon-pill amber">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number text-amber" id="statInProgress">0</span>
+              <span class="kpi-pill-badge amber" id="statUrgentBadge">0 Urgent</span>
+            </div>
+            <div class="kpi-foot">Cases under active agent review</div>
+          </div>
+
+          <!-- 3. SLA Compliance -->
+          <div class="dash-kpi-card teal">
+            <div class="kpi-top">
+              <span class="kpi-tag">SLA COMPLIANCE</span>
+              <div class="kpi-icon-pill teal">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number text-teal" id="statSlaCompliance">98.4%</span>
+              <span class="kpi-trend positive">Target ≥ 95%</span>
+            </div>
+            <div class="kpi-foot" id="statBreachedSubtitle">0 cases breached</div>
+          </div>
+
+          <!-- 4. MTTR Resolution Velocity -->
+          <div class="dash-kpi-card blue">
+            <div class="kpi-top">
+              <span class="kpi-tag">AVG RESOLUTION (MTTR)</span>
+              <div class="kpi-icon-pill blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number text-blue" id="statAvgResolution">3.2h</span>
+              <span class="kpi-trend neutral">⚡ FRT ~18m</span>
+            </div>
+            <div class="kpi-foot">First response to closed closure</div>
+          </div>
+
+          <!-- 5. Active Specialists -->
+          <div class="dash-kpi-card purple">
+            <div class="kpi-top">
+              <span class="kpi-tag">SPECIALISTS ONLINE</span>
+              <div class="kpi-icon-pill purple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number text-purple" id="statActiveAgents">5</span>
+              <span class="kpi-pill-badge purple" id="statDeptsCount">6 Queues</span>
+            </div>
+            <div class="kpi-foot">Assigned across HR departments</div>
+          </div>
+
+          <!-- 6. AI Routing Accuracy -->
+          <div class="dash-kpi-card emerald">
+            <div class="kpi-top">
+              <span class="kpi-tag">AI TRIAGE ACCURACY</span>
+              <div class="kpi-icon-pill emerald">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="kpi-value-row">
+              <span class="kpi-number text-emerald" id="statAiAccuracy">96.8%</span>
+              <span class="kpi-trend positive">Zero-shot NLP</span>
+            </div>
+            <div class="kpi-foot">Automated department classification</div>
+          </div>
+        </div>
+
+        <!-- BENTO CHARTS ROW 1: PRIMARY WORKLOAD & INFLOW -->
+        <div class="dash-charts-grid-row1">
+          <!-- Left: Inflow vs Resolution Trend -->
+          <div class="chart-card chart-card-large">
+            <div class="chart-card-header">
+              <div class="chart-header-left">
+                <h3 class="chart-title">Query Inflow vs. Resolution Velocity</h3>
+                <p class="chart-subtitle">Daily inbound queries compared against successfully resolved inquiries</p>
+              </div>
+              <div class="chart-legend-custom">
+                <span class="legend-badge incoming"><span class="dot coral"></span> Inflow</span>
+                <span class="legend-badge resolved"><span class="dot teal"></span> Resolved</span>
+              </div>
+            </div>
+            <div class="chart-canvas-container" style="position: relative; height: 280px; width: 100%;">
+              <canvas id="chartInflowVelocity"></canvas>
             </div>
           </div>
 
-          <!-- In Progress -->
-          <div class="stat-card card-amber">
-            <div class="stat-content">
-              <div class="stat-label">IN PROGRESS</div>
-              <div class="stat-value" style="color: #D97706;" id="statInProgress">0</div>
-              <div class="stat-subtext">Under active triage</div>
+          <!-- Right: Department Distribution -->
+          <div class="chart-card chart-card-small">
+            <div class="chart-card-header">
+              <div class="chart-header-left">
+                <h3 class="chart-title">Department Workload</h3>
+                <p class="chart-subtitle">Query volume split across 6 configured queues</p>
+              </div>
             </div>
-            <div class="stat-icon-badge amber">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
+            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%; display: flex; align-items: center; justify-content: center;">
+              <canvas id="chartDepartmentDist"></canvas>
             </div>
-          </div>
-
-          <!-- Resolved Cases -->
-          <div class="stat-card card-teal">
-            <div class="stat-content">
-              <div class="stat-label">RESOLVED CASES</div>
-              <div class="stat-value" style="color: var(--1mg-teal);" id="statResolved">0</div>
-              <div class="stat-subtext">Closed within SLA</div>
-            </div>
-            <div class="stat-icon-badge teal">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Active Agents -->
-          <div class="stat-card card-indigo">
-            <div class="stat-content">
-              <div class="stat-label">ACTIVE AGENTS</div>
-              <div class="stat-value" style="color: #6366F1;" id="statActiveAgents">0</div>
-              <div class="stat-subtext">Online desk specialists</div>
-            </div>
-            <div class="stat-icon-badge indigo">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-            </div>
-          </div>
-
-          <!-- Departments -->
-          <div class="stat-card card-emerald">
-            <div class="stat-content">
-              <div class="stat-label">DEPARTMENTS</div>
-              <div class="stat-value" style="color: #10B981;" id="statDepartments">0</div>
-              <div class="stat-subtext">Configured queues</div>
-            </div>
-            <div class="stat-icon-badge emerald">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="2" y="7" width="20" height="14" rx="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
+            <div class="chart-dept-legend-list" id="deptLegendList">
+              <!-- Dynamically populated -->
             </div>
           </div>
         </div>
 
-        <div class="data-card">
+        <!-- BENTO CHARTS ROW 2: SLA ADHERENCE & PRIORITY BREAKDOWN -->
+        <div class="dash-charts-grid-row2">
+          <!-- Left: SLA Health & Risk Gauge -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-header-left">
+                <h3 class="chart-title">SLA Compliance Health</h3>
+                <p class="chart-subtitle">On-track inquiries vs. urgent &amp; breached tickets</p>
+              </div>
+              <div class="sla-status-pill on-track" id="slaOverallBadge">● 98.4% On-Track</div>
+            </div>
+            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%; display: flex; align-items: center; justify-content: center;">
+              <canvas id="chartSlaHealth"></canvas>
+            </div>
+            <div class="sla-metrics-summary-strip">
+              <div class="sla-summary-item safe">
+                <span class="sla-val" id="statWithinSla">86</span>
+                <span class="sla-lbl">Within SLA</span>
+              </div>
+              <div class="sla-summary-item warning">
+                <span class="sla-val" id="statApproachingSla">10</span>
+                <span class="sla-lbl">Approaching (&lt;2h)</span>
+              </div>
+              <div class="sla-summary-item breached">
+                <span class="sla-val" id="statBreachedCount">0</span>
+                <span class="sla-lbl">Breached</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Priority Breakdown -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-header-left">
+                <h3 class="chart-title">Inquiries by Priority &amp; Urgency</h3>
+                <p class="chart-subtitle">Critical (2h SLA), High (12h), Medium (24h), Low (48h)</p>
+              </div>
+            </div>
+            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%;">
+              <canvas id="chartPriorityDist"></canvas>
+            </div>
+            <div class="priority-legend-strip">
+              <div class="pri-pill crit"><span class="dot"></span> Critical (2h)</div>
+              <div class="pri-pill high"><span class="dot"></span> High (12h)</div>
+              <div class="pri-pill med"><span class="dot"></span> Medium (24h)</div>
+              <div class="pri-pill low"><span class="dot"></span> Low (48h)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPERATIONAL GRID: AT-RISK WATCHLIST & SPECIALIST LEADERBOARD -->
+        <div class="dash-operational-grid">
+          <!-- 1. Urgent SLA Watchlist -->
+          <div class="data-card op-card">
+            <div class="card-header-flex">
+              <div class="op-header-title">
+                <span class="op-icon-badge amber">⚠️</span>
+                <div>
+                  <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark);">At-Risk &amp; SLA Urgent Watchlist</h4>
+                  <span style="font-size: 12px; color: var(--text-muted);">Active cases requiring urgent specialist attention</span>
+                </div>
+              </div>
+              <span class="badge-counter" id="urgentCasesCounter">0</span>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table mini-table">
+                <thead>
+                  <tr>
+                    <th>Case #</th>
+                    <th>Employee &amp; Query</th>
+                    <th>Department</th>
+                    <th>Priority</th>
+                    <th>SLA Deadline</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="urgentCasesTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                      Loading SLA queue...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 2. Active Specialist Leaderboard -->
+          <div class="data-card op-card">
+            <div class="card-header-flex">
+              <div class="op-header-title">
+                <span class="op-icon-badge purple">👥</span>
+                <div>
+                  <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark);">Specialist Queue &amp; Workload</h4>
+                  <span style="font-size: 12px; color: var(--text-muted);">Active load distribution across HR desks</span>
+                </div>
+              </div>
+              <button class="btn-ghost-sm" onclick="switchView('usersView')">Manage Team →</button>
+            </div>
+            <div class="specialist-list" id="specialistLeaderboardList">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT CASES ACROSS ALL DEPARTMENTS -->
+        <div class="data-card" style="margin-top: 20px;">
           <div class="card-header-flex">
-            <div class="card-header-title">Recent Cases Across All Departments</div>
-            <button class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 13px;" onclick="switchView('casesView')">
-              View All Cases →
-            </button>
+            <div>
+              <div class="card-header-title" style="font-size: 16px;">Recent Employee Queries Across All Departments</div>
+              <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Latest inbound requests processed through triage pipeline</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-secondary" style="width: auto; padding: 6px 14px; font-size: 13px;" onclick="loadDashboard()">
+                ↻ Refresh
+              </button>
+              <button class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 13px;" onclick="switchView('casesView')">
+                View All Cases →
+              </button>
+            </div>
           </div>
           <table class="admin-table">
             <thead>
@@ -293,11 +528,12 @@
                 <th>Assigned Agent</th>
                 <th>Status</th>
                 <th>SLA Due</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="recentCasesTableBody">
               <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
                   Select a section from the sidebar to inspect or manage
                 </td>
               </tr>
@@ -346,9 +582,9 @@
           </div>
         </div>
 
-        <!-- 4-Tile Bento Case KPI Summary Strip -->
+        <!-- 4-Tile Interactive Bento Case KPI Summary Strip -->
         <div class="bento-kpi-grid">
-          <div class="bento-kpi-card">
+          <div class="bento-kpi-card interactive-kpi active" data-bento-filter="ALL" onclick="filterCasesByBento('ALL', this)" title="Click to view all cases">
             <div class="bento-kpi-info">
               <div class="kpi-label">Total Inbound Queries</div>
               <div class="kpi-val" id="caseKpiTotal">0</div>
@@ -362,7 +598,7 @@
             </div>
           </div>
 
-          <div class="bento-kpi-card">
+          <div class="bento-kpi-card interactive-kpi" data-bento-filter="ACTIVE" onclick="filterCasesByBento('ACTIVE', this)" title="Click to filter active triage cases">
             <div class="bento-kpi-info">
               <div class="kpi-label">Active / In Progress</div>
               <div class="kpi-val" id="caseKpiActive">0</div>
@@ -376,7 +612,7 @@
             </div>
           </div>
 
-          <div class="bento-kpi-card">
+          <div class="bento-kpi-card interactive-kpi" data-bento-filter="BREACHED" onclick="filterCasesByBento('BREACHED', this)" title="Click to isolate overdue SLA breached cases">
             <div class="bento-kpi-info">
               <div class="kpi-label">SLA Breached</div>
               <div class="kpi-val" id="caseKpiBreached" style="color: #DC2626;">0</div>
@@ -391,7 +627,7 @@
             </div>
           </div>
 
-          <div class="bento-kpi-card">
+          <div class="bento-kpi-card interactive-kpi" data-bento-filter="RESOLVED" onclick="filterCasesByBento('RESOLVED', this)" title="Click to view closed inquiries">
             <div class="bento-kpi-info">
               <div class="kpi-label">Resolved &amp; Closed</div>
               <div class="kpi-val" id="caseKpiResolved">0</div>
@@ -403,6 +639,17 @@
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
             </div>
+          </div>
+        </div>
+
+        <!-- DEPARTMENT QUEUE TABS BAR (ADMIN COMMAND) -->
+        <div class="case-queue-tabs-wrapper">
+          <div class="case-queue-tabs" id="caseQueueTabsBar">
+            <button class="queue-tab-btn active" onclick="selectQueueTab('', this)">
+              <span>All Queues</span>
+              <span class="queue-tab-badge" id="queueBadgeAll">0</span>
+            </button>
+            <!-- Dynamically populated from backend /api/v1/cases/kpis -->
           </div>
         </div>
 
@@ -421,48 +668,230 @@
             <button class="filter-pill-btn active" onclick="filterCasesByStatus('ALL', this)">All Statuses</button>
             <button class="filter-pill-btn" onclick="filterCasesByStatus('OPEN', this)">Open</button>
             <button class="filter-pill-btn" onclick="filterCasesByStatus('IN_PROGRESS', this)">In Progress</button>
+            <button class="filter-pill-btn" onclick="filterCasesByStatus('WAITING_ON_EMPLOYEE', this)">Waiting on Employee</button>
             <button class="filter-pill-btn" onclick="filterCasesByStatus('RESOLVED', this)">Resolved</button>
           </div>
 
-          <!-- Department and Priority Dropdowns -->
-          <div style="display: flex; gap: 8px;">
-            <select id="caseDeptFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 180px;" onchange="loadCases()">
-              <option value="">All Departments</option>
-            </select>
-            <select id="casePriorityFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 140px;" onchange="loadCases()">
+          <!-- Admin Deep Filters: Priority, SLA Risk & Specialist -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <select id="casePriorityFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 130px;" onchange="loadCases()">
               <option value="">All Priorities</option>
               <option value="CRITICAL">Critical</option>
               <option value="HIGH">High</option>
               <option value="MEDIUM">Medium</option>
               <option value="LOW">Low</option>
             </select>
+            <select id="caseSlaRiskFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 145px;" onchange="loadCases()">
+              <option value="">All SLA Health</option>
+              <option value="BREACHED">🚨 Breached</option>
+              <option value="URGENT">⚠️ Urgent (&lt; 2h)</option>
+              <option value="SAFE">⏱ Safely on Track</option>
+            </select>
+            <select id="caseSpecialistFilter" class="form-input" style="height: 36px; padding: 0 12px; font-size: 12.5px; width: 165px;" onchange="loadCases()">
+              <option value="">All Specialists</option>
+              <option value="UNASSIGNED">Unassigned Queue</option>
+            </select>
+            <button class="btn-secondary" style="height: 36px; padding: 0 10px; font-size: 12px;" onclick="resetCaseFilters()" title="Reset all filters">
+              Reset
+            </button>
           </div>
         </div>
 
-        <!-- Case Table Card Container -->
-        <div class="data-card" style="padding: 0; overflow: hidden; border-radius: 14px;">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Case #</th>
-                <th>Query Title &amp; Category</th>
-                <th>Employee</th>
-                <th>Department</th>
-                <th>Priority</th>
-                <th>Assigned Specialist</th>
-                <th>SLA Countdown</th>
-                <th>Status</th>
-                <th style="text-align: right;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="allCasesTableBody">
-              <tr>
-                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
-                  Loading active cases...
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Case Table Card Container with Horizontal Scroll & Rich Details -->
+        <div class="case-table-card">
+          <!-- Table Header Toolbar with Scroll Hints & Navigation -->
+          <div class="case-table-header-toolbar">
+            <div class="case-table-meta-left">
+              <span class="case-count-pill" id="caseTableCountPill">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span id="caseTableCountText">8 Inbound Queries</span>
+              </span>
+              <span class="table-scroll-hint">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M18 8L22 12L18 16"></path>
+                  <path d="M6 8L2 12L6 16"></path>
+                  <path d="M2 12H22"></path>
+                </svg>
+                <span>Scroll table horizontally for AI Intent, HRMS Profile &amp; Forensic SLA Targets</span>
+              </span>
+            </div>
+
+            <div class="table-scroll-nav-controls">
+              <button type="button" class="btn-scroll-nav" onclick="scrollCaseTable('left')" title="Scroll table left">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Scroll Left</span>
+              </button>
+              <button type="button" class="btn-scroll-nav" onclick="scrollCaseTable('right')" title="Scroll table right">
+                <span>Scroll Right</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Horizontal Scroll Wrapper -->
+          <div class="table-scroll-wrapper" id="caseTableScrollWrapper">
+            <table class="case-command-table">
+              <thead>
+                <tr>
+                  <th style="width: 48px; text-align: center;">
+                    <input type="checkbox" id="selectAllCasesHeader" onchange="toggleSelectAllCases(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--1mg-orange);">
+                  </th>
+                  <th style="min-width: 130px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                      Case #
+                    </span>
+                  </th>
+                  <th style="min-width: 300px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      Query Title &amp; Category
+                    </span>
+                  </th>
+                  <th style="min-width: 220px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                      AI Intent &amp; Match
+                    </span>
+                  </th>
+                  <th style="min-width: 230px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      Employee &amp; HRMS Profile
+                    </span>
+                  </th>
+                  <th style="min-width: 190px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                      HR Department Desk
+                    </span>
+                  </th>
+                  <th style="min-width: 120px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                      Priority
+                    </span>
+                  </th>
+                  <th style="min-width: 200px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                      Assigned Specialist
+                    </span>
+                  </th>
+                  <th style="min-width: 190px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      SLA Countdown &amp; Target
+                    </span>
+                  </th>
+                  <th style="min-width: 145px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      Logged Time
+                    </span>
+                  </th>
+                  <th style="min-width: 125px;">
+                    <span class="th-content">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      Status
+                    </span>
+                  </th>
+                  <th style="min-width: 200px; text-align: right;">
+                    <span class="th-content" style="justify-content: flex-end;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                      Forensic Actions
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="allCasesTableBody">
+                <tr class="table-loading-header-row">
+                  <td colspan="12" style="padding: 16px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; text-align: center;">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 10px;">
+                      <div class="tata-brand-spinner"></div>
+                      <span style="font-size: 13px; font-weight: 700; color: #475569;">
+                        Syncing inbound queries &amp; real-time SLA timers from Tata 1mg Exchange...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="skeleton-row">
+                  <td style="text-align: center;"><div class="skeleton-box" style="width: 16px; height: 16px; margin: 0 auto; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 85px; height: 26px; border-radius: 6px;"></div><div class="skeleton-box" style="width: 65px; height: 12px; margin-top: 5px; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 90px; height: 16px; margin-bottom: 6px; border-radius: 4px;"></div><div class="skeleton-box" style="width: 220px; height: 16px; margin-bottom: 5px; border-radius: 4px;"></div><div class="skeleton-box" style="width: 160px; height: 12px; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 180px; height: 42px; border-radius: 8px;"></div></td>
+                  <td><div style="display: flex; align-items: center; gap: 8px;"><div class="skeleton-box" style="width: 32px; height: 32px; border-radius: 50%;"></div><div><div class="skeleton-box" style="width: 110px; height: 14px; margin-bottom: 5px; border-radius: 4px;"></div><div class="skeleton-box" style="width: 130px; height: 12px; border-radius: 4px;"></div></div></div></td>
+                  <td><div class="skeleton-box" style="width: 140px; height: 24px; border-radius: 6px;"></div><div class="skeleton-box" style="width: 80px; height: 12px; margin-top: 5px; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 80px; height: 24px; border-radius: 999px;"></div></td>
+                  <td><div style="display: flex; align-items: center; gap: 7px;"><div class="skeleton-box" style="width: 26px; height: 26px; border-radius: 50%;"></div><div><div class="skeleton-box" style="width: 95px; height: 14px; margin-bottom: 4px; border-radius: 4px;"></div><div class="skeleton-box" style="width: 110px; height: 11px; border-radius: 4px;"></div></div></div></td>
+                  <td><div class="skeleton-box" style="width: 95px; height: 24px; border-radius: 999px;"></div><div class="skeleton-box" style="width: 115px; height: 12px; margin-top: 5px; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 80px; height: 14px; margin-bottom: 4px; border-radius: 4px;"></div><div class="skeleton-box" style="width: 55px; height: 12px; border-radius: 4px;"></div></td>
+                  <td><div class="skeleton-box" style="width: 85px; height: 24px; border-radius: 999px;"></div></td>
+                  <td style="text-align: right;"><div style="display: inline-flex; gap: 6px;"><div class="skeleton-box" style="width: 75px; height: 30px; border-radius: 6px;"></div><div class="skeleton-box" style="width: 30px; height: 30px; border-radius: 6px;"></div><div class="skeleton-box" style="width: 30px; height: 30px; border-radius: 6px;"></div></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- FLOATING STICKY ADMIN BATCH ACTION BAR -->
+        <div id="floatingBatchBar" class="floating-batch-bar" style="display: none;">
+          <div class="batch-bar-left">
+            <span class="batch-indicator-dot"></span>
+            <span class="batch-count-pill" id="batchSelectedCount">0 Selected</span>
+          </div>
+          
+          <div class="batch-bar-actions">
+            <!-- 1. Bulk Assign Specialist -->
+            <div class="batch-dropdown-wrap">
+              <select id="batchAssignSelect" class="batch-select" onchange="executeBatchAssign(this.value)">
+                <option value="">👤 Reassign Specialist...</option>
+              </select>
+            </div>
+
+            <!-- 2. Bulk Change Status -->
+            <div class="batch-dropdown-wrap">
+              <select id="batchStatusSelect" class="batch-select" onchange="executeBatchStatus(this.value)">
+                <option value="">⚙️ Update Status...</option>
+                <option value="OPEN">Mark as Open</option>
+                <option value="IN_PROGRESS">Mark as In Progress</option>
+                <option value="WAITING_ON_EMPLOYEE">Waiting on Employee</option>
+                <option value="RESOLVED">Mark as Resolved</option>
+              </select>
+            </div>
+
+            <!-- 3. Bulk Change Priority -->
+            <div class="batch-dropdown-wrap">
+              <select id="batchPrioritySelect" class="batch-select" onchange="executeBatchPriority(this.value)">
+                <option value="">⚡ Set Priority...</option>
+                <option value="CRITICAL">Critical (2h SLA)</option>
+                <option value="HIGH">High (12h SLA)</option>
+                <option value="MEDIUM">Medium (24h SLA)</option>
+                <option value="LOW">Low (48h SLA)</option>
+              </select>
+            </div>
+
+            <!-- 4. Bulk Delete -->
+            <button class="batch-btn batch-danger" onclick="executeBatchDelete()" title="Permanently delete selected cases">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>Delete</span>
+            </button>
+
+            <!-- 5. Clear Selection -->
+            <button class="batch-btn batch-ghost" onclick="clearCaseSelection()">
+              ✕ Clear
+            </button>
+          </div>
         </div>
 
       </section>
@@ -892,7 +1321,7 @@
       </div>
 
       <form id="addAgentForm" onsubmit="submitAddAgent(event)">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">System Role *</label>
@@ -981,7 +1410,7 @@
       </div>
 
       <form id="createDeptForm" onsubmit="submitCreateDept(event)">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Department Name *</label>
@@ -1071,7 +1500,7 @@
 
       <form id="editDeptForm" onsubmit="submitEditDept(event)">
         <input type="hidden" id="editDeptId">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Department Name *</label>
@@ -1339,7 +1768,7 @@
         </div>
         <button class="modal-close-btn" onclick="closeDeptFocusModal()">&times;</button>
       </div>
-      <div style="padding: 24px;" id="focusModalBody">
+      <div class="modal-body" style="padding: 24px;" id="focusModalBody">
         <!-- Content populated dynamically -->
       </div>
       <div class="modal-footer">
@@ -1368,7 +1797,7 @@
         </div>
         <button class="modal-close-btn" onclick="closeQuickSandboxModal()">&times;</button>
       </div>
-      <div style="padding: 20px 24px;">
+      <div class="modal-body" style="padding: 20px 24px;">
         <div class="form-group">
           <label class="form-label">Subject</label>
           <input type="text" id="globalSandboxSubject" class="form-input" placeholder="e.g. Laptop crash ho gaya aur VPN connect nahi ho raha">
@@ -1406,7 +1835,7 @@
       </div>
 
       <form id="createCaseForm" onsubmit="submitCreateCase(event)">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
             <div class="form-group" style="margin-bottom: 0;">
@@ -1475,7 +1904,7 @@
         <button class="modal-close-btn" onclick="closeCaseDossierModal()">&times;</button>
       </div>
 
-      <div style="padding: 24px; overflow-y: auto; flex: 1;">
+      <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;">
         <div class="case-dossier-grid">
           
           <!-- LEFT COLUMN: CASE DETAILS & INQUIRY -->
@@ -1522,6 +1951,38 @@
               <div class="dossier-title" style="color: #065F46;">Resolution Telemetry</div>
               <div style="font-size: 12.5px; color: #065F46; line-height: 1.5;" id="dossierResolutionNotes"></div>
             </div>
+
+            <!-- HR Quick Response & Direct Dispatch Composer -->
+            <div class="dossier-card" id="dossierReplyComposerCard">
+              <div class="dossier-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Dispatch Response / Internal Note</span>
+                <div class="reply-type-toggle" style="display: flex; align-items: center; gap: 8px;">
+                  <label style="font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="dossierReplyType" value="PUBLIC_REPLY" checked style="accent-color: var(--1mg-orange);"> Public Email
+                  </label>
+                  <label style="font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="dossierReplyType" value="INTERNAL_NOTE" style="accent-color: var(--tata-blue);"> Internal Note
+                  </label>
+                </div>
+              </div>
+              
+              <!-- Canned Response Macro Pills -->
+              <div class="canned-macros-strip">
+                <span class="macro-label">⚡ Macros:</span>
+                <button type="button" class="macro-pill" onclick="applyDossierMacro('punch_regularized')">Swipe Regularized</button>
+                <button type="button" class="macro-pill" onclick="applyDossierMacro('tds_finance')">TDS Review Dispatched</button>
+                <button type="button" class="macro-pill" onclick="applyDossierMacro('mediclaim_added')">Insurance Endorsed</button>
+                <button type="button" class="macro-pill" onclick="applyDossierMacro('bgv_verified')">BGV Verified</button>
+              </div>
+
+              <textarea id="dossierReplyMessageInput" class="form-input" style="height: 75px; font-size: 12.5px; resize: vertical; margin-top: 8px;" placeholder="Type response to employee or internal supervisory note..."></textarea>
+              
+              <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                <button type="button" class="btn-primary" style="height: 32px; padding: 0 14px; font-size: 12px; width: auto;" onclick="submitDossierReply()">
+                  <span>Dispatch Note →</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- RIGHT COLUMN: FORENSIC AUDIT TIMELINE -->
@@ -1539,11 +2000,18 @@
         </div>
       </div>
 
-      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
         <button type="button" class="btn-secondary" style="color: #DC2626;" id="btnDossierDeleteCase">
           Delete Case
         </button>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary" id="btnDossierOverrideSla" onclick="openSlaOverrideModal(currentDossierCaseId)" style="display: inline-flex; align-items: center; gap: 5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Override SLA</span>
+          </button>
           <button type="button" class="btn-secondary" id="btnDossierReassign">
             Reassign Specialist
           </button>
@@ -1570,7 +2038,7 @@
 
       <form id="reassignCaseForm" onsubmit="submitReassignCase(event)">
         <input type="hidden" id="reassignCaseId">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Department Desk</label>
@@ -1599,6 +2067,57 @@
   </div>
 
   <!-- ============================================================
+       MODAL: ADMIN SLA OVERRIDE & EXTENSION
+       ============================================================ -->
+  <div id="slaOverrideModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">⏱️</span>
+          <div>
+            <h3 style="font-size: 16px; font-weight: 800; color: var(--text-dark); margin: 0;">Admin SLA Override &amp; Extension</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Adjust resolution deadline with supervisory audit justification</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeSlaOverrideModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body" style="padding: 20px 24px;">
+        <input type="hidden" id="overrideCaseId">
+        
+        <div style="background: #F8FAFC; border: 1px solid var(--border-light); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+          <div style="font-size: 13.5px; font-weight: 800; color: var(--1mg-orange);" id="overrideCaseNum">Case #1MG-XXXXX</div>
+          <div style="font-size: 12px; color: #475569; margin-top: 3px;" id="overrideCaseCurrentDue">Current Deadline: Calculating...</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Extension Duration Preset</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <button type="button" class="btn-secondary sla-ext-preset active" data-hours="12" onclick="selectSlaExtensionPreset(12, this)">+12 Hours</button>
+            <button type="button" class="btn-secondary sla-ext-preset" data-hours="24" onclick="selectSlaExtensionPreset(24, this)">+24 Hours</button>
+            <button type="button" class="btn-secondary sla-ext-preset" data-hours="48" onclick="selectSlaExtensionPreset(48, this)">+48 Hours</button>
+          </div>
+          <label class="form-label" style="font-size: 12px; margin-top: 6px;">Or Custom Hours to Add:</label>
+          <input type="number" id="overrideHoursInput" class="form-input" value="12" min="1" max="168" placeholder="Hours to extend">
+        </div>
+
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+          <label class="form-label">Operational Justification / Reason <span style="color: #EF4444;">*</span></label>
+          <textarea id="overrideReasonInput" class="form-input" style="height: 80px; resize: vertical;" placeholder="e.g. Awaiting external insurer verification / Form 16 reconciliation from payroll provider..." required></textarea>
+          <p class="form-helper">This reason will be permanently recorded in the immutable audit dossier.</p>
+        </div>
+      </div>
+      
+      <div class="modal-footer" style="padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px; background: #F8FAFC; border-top: 1px solid var(--border-light);">
+        <button type="button" class="btn-secondary" onclick="closeSlaOverrideModal()">Cancel</button>
+        <button type="button" class="btn-primary" id="btnSubmitSlaOverride" style="width: auto; padding: 0 18px;" onclick="submitSlaOverride()">
+          <span>Confirm Extension →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
        MODAL: RESOLVE CASE (WITH RESOLUTION NOTES)
        ============================================================ -->
   <div id="resolveCaseModal" class="modal-backdrop" style="display: none;">
@@ -1613,7 +2132,7 @@
 
       <form id="resolveCaseForm" onsubmit="submitResolveCase(event)">
         <input type="hidden" id="resolveCaseId">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">Resolution Notes / Action Taken *</label>
@@ -1650,7 +2169,7 @@
 
       <form id="editAgentForm" onsubmit="submitEditAgent(event)">
         <input type="hidden" id="editAgentId">
-        <div style="padding: 20px 24px;">
+        <div class="modal-body" style="padding: 20px 24px;">
           
           <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label">Full Name *</label>
@@ -1741,7 +2260,7 @@
         <button class="modal-close-btn" onclick="closeEmailPreviewModal()">&times;</button>
       </div>
 
-      <div style="padding: 16px; max-height: 520px; overflow-y: auto; background: #F1F5F9;">
+      <div class="modal-body" style="padding: 16px; background: #F1F5F9;">
         <div id="emailHtmlContainer" style="background: #FFFFFF; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
           <!-- Dynamically injected rendered email -->
         </div>
@@ -1765,21 +2284,29 @@
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(4px);
-      z-index: 200;
+      z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 20px 16px;
+      overflow-y: auto;
+      box-sizing: border-box;
       animation: fadeIn 0.15s ease-out;
     }
     .modal-card {
       background: #FFFFFF;
       border-radius: 14px;
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
+      max-height: calc(100vh - 40px);
+      max-height: calc(100dvh - 40px);
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.25);
       border: 1px solid var(--border-light);
       overflow: hidden;
+      position: relative;
+      margin: auto;
       animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .modal-header {
@@ -1788,6 +2315,19 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+      flex-shrink: 0;
+      background: #FFFFFF;
+      z-index: 5;
+      position: relative;
+    }
+    .modal-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3.5px;
+      background: linear-gradient(90deg, var(--1mg-orange) 0%, var(--healthcare-teal) 100%);
     }
     .modal-close-btn {
       background: none;
@@ -1796,8 +2336,62 @@
       line-height: 1;
       color: var(--text-muted);
       cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
     }
-    .modal-close-btn:hover { color: var(--text-primary); }
+    .modal-close-btn:hover { color: var(--text-primary); background: #F0F0F0; }
+    
+    .modal-card form {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .modal-body,
+    .modal-scroll-body,
+    .modal-card form > div:not(.modal-footer),
+    .modal-card > div:not(.modal-header):not(.modal-footer) {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 20px 24px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #CBD5E1 #F8FAFC;
+    }
+    .modal-body::-webkit-scrollbar,
+    .modal-scroll-body::-webkit-scrollbar,
+    .modal-card form > div:not(.modal-footer)::-webkit-scrollbar,
+    .modal-card > div:not(.modal-header):not(.modal-footer)::-webkit-scrollbar,
+    .dept-selector-box::-webkit-scrollbar {
+      width: 7px;
+    }
+    .modal-body::-webkit-scrollbar-track,
+    .modal-scroll-body::-webkit-scrollbar-track,
+    .modal-card form > div:not(.modal-footer)::-webkit-scrollbar-track,
+    .modal-card > div:not(.modal-header):not(.modal-footer)::-webkit-scrollbar-track,
+    .dept-selector-box::-webkit-scrollbar-track {
+      background: #F8FAFC;
+      border-radius: 4px;
+    }
+    .modal-body::-webkit-scrollbar-thumb,
+    .modal-scroll-body::-webkit-scrollbar-thumb,
+    .modal-card form > div:not(.modal-footer)::-webkit-scrollbar-thumb,
+    .modal-card > div:not(.modal-header):not(.modal-footer)::-webkit-scrollbar-thumb,
+    .dept-selector-box::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 4px;
+    }
+    .modal-body::-webkit-scrollbar-thumb:hover,
+    .modal-scroll-body::-webkit-scrollbar-thumb:hover,
+    .modal-card form > div:not(.modal-footer)::-webkit-scrollbar-thumb:hover,
+    .modal-card > div:not(.modal-header):not(.modal-footer)::-webkit-scrollbar-thumb:hover,
+    .dept-selector-box::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+    
     .modal-footer {
       padding: 14px 24px;
       border-top: 1px solid var(--border-light);
@@ -1806,6 +2400,8 @@
       align-items: center;
       justify-content: flex-end;
       gap: 10px;
+      flex-shrink: 0;
+      z-index: 5;
     }
     .btn-secondary {
       height: 40px;
@@ -1828,6 +2424,6 @@
   <!-- DYNAMIC TATA 1MG TOAST CONTAINER -->
   <div id="toastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
-  <script src="/admin-static/js/admin.js?v=2.5"></script>
+  <script src="/admin-static/js/admin.js?v=3.0"></script>
 </body>
 </html>
