@@ -24,13 +24,13 @@ services:
       - key: NEON_DBNAME
         value: tata1mg_desk
       - key: ADMIN_EMAIL
-        value: vaibhavx002@zohomail.in
+        value: vaibhav.v1@1mg.com
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
         value: 587
       - key: SMTP_USER
-        sync: false
+        value: vaibhav.v1@1mg.com
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM

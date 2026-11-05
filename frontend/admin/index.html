@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Console · Tata 1mg People Desk</title>
-  <link rel="stylesheet" href="/css/style.css?v=3.0">
-  <link rel="stylesheet" href="/admin-static/css/admin.css?v=3.0">
+  <link rel="stylesheet" href="/css/style.css?v=4.0">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=4.0">
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <!-- Chart.js 4.4.1 for Tata 1mg Analytics Visualizations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -913,7 +913,7 @@
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                Connected SMTP: vaibhavx002@zohomail.in
+                Connected SMTP: vaibhav.v1@1mg.com
               </span>
             </div>
           </div>
@@ -1258,48 +1258,1301 @@
         </div>
       </section>
 
-      <!-- 6. ACTION VIEW -->
+      <!-- 6. ACTION VIEW (ACTION CENTER, SLA ENGINE & AUTOMATIONS STUDIO) -->
       <section id="actionsView" class="view-section">
-        <div class="data-card" style="padding: 24px;">
-          <div class="card-header-title" style="margin-bottom: 8px;">Action Center & Automations</div>
-          <p style="color: var(--text-muted); font-size: 13.5px; margin-bottom: 20px;">
-            Configure dynamic routing rules, trigger simulated employee queries, and broadcast department notices.
-          </p>
-          <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-            <button class="btn-primary" style="width: auto; padding: 10px 18px; display: inline-flex; align-items: center; gap: 7px;" onclick="triggerSimulatedEmail()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        
+        <style>
+          /* Scoped Styles for Action Center & Automations */
+          #actionsView .action-grid-layout {
+            display: grid;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+          }
+          @media (max-width: 1100px) {
+            #actionsView .action-grid-layout {
+              grid-template-columns: 1fr;
+            }
+          }
+          #actionsView .action-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+          }
+          #actionsView .action-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #F1F5F9;
+          }
+          #actionsView .action-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1E293B;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          #actionsView .action-card-subtitle {
+            font-size: 12.5px;
+            color: #64748B;
+            margin-top: 3px;
+          }
+          #actionsView .bento-kpi-grid > .bento-kpi-card:nth-child(1) { border-top: 3px solid #486AAE !important; }
+          #actionsView .bento-kpi-grid > .bento-kpi-card:nth-child(2) { border-top: 3px solid #DC2626 !important; }
+          #actionsView .bento-kpi-grid > .bento-kpi-card:nth-child(3) { border-top: 3px solid #10B190 !important; }
+          #actionsView .bento-kpi-grid > .bento-kpi-card:nth-child(4) { border-top: 3px solid #F59E0B !important; }
+
+          #actionsView .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+          }
+          #actionsView .form-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+          }
+          #actionsView .form-col label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+          }
+          #actionsView .form-col input,
+          #actionsView .form-col select,
+          #actionsView .form-col textarea {
+            width: 100% !important;
+            border-radius: 8px !important;
+            border: 1px solid #CBD5E1 !important;
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+            color: #1E293B !important;
+            background: #FFFFFF !important;
+            outline: none !important;
+            box-sizing: border-box !important;
+          }
+          #actionsView .form-col input:focus,
+          #actionsView .form-col select:focus,
+          #actionsView .form-col textarea:focus {
+            border-color: #FF6F61 !important;
+            box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.18) !important;
+          }
+
+          #actionsView .sim-preset-pill {
+            padding: 5px 12px;
+            border-radius: 6px;
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+          }
+          #actionsView .sim-preset-pill:hover {
+            background: #E2E8F0;
+            color: #1E293B;
+          }
+          #actionsView .sim-preset-pill.active {
+            background: #FF6F61;
+            color: #FFFFFF;
+            border-color: #FF6F61;
+          }
+
+          #actionsView .sla-patrol-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            margin-bottom: 10px;
+          }
+          #actionsView .sla-patrol-item.on-track {
+            background: #F0FDF4;
+            border-color: #BBF7D0;
+          }
+
+          #actionsView .audit-stream-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #F1F5F9;
+            font-size: 12.5px;
+          }
+          #actionsView .audit-stream-card:last-child {
+            border-bottom: none;
+          }
+          #actionsView .audit-actor-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #EFF3FA;
+            color: #486AAE;
+            font-weight: 700;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+        </style>
+
+        <!-- Hero Header Bar -->
+        <div class="dept-hero-header">
+          <div class="dept-hero-title-group">
+            <h2>
+              <span>Action Center &amp; Automations Studio</span>
+            </h2>
+            <p>Simulated employee inquiry ingestion, real-time SLA breach audit patrols, automated escalations, and system-wide announcements</p>
+            <div class="dept-hero-badges">
+              <span class="status-capsule active">● AUTOMATIONS ENGINE ACTIVE</span>
+              <span class="smtp-capsule">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                SLA Patrol: Armed
+              </span>
+            </div>
+          </div>
+          <div class="dept-hero-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-primary" style="height: 40px; width: auto; padding: 0 18px; display: inline-flex; align-items: center; gap: 7px; font-weight: 700; background: var(--1mg-orange);" onclick="runLiveSLAPatrol()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span>Run SLA Patrol Scan</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4-Card Bento KPI Strip -->
+        <div class="bento-kpi-grid">
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">Active SLA Monitors</div>
+              <div class="kpi-val" id="actKpiMonitors" style="color: #486AAE;">0</div>
+              <div class="kpi-sub">Active in-flight cases</div>
+            </div>
+            <div class="bento-kpi-icon blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">SLA Breaches Detected</div>
+              <div class="kpi-val" id="actKpiBreaches" style="color: #DC2626;">0</div>
+              <div class="kpi-sub">Tickets past SLA due date</div>
+            </div>
+            <div class="bento-kpi-icon amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">AI Auto-Routed</div>
+              <div class="kpi-val" id="actKpiAutoRouted" style="color: #10B190;">0</div>
+              <div class="kpi-sub">Classified via NLP &amp; Intent</div>
+            </div>
+            <div class="bento-kpi-icon teal">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">Automated Actions Run</div>
+              <div class="kpi-val" id="actKpiAutomations" style="color: #F59E0B;">0</div>
+              <div class="kpi-sub">System events &amp; escalations</div>
+            </div>
+            <div class="bento-kpi-icon orange">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
               </svg>
-              <span>Trigger Simulated Inbound Email</span>
-            </button>
-            <button class="btn-primary" style="width: auto; padding: 10px 18px; background: var(--1mg-teal); display: inline-flex; align-items: center; gap: 7px;" onclick="rerunSLACheck()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-              <span>Re-run SLA Compliance Check</span>
-            </button>
+            </div>
           </div>
         </div>
+
+        <!-- Master 2-Column Command Grid -->
+        <div class="action-grid-layout">
+          
+          <!-- LEFT COLUMN: Action Workbenches -->
+          <div>
+            
+            <!-- WORKBENCH 1: Simulated Email Ingestion -->
+            <div class="action-card">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span>Simulated Inbound Email Ingestion Sandbox</span>
+                  </div>
+                  <div class="action-card-subtitle">
+                    Inject authentic employee correspondence to test automated AI routing, department dispatch &amp; SLA timer allocation
+                  </div>
+                </div>
+              </div>
+
+              <!-- Presets Bar -->
+              <div style="margin-bottom: 14px;">
+                <div style="font-size: 11.5px; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom: 6px;">
+                  Quick Scenario Presets:
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button type="button" class="sim-preset-pill active" onclick="loadSimPreset(0, this)">1. Salary Slip Missing</button>
+                  <button type="button" class="sim-preset-pill" onclick="loadSimPreset(1, this)">2. Biometric Missed Swipe</button>
+                  <button type="button" class="sim-preset-pill" onclick="loadSimPreset(2, this)">3. Mediclaim Cashless Card</button>
+                  <button type="button" class="sim-preset-pill" onclick="loadSimPreset(3, this)">4. PF Transfer UAN</button>
+                  <button type="button" class="sim-preset-pill" onclick="loadSimPreset(4, this)">5. Relieving Letter &amp; F&amp;F</button>
+                  <button type="button" class="sim-preset-pill" onclick="loadSimPreset(-1, this)">Custom Query</button>
+                </div>
+              </div>
+
+              <!-- Ingestion Form -->
+              <form id="simInboundForm" onsubmit="submitSimulatedInbound(event)">
+                <div class="form-row">
+                  <div class="form-col">
+                    <label>Employee Name *</label>
+                    <input type="text" id="simEmpName" required placeholder="e.g. Vaibhav Yadav">
+                  </div>
+                  <div class="form-col">
+                    <label>Employee Email *</label>
+                    <input type="email" id="simEmpEmail" required placeholder="e.g. vaibhav.v1@1mg.com">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-col" style="flex: 2;">
+                    <label>Inquiry Subject *</label>
+                    <input type="text" id="simSubject" required placeholder="Subject line of incoming employee email...">
+                  </div>
+                  <div class="form-col" style="flex: 1;">
+                    <label>Priority</label>
+                    <select id="simPriority">
+                      <option value="CRITICAL">Critical Priority</option>
+                      <option value="HIGH">High Priority</option>
+                      <option value="MEDIUM" selected>Medium Priority</option>
+                      <option value="LOW">Low Priority</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-col">
+                    <label>Target Department Routing</label>
+                    <select id="simDeptSelect">
+                      <option value="">🤖 AI Auto-Classifier (Recommended)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-col">
+                    <label>Email Body &amp; Description *</label>
+                    <textarea id="simDescription" rows="4" required placeholder="Full message text sent by employee..."></textarea>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
+                  <button type="submit" class="btn-primary" style="height: 40px; width: auto; padding: 0 22px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <span>🚀 Ingest &amp; Route Real-Time Case</span>
+                  </button>
+                  <span style="font-size: 12px; color: #64748B;">Auto-generates sequential #1MG ticket &amp; starts SLA clock</span>
+                </div>
+              </form>
+
+              <!-- Live Simulation Feedback Card -->
+              <div id="simFeedbackBox" style="display: none; margin-top: 16px; padding: 14px 16px; border-radius: 8px; background: #ECFDF5; border: 1px solid #A7F3D0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <strong style="color: #065F46; font-size: 13px;">✓ Simulated Query Ingested &amp; Dispatched!</strong>
+                    <div id="simFeedbackText" style="font-size: 12.5px; color: #047857; margin-top: 2px;"></div>
+                  </div>
+                  <a id="simFeedbackLink" href="#" target="_blank" class="btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; background: #fff;">
+                    <span>Open Case Dossier →</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- WORKBENCH 2: SLA Breach Patrol & Live Remediation -->
+            <div class="action-card">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>SLA Compliance Patrol &amp; Escalation Remediation</span>
+                  </div>
+                  <div class="action-card-subtitle">
+                    Live scan of active cases against resolution deadlines with 1-click critical escalations
+                  </div>
+                </div>
+                <button type="button" class="btn-secondary" style="height: 34px; padding: 0 14px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" onclick="runLiveSLAPatrol()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                  </svg>
+                  <span>Re-scan Queue</span>
+                </button>
+              </div>
+
+              <!-- Results Container -->
+              <div id="slaPatrolContainer">
+                <div style="text-align: center; padding: 30px; color: #64748B;">
+                  <div style="display: inline-block; width: 22px; height: 22px; border: 3px solid #E2E8F0; border-top-color: var(--1mg-orange); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                  <div style="margin-top: 8px; font-size: 13px;">Scanning active tickets for SLA breach conditions...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WORKBENCH 3: Enterprise Announcement Dispatcher -->
+            <div class="action-card">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#486AAE" stroke-width="2.2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Broadcast Enterprise Announcement</span>
+                  </div>
+                  <div class="action-card-subtitle">
+                    Publish operational bulletins and maintenance alerts to all active People Desk agents
+                  </div>
+                </div>
+              </div>
+
+              <form id="broadcastForm" onsubmit="submitBroadcastNotice(event)">
+                <div class="form-row">
+                  <div class="form-col" style="flex: 2;">
+                    <label>Announcement Headline *</label>
+                    <input type="text" id="bcTitle" required placeholder="e.g. Monthly Payroll Freeze on 28th October">
+                  </div>
+                  <div class="form-col" style="flex: 1;">
+                    <label>Severity Level</label>
+                    <select id="bcSeverity">
+                      <option value="INFO">ℹ️ Info (Routine)</option>
+                      <option value="WARNING">⚠️ Warning (Operational)</option>
+                      <option value="URGENT">🚨 Urgent (Immediate Attention)</option>
+                    </select>
+                  </div>
+                  <div class="form-col" style="flex: 1;">
+                    <label>Target Audience</label>
+                    <select id="bcTargetDept">
+                      <option value="ALL">All Departments</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-col">
+                    <label>Message Notice *</label>
+                    <textarea id="bcMessage" rows="3" required placeholder="Operational details, expected query spike notice, or scheduled system downtime..."></textarea>
+                  </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                  <button type="submit" class="btn-primary" style="height: 38px; width: auto; padding: 0 20px; font-size: 13px; font-weight: 700; background: #486AAE;">
+                    📢 Dispatch Broadcast Notice
+                  </button>
+                </div>
+              </form>
+            </div>
+
+          </div>
+
+          <!-- RIGHT COLUMN: System Utilities & Real-Time Audit Stream -->
+          <div>
+            
+            <!-- MAINTENANCE SUITE -->
+            <div class="action-card">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.2">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                      <line x1="8" y1="21" x2="16" y2="21"></line>
+                      <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span>Operational Maintenance &amp; Health Suite</span>
+                  </div>
+                  <div class="action-card-subtitle">
+                    Automated directory synchronization, database latency checks, and cache maintenance
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" class="btn-secondary" style="width: 100%; height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 600;" onclick="syncDarwinboxHrms()">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="8.5" cy="7" r="4"></circle>
+                      <line x1="20" y1="8" x2="20" y2="14"></line>
+                      <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                    <span>Sync Central Darwinbox HRMS Directory</span>
+                  </div>
+                  <span class="status-capsule active" style="font-size: 10px;">SYNC</span>
+                </button>
+
+                <button type="button" class="btn-secondary" style="width: 100%; height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 600;" onclick="pingDatabaseHealth()">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#486AAE" stroke-width="2.2">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                    <span>Ping Neon Database Connection &amp; Latency</span>
+                  </div>
+                  <span class="smtp-capsule" id="dbPingBadge" style="font-size: 10px;">TEST PING</span>
+                </button>
+
+                <button type="button" class="btn-secondary" style="width: 100%; height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 600;" onclick="clearSystemCache()">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Purge Stale Temporary Telemetry Cache</span>
+                  </div>
+                  <span style="font-size: 11px; color: #64748B;">CLEAN</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- AUDIT STREAM -->
+            <div class="action-card" style="padding: 16px 20px;">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#486AAE" stroke-width="2.2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Real-Time Automation Event Stream</span>
+                  </div>
+                  <div class="action-card-subtitle">
+                    Forensic log of system escalations, SLA checks, and announcements
+                  </div>
+                </div>
+              </div>
+
+              <div id="actionsAuditStream" style="max-height: 400px; overflow-y: auto;">
+                <div style="text-align: center; color: #64748B; padding: 25px; font-size: 12.5px;">
+                  Loading recent automation events...
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTIVE BROADCASTS LIST -->
+            <div class="action-card" style="padding: 16px 20px;">
+              <div class="action-card-header">
+                <div>
+                  <div class="action-card-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>Active Broadcast Notices</span>
+                  </div>
+                  <div class="action-card-subtitle">Live bulletins across departments</div>
+                </div>
+              </div>
+
+              <div id="actionsBroadcastsList">
+                <div style="text-align: center; color: #64748B; padding: 20px; font-size: 12.5px;">
+                  No active broadcast notices currently dispatched.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </section>
 
-      <!-- 7. REPORT VIEW -->
+      <!-- 7. REPORT VIEW (EXECUTIVE ANALYTICS & AUDIT COMMAND) -->
       <section id="reportsView" class="view-section">
-        <div class="data-card" style="padding: 24px;">
-          <div class="card-header-title" style="margin-bottom: 8px;">Download Reports</div>
-          <p style="color: var(--text-muted); font-size: 13.5px; margin-bottom: 24px;">
-            Export filtered case records and SLA metrics in CSV format.
-          </p>
-          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-            <button class="btn-primary" style="width: auto; padding: 10px 20px;" onclick="downloadCaseReport()">
-              📥 Download All Cases (CSV)
+        
+        <style>
+          /* High-Priority Scoped Styles for Reports View */
+          #reportsView .report-cockpit-card {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            padding: 18px 22px !important;
+            margin-bottom: 22px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03) !important;
+          }
+          #reportsView .report-timeframe-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 16px !important;
+            flex-wrap: wrap !important;
+            padding-bottom: 14px !important;
+            border-bottom: 1px solid #F1F5F9 !important;
+            margin-bottom: 16px !important;
+          }
+          #reportsView .report-date-presets {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            flex-wrap: wrap !important;
+          }
+          #reportsView .report-date-pill {
+            height: 32px !important;
+            padding: 0 14px !important;
+            border-radius: 999px !important;
+            border: 1px solid #E2E8F0 !important;
+            background: #FFFFFF !important;
+            color: #475569 !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+          }
+          #reportsView .report-date-pill:hover {
+            background: #F8FAFC !important;
+            border-color: #CBD5E1 !important;
+          }
+          #reportsView .report-date-pill.active {
+            background: #FF6F61 !important;
+            color: #FFFFFF !important;
+            border-color: #FF6F61 !important;
+            box-shadow: 0 2px 6px rgba(255, 111, 97, 0.28) !important;
+          }
+          #reportsView .report-custom-date-box {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            font-size: 12.5px !important;
+            color: #64748B !important;
+            font-weight: 600 !important;
+          }
+          #reportsView .report-custom-date-box input[type="date"] {
+            height: 32px !important;
+            padding: 0 10px !important;
+            border-radius: 6px !important;
+            border: 1px solid #E2E8F0 !important;
+            font-size: 12px !important;
+            color: #1E293B !important;
+            background: #FFFFFF !important;
+            outline: none !important;
+          }
+          #reportsView .report-custom-date-box input[type="date"]:focus {
+            border-color: #FF6F61 !important;
+          }
+          #reportsView .report-filter-bar {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            flex-wrap: wrap !important;
+          }
+          #reportsView .report-select-wrap {
+            flex: 1 1 150px !important;
+            min-width: 140px !important;
+            position: relative !important;
+          }
+          #reportsView .report-select-wrap select {
+            width: 100% !important;
+            height: 38px !important;
+            padding: 0 10px !important;
+            font-size: 12.5px !important;
+            border-radius: 8px !important;
+            border: 1px solid #E2E8F0 !important;
+            background: #FFFFFF !important;
+            color: #1E293B !important;
+            outline: none !important;
+            font-weight: 500 !important;
+          }
+          #reportsView .report-select-wrap select:focus {
+            border-color: #FF6F61 !important;
+            box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.18) !important;
+          }
+          #reportsView .report-search-wrap {
+            flex: 1.5 1 220px !important;
+            min-width: 200px !important;
+            position: relative !important;
+          }
+          #reportsView .report-search-wrap input {
+            width: 100% !important;
+            height: 38px !important;
+            padding: 0 12px 0 36px !important;
+            font-size: 12.5px !important;
+            border-radius: 8px !important;
+            border: 1px solid #E2E8F0 !important;
+            background: #FFFFFF !important;
+            color: #1E293B !important;
+            outline: none !important;
+          }
+          #reportsView .report-search-wrap input:focus {
+            border-color: #FF6F61 !important;
+            box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.18) !important;
+          }
+          #reportsView .report-search-wrap svg {
+            position: absolute !important;
+            left: 12px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            width: 15px !important;
+            height: 15px !important;
+            color: #94A3B8 !important;
+          }
+          #reportsView .report-filter-actions {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          #reportsView .btn-rep-filter {
+            height: 38px !important;
+            width: auto !important;
+            padding: 0 20px !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            border-radius: 8px !important;
+            background: #FF6F61 !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+            box-shadow: 0 2px 6px rgba(255, 111, 97, 0.28) !important;
+          }
+          #reportsView .btn-rep-filter:hover {
+            background: #EE5A4C !important;
+            transform: translateY(-1px) !important;
+          }
+          #reportsView .btn-rep-reset {
+            height: 38px !important;
+            width: 38px !important;
+            padding: 0 !important;
+            border-radius: 8px !important;
+            border: 1px solid #CBD5E1 !important;
+            background: #FFFFFF !important;
+            color: #475569 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 15px !important;
+            cursor: pointer !important;
+            transition: all 0.15s ease !important;
+          }
+          #reportsView .btn-rep-reset:hover {
+            background: #F1F5F9 !important;
+            color: #1E293B !important;
+          }
+          #reportsView .report-charts-grid {
+            display: grid !important;
+            grid-template-columns: 2fr 1fr 1fr !important;
+            gap: 16px !important;
+            margin-bottom: 22px !important;
+          }
+          @media (max-width: 1100px) {
+            #reportsView .report-charts-grid {
+              grid-template-columns: 1fr !important;
+            }
+          }
+          #reportsView .report-chart-card {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            padding: 18px 20px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03) !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          #reportsView .report-chart-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 12px !important;
+          }
+          #reportsView .report-chart-title {
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            color: #1E293B !important;
+          }
+          #reportsView .report-chart-subtitle {
+            font-size: 11.5px !important;
+            color: #64748B !important;
+          }
+          #reportsView .report-chart-canvas-box {
+            position: relative !important;
+            height: 210px !important;
+            width: 100% !important;
+          }
+
+          /* Bento KPI Card Accents */
+          #reportsView .bento-kpi-card {
+            border-radius: 12px !important;
+            transition: all 0.2s ease !important;
+          }
+          #reportsView .bento-kpi-card:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06) !important;
+          }
+          #reportsView .bento-kpi-grid > .bento-kpi-card:nth-child(1) { border-top: 3px solid #FF6F61 !important; }
+          #reportsView .bento-kpi-grid > .bento-kpi-card:nth-child(2) { border-top: 3px solid #10B190 !important; }
+          #reportsView .bento-kpi-grid > .bento-kpi-card:nth-child(3) { border-top: 3px solid #486AAE !important; }
+          #reportsView .bento-kpi-grid > .bento-kpi-card:nth-child(4) { border-top: 3px solid #DC2626 !important; }
+
+          /* Modern Segmented Tabs Bar */
+          #reportsView .report-tabs-bar {
+            display: inline-flex !important;
+            background: #F1F5F9 !important;
+            padding: 5px !important;
+            border-radius: 12px !important;
+            gap: 6px !important;
+            margin-bottom: 20px !important;
+            border: 1px solid #E2E8F0 !important;
+            overflow-x: auto !important;
+            max-width: 100% !important;
+          }
+          #reportsView .report-tab-btn {
+            border: none !important;
+            background: transparent !important;
+            padding: 8px 16px !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            white-space: nowrap !important;
+            transition: all 0.18s ease !important;
+          }
+          #reportsView .report-tab-btn:hover {
+            color: #1E293B !important;
+            background: rgba(255, 255, 255, 0.7) !important;
+          }
+          #reportsView .report-tab-btn.active {
+            background: #FFFFFF !important;
+            color: #FF6F61 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+          }
+          #reportsView .report-tab-badge {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            padding: 2px 8px !important;
+            border-radius: 999px !important;
+            background: #E2E8F0 !important;
+            color: #475569 !important;
+          }
+          #reportsView .report-tab-btn.active .report-tab-badge {
+            background: #FFF2ED !important;
+            color: #FF6F61 !important;
+          }
+
+          /* Table & Command Grid Styling */
+          #reportsView .report-table-card {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 12px !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.03) !important;
+          }
+          #reportsView .table-scroll-wrapper {
+            width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          #reportsView .report-command-table {
+            width: 100% !important;
+            min-width: 960px !important;
+            border-collapse: collapse !important;
+            text-align: left !important;
+          }
+          #reportsView .report-command-table th {
+            background: #F8FAFC !important;
+            color: #475569 !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            padding: 13px 16px !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            white-space: nowrap !important;
+          }
+          #reportsView .report-command-table td {
+            padding: 13px 16px !important;
+            border-bottom: 1px solid #F1F5F9 !important;
+            font-size: 13px !important;
+            color: #1E293B !important;
+            vertical-align: middle !important;
+          }
+          #reportsView .report-command-table tr:hover td {
+            background: #F8FAFC !important;
+          }
+
+          /* Status & Priority Capsules */
+          #reportsView .rep-pill-status {
+            display: inline-flex !important;
+            align-items: center !important;
+            padding: 3px 10px !important;
+            border-radius: 999px !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.2px !important;
+            white-space: nowrap !important;
+          }
+          #reportsView .rep-pill-status.open {
+            background: #EFF6FF !important;
+            color: #2563EB !important;
+            border: 1px solid #BFDBFE !important;
+          }
+          #reportsView .rep-pill-status.in-progress {
+            background: #FFFBEB !important;
+            color: #D97706 !important;
+            border: 1px solid #FDE68A !important;
+          }
+          #reportsView .rep-pill-status.waiting {
+            background: #F5F3FF !important;
+            color: #7C3AED !important;
+            border: 1px solid #DDD6FE !important;
+          }
+          #reportsView .rep-pill-status.resolved {
+            background: #ECFDF5 !important;
+            color: #059669 !important;
+            border: 1px solid #A7F3D0 !important;
+          }
+          #reportsView .rep-pill-status.closed {
+            background: #F1F5F9 !important;
+            color: #475569 !important;
+            border: 1px solid #CBD5E1 !important;
+          }
+
+          #reportsView .rep-pill-prio {
+            display: inline-flex !important;
+            align-items: center !important;
+            padding: 3px 8px !important;
+            border-radius: 5px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+          }
+          #reportsView .rep-pill-prio.critical {
+            background: #FEF2F2 !important;
+            color: #DC2626 !important;
+            border: 1px solid #FECACA !important;
+          }
+          #reportsView .rep-pill-prio.high {
+            background: #FFF7ED !important;
+            color: #EA580C !important;
+            border: 1px solid #FFEDD5 !important;
+          }
+          #reportsView .rep-pill-prio.medium {
+            background: #EFF6FF !important;
+            color: #2563EB !important;
+            border: 1px solid #DBEAFE !important;
+          }
+          #reportsView .rep-pill-prio.low {
+            background: #F8FAFC !important;
+            color: #64748B !important;
+            border: 1px solid #E2E8F0 !important;
+          }
+
+          /* SLA Badges */
+          #reportsView .report-sla-pill {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 5px !important;
+            padding: 3px 10px !important;
+            border-radius: 999px !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+          }
+          #reportsView .report-sla-pill.on-track {
+            background: #ECFDF5 !important;
+            color: #059669 !important;
+            border: 1px solid #A7F3D0 !important;
+          }
+          #reportsView .report-sla-pill.resolved-on-time {
+            background: #F0FDF4 !important;
+            color: #16A34A !important;
+            border: 1px solid #BBF7D0 !important;
+          }
+          #reportsView .report-sla-pill.breached {
+            background: #FEF2F2 !important;
+            color: #DC2626 !important;
+            border: 1px solid #FECACA !important;
+          }
+          #reportsView .report-sla-pill.resolved-breached {
+            background: #FFFBEB !important;
+            color: #D97706 !important;
+            border: 1px solid #FDE68A !important;
+          }
+        </style>
+        
+        <!-- Hero Header Bar -->
+        <div class="dept-hero-header">
+          <div class="dept-hero-title-group">
+            <h2>
+              <span>Executive Reports &amp; Operational Analytics</span>
+            </h2>
+            <p>Real-time query audits, SLA adherence telemetry, department workloads, and agent performance matrices</p>
+            <div class="dept-hero-badges">
+              <span class="status-capsule active">● LIVE ANALYTICS ENGINE</span>
+              <span class="smtp-capsule">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Neon DB Sync: Real-Time
+              </span>
+            </div>
+          </div>
+          <div class="dept-hero-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-secondary" style="height: 40px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600;" onclick="exportCurrentReport('csv')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export CSV</span>
             </button>
-            <button class="btn-primary" style="width: auto; padding: 10px 20px; background: var(--1mg-teal);" onclick="downloadSLAReport()">
-              📥 Download SLA Performance Report (CSV)
+            <button class="btn-secondary" style="height: 40px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600;" onclick="printExecutiveReport()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              <span>Print / PDF Brief</span>
             </button>
           </div>
         </div>
+
+        <!-- 4-Card Bento KPI Strip -->
+        <div class="bento-kpi-grid">
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">Total Inquiries in Scope</div>
+              <div class="kpi-val" id="repKpiTotal">0</div>
+              <div class="kpi-sub">Filtered case records</div>
+            </div>
+            <div class="bento-kpi-icon orange">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">SLA Compliance Rate</div>
+              <div class="kpi-val" id="repKpiSlaRate" style="color: #10B190;">0%</div>
+              <div class="kpi-sub">Target SLA adherence</div>
+            </div>
+            <div class="bento-kpi-icon teal">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">Average Resolution TAT</div>
+              <div class="kpi-val" id="repKpiAvgTat" style="color: #486AAE;">0.0h</div>
+              <div class="kpi-sub">Turnaround time to resolve</div>
+            </div>
+            <div class="bento-kpi-icon blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+          </div>
+
+          <div class="bento-kpi-card">
+            <div class="bento-kpi-info">
+              <div class="kpi-label">SLA Breaches / Escalated</div>
+              <div class="kpi-val" id="repKpiBreached" style="color: #DC2626;">0</div>
+              <div class="kpi-sub">Past SLA deadline</div>
+            </div>
+            <div class="bento-kpi-icon amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Query Parameter Cockpit (Refined Horizontal Bento Architecture) -->
+        <div class="report-cockpit-card">
+          <!-- Timeframe & Date Range Row -->
+          <div class="report-timeframe-row">
+            <div class="report-date-presets">
+              <span style="font-size: 11.5px; font-weight: 700; color: #64748B; text-transform: uppercase; margin-right: 4px;">Timeframe:</span>
+              <button type="button" class="report-date-pill active" data-preset="ALL" onclick="setReportDatePreset('ALL', this)">All Time</button>
+              <button type="button" class="report-date-pill" data-preset="TODAY" onclick="setReportDatePreset('TODAY', this)">Today</button>
+              <button type="button" class="report-date-pill" data-preset="YESTERDAY" onclick="setReportDatePreset('YESTERDAY', this)">Yesterday</button>
+              <button type="button" class="report-date-pill" data-preset="7D" onclick="setReportDatePreset('7D', this)">Last 7 Days</button>
+              <button type="button" class="report-date-pill" data-preset="30D" onclick="setReportDatePreset('30D', this)">Last 30 Days</button>
+              <button type="button" class="report-date-pill" data-preset="MTD" onclick="setReportDatePreset('MTD', this)">This Month (MTD)</button>
+            </div>
+
+            <div class="report-custom-date-box">
+              <span>📅 Custom Range:</span>
+              <input type="date" id="repFilterDateFrom" title="Start Date" onchange="handleReportDateInputChange()">
+              <span>to</span>
+              <input type="date" id="repFilterDateTo" title="End Date" onchange="handleReportDateInputChange()">
+            </div>
+          </div>
+
+          <!-- Horizontal Filter & Search Strip -->
+          <div class="report-filter-bar">
+            <!-- Department -->
+            <div class="report-select-wrap">
+              <select id="repFilterDept" onchange="applyReportFilters()">
+                <option value="0">All Departments</option>
+              </select>
+            </div>
+
+            <!-- Case Status -->
+            <div class="report-select-wrap">
+              <select id="repFilterStatus" onchange="applyReportFilters()">
+                <option value="ALL">All Statuses</option>
+                <option value="OPEN">Open (In Triage)</option>
+                <option value="IN_PROGRESS">In Progress (Specialist)</option>
+                <option value="WAITING_ON_EMPLOYEE">Waiting on Employee</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </div>
+
+            <!-- Priority -->
+            <div class="report-select-wrap">
+              <select id="repFilterPriority" onchange="applyReportFilters()">
+                <option value="ALL">All Priorities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+
+            <!-- SLA Adherence -->
+            <div class="report-select-wrap">
+              <select id="repFilterSla" onchange="applyReportFilters()">
+                <option value="ALL">All SLA States</option>
+                <option value="COMPLIANT">Within SLA (Met / On Track)</option>
+                <option value="BREACHED">Breached SLA Only</option>
+              </select>
+            </div>
+
+            <!-- Omni Search -->
+            <div class="report-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="repFilterSearch" placeholder="Search case ref, employee, keyword..." onkeyup="handleReportSearchKey(event)">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="report-filter-actions">
+              <button type="button" class="btn-rep-filter" onclick="applyReportFilters()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span>Filter</span>
+              </button>
+              <button type="button" class="btn-rep-reset" onclick="resetReportFilters()" title="Reset all filters to default">
+                ↺
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Analytics Charts Strip -->
+        <div class="report-charts-grid">
+          <!-- Chart 1: Volume Trend -->
+          <div class="report-chart-card">
+            <div class="report-chart-header">
+              <div>
+                <div class="report-chart-title">Inbound Queries vs Resolution Trend</div>
+                <div class="report-chart-subtitle">Daily velocity and closure cadence</div>
+              </div>
+              <span class="status-capsule active" style="font-size: 10px;">DAILY VELOCITY</span>
+            </div>
+            <div class="report-chart-canvas-box">
+              <canvas id="reportTrendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Department Workload -->
+          <div class="report-chart-card">
+            <div class="report-chart-header">
+              <div>
+                <div class="report-chart-title">Department Distribution</div>
+                <div class="report-chart-subtitle">Volume share across HR desks</div>
+              </div>
+            </div>
+            <div class="report-chart-canvas-box">
+              <canvas id="reportDeptChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Priority Breakdown -->
+          <div class="report-chart-card">
+            <div class="report-chart-header">
+              <div>
+                <div class="report-chart-title">Priority &amp; Urgency</div>
+                <div class="report-chart-subtitle">Case criticality spectrum</div>
+              </div>
+            </div>
+            <div class="report-chart-canvas-box">
+              <canvas id="reportPriorityChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-Dimension Report Tabs -->
+        <div class="report-tabs-bar">
+          <button type="button" class="report-tab-btn active" data-rep-tab="cases" onclick="switchReportTab('cases', this)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span>Detailed Cases Register</span>
+            <span class="report-tab-badge" id="repTabBadgeCases">0</span>
+          </button>
+
+          <button type="button" class="report-tab-btn" data-rep-tab="sla" onclick="switchReportTab('sla', this)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>SLA &amp; Breach Forensics</span>
+            <span class="report-tab-badge" id="repTabBadgeSla">0</span>
+          </button>
+
+          <button type="button" class="report-tab-btn" data-rep-tab="departments" onclick="switchReportTab('departments', this)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Department Workload Matrix</span>
+            <span class="report-tab-badge" id="repTabBadgeDepts">0</span>
+          </button>
+
+          <button type="button" class="report-tab-btn" data-rep-tab="agents" onclick="switchReportTab('agents', this)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Specialist / Agent Productivity</span>
+            <span class="report-tab-badge" id="repTabBadgeAgents">0</span>
+          </button>
+        </div>
+
+        <!-- Live Tabular Preview Card -->
+        <div class="data-card report-table-card" style="padding: 20px 24px; max-width: 100%; box-sizing: border-box; overflow: hidden;">
+          <!-- Toolbar Strip -->
+          <div class="report-toolbar-strip" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+            <div class="report-record-counter" id="reportRecordCounter" style="font-size: 13px; font-weight: 600; color: #64748B;">
+              Showing matching records...
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748B; font-weight: 600;">
+                <span>Rows:</span>
+                <select id="repPageSize" class="form-input" style="height: 32px; width: 75px; padding: 0 6px; font-size: 12px; border-radius: 6px;" onchange="handleReportPageSizeChange(this.value)">
+                  <option value="20" selected>20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+              <button class="btn-primary" style="height: 34px; padding: 0 16px; font-size: 12.5px; font-weight: 700; width: auto; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" onclick="exportCurrentReport('csv')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download Active View (CSV)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Responsive Table Scroll Container -->
+          <div class="table-scroll-wrapper" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid #EAEAEA;">
+            <table class="admin-table report-command-table" id="reportDataTable" style="width: 100%; min-width: 900px; border-collapse: collapse;">
+              <thead id="reportTableHead">
+                <!-- Dynamically Rendered Based on Active Tab -->
+              </thead>
+              <tbody id="reportTableBody">
+                <tr>
+                  <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid #E2E8F0; border-top-color: var(--1mg-orange); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                    <div style="margin-top: 8px; font-size: 13px;">Loading real-time report telemetry from Neon DB...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="pagination" style="margin-top: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;" id="reportPageInfo">
+              Page 1 of 1
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="pagination-btn" id="repPrevBtn" onclick="changeReportPage(-1)" disabled style="height: 32px; padding: 0 14px; font-size: 12.5px; border-radius: 6px; border: 1px solid #E2E8F0; background: #fff; cursor: pointer;">
+                &larr; Previous
+              </button>
+              <button type="button" class="pagination-btn" id="repNextBtn" onclick="changeReportPage(1)" disabled style="height: 32px; padding: 0 14px; font-size: 12.5px; border-radius: 6px; border: 1px solid #E2E8F0; background: #fff; cursor: pointer;">
+                Next &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </main>
@@ -2424,6 +3677,6 @@
   <!-- DYNAMIC TATA 1MG TOAST CONTAINER -->
   <div id="toastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
-  <script src="/admin-static/js/admin.js?v=3.0"></script>
+  <script src="/admin-static/js/admin.js?v=5.0"></script>
 </body>
 </html>

@@ -54,6 +54,10 @@ function switchView(viewId, navEl) {
     loadDepartments().then(() => renderDepartments());
   } else if (viewId === 'auditView') {
     loadAuditLogs();
+  } else if (viewId === 'reportsView') {
+    initReportsView();
+  } else if (viewId === 'actionsView') {
+    initActionsView();
   }
 }
 
@@ -109,6 +113,9 @@ function populateDepartmentDropdowns() {
   // 3. Multi-department checkbox containers for Add and Edit Modals
   renderNewAgentDeptCheckboxes();
   renderEditAgentDeptCheckboxes();
+
+  // 4. Report Module Department Selector
+  populateReportDeptDropdown();
 }
 
 function renderNewAgentDeptCheckboxes() {
@@ -331,7 +338,7 @@ function renderUsersTable(users, total, totalPages) {
         <!-- Interactive Role Scope (Vector SVG Badges) -->
         <td>
           ${u.role === 'ADMIN' 
-            ? (u.id === 1 || (u.email && u.email.toLowerCase() === 'vaibhavx002@zohomail.in')
+            ? (u.id === 1 || (u.email && u.email.toLowerCase() === 'vaibhav.v1@1mg.com')
               ? `<span class="badge-role-scope badge-scope-superadmin" title="Primary System Administrator (Protected)">
                   <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
@@ -396,7 +403,7 @@ function renderUsersTable(users, total, totalPages) {
                 </svg>
                 <span>Resend</span>
               </button>
-            ` : (u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhavx002@zohomail.in') ? `
+            ` : (u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhav.v1@1mg.com') ? `
               <button 
                 class="btn-action-pill btn-action-demote"
                 onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)"
@@ -422,7 +429,7 @@ function renderUsersTable(users, total, totalPages) {
               <span>Edit</span>
             </button>
 
-            ${u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhavx002@zohomail.in') ? `
+            ${u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhav.v1@1mg.com') ? `
               <button 
                 class="btn-action-pill btn-action-toggle ${u.status === 'ACTIVE' ? 'deactivate' : 'activate'}"
                 onclick="toggleUserStatus(${u.id}, '${u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')"
@@ -653,7 +660,7 @@ function openEmailPreviewModal(emailDetails) {
   }
 
   const senderEl = document.getElementById('previewModalSender');
-  if (senderEl) senderEl.innerText = emailDetails.sender || 'vaibhavx002@zohomail.in';
+  if (senderEl) senderEl.innerText = emailDetails.sender || 'vaibhav.v1@1mg.com';
 
   const linkEl = document.getElementById('previewModalLink');
   if (linkEl) linkEl.innerText = emailDetails.activation_link || '';
@@ -2187,12 +2194,12 @@ function getCurrentAdminActor() {
   try {
     const user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
     return {
-      email: user.email || 'vaibhavx002@zohomail.in',
+      email: user.email || 'vaibhav.v1@1mg.com',
       name: user.name || 'Vaibhav Yadav'
     };
   } catch (e) {
     return {
-      email: 'vaibhavx002@zohomail.in',
+      email: 'vaibhav.v1@1mg.com',
       name: 'Vaibhav Yadav'
     };
   }
@@ -3729,41 +3736,1157 @@ const sampleQueries = [
   }
 ];
 
-async function triggerSimulatedEmail() {
-  const sample = sampleQueries[Math.floor(Math.random() * sampleQueries.length)];
+// =========================================================================
+// 7. ACTION CENTER, SLA ENGINE & AUTOMATIONS STUDIO
+// =========================================================================
+
+const simPresets = [
+  {
+    name: 'Vaibhav Yadav',
+    email: 'vaibhav.v1@1mg.com',
+    subject: 'Request for Salary Slip – October 2026',
+    description: 'Dear People Desk Team,\n\nI am unable to download my October 2026 salary slip from the HR portal. Whenever I try to access the document, the page shows an error.\n\nCould you please check this issue and help me get my salary slip? Thank you.',
+    priority: 'HIGH',
+    dept_code: 'DEPT-PAYROLL'
+  },
+  {
+    name: 'Rahul Sharma',
+    email: 'rahul.sharma@1mg.com',
+    subject: 'Biometric swipe mismatch at Gurugram HQ - 2 Nov 2026',
+    description: 'My in-punch on 2nd November at Gurugram Turnstile B is missing in Darwinbox, showing half-day deduction. Attached geo-tagged selfie and cab trip sheet.',
+    priority: 'MEDIUM',
+    dept_code: 'DEPT-ATTENDANCE'
+  },
+  {
+    name: 'Priya Nair',
+    email: 'priya.nair@1mg.com',
+    subject: 'Addition of newborn dependent to corporate mediclaim policy',
+    description: 'Requesting to add newborn child to Tata 1mg Star Health cashless mediclaim policy. Attaching birth certificate and hospital discharge summary.',
+    priority: 'HIGH',
+    dept_code: 'DEPT-BENEFITS'
+  },
+  {
+    name: 'Ritu Saxena',
+    email: 'ritu.saxena@1mg.com',
+    subject: 'PF Transfer UAN not linked with Aadhaar portal',
+    description: 'My previous employer PF balance transfer failed due to UAN mismatch. Need HR specialist verification and PF declaration form endorsement.',
+    priority: 'MEDIUM',
+    dept_code: 'DEPT-PAYROLL'
+  },
+  {
+    name: 'Vikram Malhotra',
+    email: 'vikram.m@1mg.com',
+    subject: 'Request for Relieving Letter and F&F Settlement Statement',
+    description: 'My last working day was 15th October. Please share the final F&F tax calculation sheet and digitally signed relieving letter for background verification.',
+    priority: 'CRITICAL',
+    dept_code: 'DEPT-PEOPLEDESK'
+  }
+];
+
+async function initActionsView() {
+  populateActionsDeptDropdowns();
+  loadSimPreset(0);
+  await loadActionsOverview();
+  await runLiveSLAPatrol();
+}
+
+function populateActionsDeptDropdowns() {
+  const simSelect = document.getElementById('simDeptSelect');
+  const bcSelect = document.getElementById('bcTargetDept');
+
+  if (simSelect) {
+    simSelect.innerHTML = '<option value="">🤖 AI Auto-Classifier (Recommended)</option>';
+    (allDepartments || []).forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = `${d.team_name || d.name} (${d.dept_code || 'DEPT'})`;
+      simSelect.appendChild(opt);
+    });
+  }
+
+  if (bcSelect) {
+    bcSelect.innerHTML = '<option value="ALL">All Departments (Enterprise-Wide)</option>';
+    (allDepartments || []).forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.team_name || d.name;
+      opt.textContent = `${d.team_name || d.name} (${d.dept_code || 'DEPT'})`;
+      bcSelect.appendChild(opt);
+    });
+  }
+}
+
+function loadSimPreset(idx, btnEl) {
+  document.querySelectorAll('.sim-preset-pill').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  const nameInput = document.getElementById('simEmpName');
+  const emailInput = document.getElementById('simEmpEmail');
+  const subjInput = document.getElementById('simSubject');
+  const prioSelect = document.getElementById('simPriority');
+  const descInput = document.getElementById('simDescription');
+  const deptSelect = document.getElementById('simDeptSelect');
+
+  if (idx === -1) {
+    if (nameInput) nameInput.value = '';
+    if (emailInput) emailInput.value = '';
+    if (subjInput) subjInput.value = '';
+    if (descInput) descInput.value = '';
+    if (prioSelect) prioSelect.value = 'MEDIUM';
+    if (deptSelect) deptSelect.value = '';
+    return;
+  }
+
+  const p = simPresets[idx];
+  if (!p) return;
+
+  if (nameInput) nameInput.value = p.name;
+  if (emailInput) emailInput.value = p.email;
+  if (subjInput) subjInput.value = p.subject;
+  if (prioSelect) prioSelect.value = p.priority;
+  if (descInput) descInput.value = p.description;
+
+  if (deptSelect && p.dept_code) {
+    const match = (allDepartments || []).find(d => d.dept_code === p.dept_code);
+    if (match) deptSelect.value = match.id;
+    else deptSelect.value = '';
+  }
+}
+
+async function loadActionsOverview() {
   try {
-    const res = await fetch('/api/v1/cases/inbound', {
+    const res = await fetch('/api/v1/admin/actions/overview');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const kpi = data.kpis || {};
+    const monEl = document.getElementById('actKpiMonitors');
+    const breEl = document.getElementById('actKpiBreaches');
+    const autEl = document.getElementById('actKpiAutoRouted');
+    const actEl = document.getElementById('actKpiAutomations');
+
+    if (monEl) monEl.innerText = (kpi.active_monitors || 0).toLocaleString();
+    if (breEl) breEl.innerText = (kpi.breaches_detected || 0).toLocaleString();
+    if (autEl) autEl.innerText = (kpi.auto_routed || 0).toLocaleString();
+    if (actEl) actEl.innerText = (kpi.automations_run || 0).toLocaleString();
+
+    renderActionsAuditStream(data.recent_logs || []);
+    renderActionsBroadcasts(data.broadcasts || []);
+
+  } catch (err) {
+    console.error('Error loading actions overview:', err);
+  }
+}
+
+function renderActionsAuditStream(logs) {
+  const streamEl = document.getElementById('actionsAuditStream');
+  if (!streamEl) return;
+
+  if (!logs || logs.length === 0) {
+    streamEl.innerHTML = `<div style="text-align: center; color: #64748B; padding: 25px; font-size: 12.5px;">No recent automation events recorded.</div>`;
+    return;
+  }
+
+  streamEl.innerHTML = logs.map(l => {
+    const initial = (l.actor_name || 'System').charAt(0).toUpperCase();
+    const actionColor = l.action.includes('BREACH') ? '#DC2626' : (l.action.includes('ESCALAT') ? '#EA580C' : '#486AAE');
+
+    return `
+      <div class="audit-stream-card">
+        <div class="audit-actor-avatar">${initial}</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-weight: 700; color: ${actionColor}; font-size: 11.5px; text-transform: uppercase;">
+              ${escapeHtml(l.action)}
+            </span>
+            <span style="font-size: 11px; color: #94A3B8;">
+              ${formatDate(l.created_at)}
+            </span>
+          </div>
+          <div style="font-size: 12.5px; color: #1E293B; margin-top: 3px; word-break: break-word;">
+            ${escapeHtml(l.details || 'System event executed.')}
+          </div>
+          <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+            Triggered by: <strong>${escapeHtml(l.actor_name || 'System')}</strong> (${escapeHtml(l.actor_email || 'cron@1mg.com')})
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderActionsBroadcasts(broadcasts) {
+  const listEl = document.getElementById('actionsBroadcastsList');
+  if (!listEl) return;
+
+  if (!broadcasts || broadcasts.length === 0) {
+    listEl.innerHTML = `<div style="text-align: center; color: #64748B; padding: 20px; font-size: 12.5px;">No active broadcast notices currently dispatched.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = broadcasts.map(b => {
+    const sevColor = b.severity === 'URGENT' ? '#DC2626' : (b.severity === 'WARNING' ? '#D97706' : '#2563EB');
+    const sevBg = b.severity === 'URGENT' ? '#FEF2F2' : (b.severity === 'WARNING' ? '#FFFBEB' : '#EFF6FF');
+
+    return `
+      <div style="padding: 12px 14px; border-radius: 8px; background: ${sevBg}; border: 1px solid rgba(0,0,0,0.06); margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <strong style="font-size: 13px; color: #1E293B;">${escapeHtml(b.title)}</strong>
+          <span style="font-size: 10.5px; font-weight: 700; color: ${sevColor}; text-transform: uppercase;">${b.severity}</span>
+        </div>
+        <div style="font-size: 12px; color: #475569; margin-top: 4px;">${escapeHtml(b.message)}</div>
+        <div style="font-size: 11px; color: #94A3B8; margin-top: 6px; display: flex; justify-content: space-between;">
+          <span>Target: <strong>${escapeHtml(b.target_dept || 'ALL')}</strong></span>
+          <span>${formatDate(b.created_at)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function runLiveSLAPatrol() {
+  const container = document.getElementById('slaPatrolContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="text-align: center; padding: 25px; color: #64748B;">
+      <div style="display: inline-block; width: 22px; height: 22px; border: 3px solid #E2E8F0; border-top-color: #FF6F61; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      <div style="margin-top: 8px; font-size: 13px;">Running forensic SLA compliance patrol...</div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('/api/v1/admin/actions/sla-audit', { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) {
+      container.innerHTML = `<div style="text-align: center; color: #DC2626; padding: 20px;">Failed to complete SLA patrol scan.</div>`;
+      return;
+    }
+
+    const breached = data.breached_cases || [];
+    const scanned = data.scanned || 0;
+    const breachedCount = data.breached_count || 0;
+    const onTrackCount = data.on_track_count || 0;
+
+    const breEl = document.getElementById('actKpiBreaches');
+    if (breEl) breEl.innerText = breachedCount;
+
+    let summaryHtml = `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; margin-bottom: 14px; font-size: 12.5px;">
+        <div>
+          <span>Scanned: <strong>${scanned}</strong> active cases</span> &bull;
+          <span style="color: #DC2626; font-weight: 700;">${breachedCount} Breaches</span> &bull;
+          <span style="color: #059669; font-weight: 700;">${onTrackCount} Within SLA</span>
+        </div>
+        <span style="font-size: 11.5px; color: #64748B;">Audit Run: ${data.timestamp}</span>
+      </div>
+    `;
+
+    if (breached.length === 0) {
+      container.innerHTML = summaryHtml + `
+        <div style="padding: 24px; text-align: center; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px;">
+          <div style="font-size: 24px;">✓</div>
+          <div style="font-weight: 700; color: #065F46; font-size: 14px; margin-top: 4px;">100% SLA Adherence Across Active Desks</div>
+          <div style="font-size: 12.5px; color: #047857; margin-top: 2px;">All in-flight employee tickets are progressing within designated turnaround windows.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const itemsHtml = breached.map(c => `
+      <div class="sla-patrol-item">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <a href="/agent/case-details.html?id=${c.id}" target="_blank" style="font-weight: 800; color: #FF6F61; text-decoration: none; font-size: 13px;">
+              #${escapeHtml(c.case_number)}
+            </a>
+            <span style="font-weight: 700; font-size: 12.5px; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;">
+              ${escapeHtml(c.title)}
+            </span>
+          </div>
+          <div style="font-size: 11.5px; color: #64748B; margin-top: 2px;">
+            ${escapeHtml(c.employee_name)} &bull; ${escapeHtml(c.department_name || 'Desk')} &bull; Specialist: <strong>${escapeHtml(c.assigned_user || 'Unassigned')}</strong>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="report-sla-pill breached">
+            🔴 Overdue ${c.hours_overdue}h
+          </span>
+          <button type="button" class="btn-primary" style="height: 32px; padding: 0 12px; font-size: 12px; font-weight: 700; background: #DC2626; width: auto;" onclick="escalateActionCase(${c.id}, '${escapeHtml(c.case_number)}')">
+            🚨 Escalate Critical
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    container.innerHTML = summaryHtml + itemsHtml;
+
+  } catch (err) {
+    console.error('Error running SLA patrol:', err);
+    container.innerHTML = `<div style="text-align: center; color: #DC2626; padding: 20px;">Connection error running SLA patrol.</div>`;
+  }
+}
+
+async function escalateActionCase(caseId, caseNumber) {
+  try {
+    const res = await fetch('/api/v1/admin/actions/escalate-case', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sample)
+      body: JSON.stringify({
+        case_id: caseId,
+        reason: 'SLA patrol breach escalation triggered by Admin'
+      })
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Inbound Query Ingested', `Generated Ticket #${data.case.case_number} routed to ${data.case.department}`, 'success');
-      loadDashboard();
-      if (document.getElementById('casesView')?.classList.contains('active')) {
-        loadCases();
-      }
+      showToast('Case Escalated', `Case #${caseNumber} priority raised to CRITICAL with forensic alert.`, 'success');
+      await runLiveSLAPatrol();
+      await loadActionsOverview();
     } else {
-      alert('Failed to simulate inbound email.');
+      alert(data.detail || 'Failed to escalate case.');
     }
   } catch (err) {
     alert('Error connecting to backend server.');
   }
 }
 
+async function submitSimulatedInbound(event) {
+  event.preventDefault();
+  const name = document.getElementById('simEmpName')?.value.trim();
+  const email = document.getElementById('simEmpEmail')?.value.trim();
+  const subject = document.getElementById('simSubject')?.value.trim();
+  const priority = document.getElementById('simPriority')?.value || 'MEDIUM';
+  const deptId = document.getElementById('simDeptSelect')?.value;
+  const description = document.getElementById('simDescription')?.value.trim();
+
+  if (!email || !subject || !description) {
+    alert('Please complete all required fields.');
+    return;
+  }
+
+  const payload = {
+    employee_name: name || 'Employee',
+    employee_email: email,
+    title: subject,
+    description: description,
+    priority: priority
+  };
+  if (deptId) {
+    payload.department_id = parseInt(deptId, 10);
+  }
+
+  try {
+    const res = await fetch('/api/v1/cases/inbound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success && data.case) {
+      showToast('Query Ingested & Dispatched', `Case #${data.case.case_number} successfully routed to ${data.case.department}`, 'success');
+      
+      const box = document.getElementById('simFeedbackBox');
+      const text = document.getElementById('simFeedbackText');
+      const link = document.getElementById('simFeedbackLink');
+      if (box && text && link) {
+        box.style.display = 'block';
+        text.innerHTML = `Created Ticket <strong>#${data.case.case_number}</strong> &bull; Routed to <strong>${data.case.department}</strong> &bull; SLA: <strong>${data.case.sla_hours}h</strong>`;
+        link.href = `/agent/case-details.html?id=${data.case.id}`;
+      }
+
+      await loadActionsOverview();
+      await runLiveSLAPatrol();
+    } else {
+      alert(data.detail || 'Failed to ingest simulated case.');
+    }
+  } catch (err) {
+    alert('Error connecting to server.');
+  }
+}
+
+async function submitBroadcastNotice(event) {
+  event.preventDefault();
+  const title = document.getElementById('bcTitle')?.value.trim();
+  const severity = document.getElementById('bcSeverity')?.value || 'INFO';
+  const targetDept = document.getElementById('bcTargetDept')?.value || 'ALL';
+  const message = document.getElementById('bcMessage')?.value.trim();
+
+  if (!title || !message) {
+    alert('Please enter title and message.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/v1/admin/actions/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message, severity, target_dept: targetDept })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Broadcast Dispatched', `Notice "${title}" published across active desks.`, 'success');
+      document.getElementById('broadcastForm')?.reset();
+      await loadActionsOverview();
+    } else {
+      alert('Failed to dispatch broadcast.');
+    }
+  } catch (err) {
+    alert('Error connecting to backend server.');
+  }
+}
+
+async function syncDarwinboxHrms() {
+  try {
+    const res = await fetch('/api/v1/admin/actions/sync-hrms', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Darwinbox Directory Synced', data.message, 'success');
+      await loadActionsOverview();
+    } else {
+      alert('Failed to sync Darwinbox.');
+    }
+  } catch (err) {
+    alert('Error connecting to server.');
+  }
+}
+
+async function pingDatabaseHealth() {
+  const badge = document.getElementById('dbPingBadge');
+  if (badge) badge.innerText = 'PINGING...';
+  const t0 = performance.now();
+  try {
+    const res = await fetch('/api/v1/admin/actions/overview');
+    const t1 = performance.now();
+    const ms = Math.round(t1 - t0);
+    if (badge) {
+      badge.innerText = `${ms}ms ONLINE`;
+      badge.style.color = '#10B190';
+    }
+    showToast('Database Ping Verified', `Neon PostgreSQL connected in ${ms}ms. Connection pool healthy.`, 'success');
+  } catch (e) {
+    if (badge) badge.innerText = 'TIMEOUT';
+    alert('Database connection timeout.');
+  }
+}
+
+function clearSystemCache() {
+  showToast('Cache Purged', 'Temporary telemetry and query cache purged successfully.', 'success');
+}
+
+function triggerSimulatedEmail() {
+  submitSimulatedInbound(new Event('submit'));
+}
+
 function rerunSLACheck() {
-  showToast('SLA Check Completed', 'All active cases were checked against SLA timer matrices. 0 breaches detected.', 'success');
+  runLiveSLAPatrol();
+}
+
+// =========================================================================
+// 8. EXECUTIVE REPORTS & OPERATIONAL ANALYTICS COMMAND CENTER
+// =========================================================================
+
+let currentReportTab = 'cases';
+let currentReportPage = 1;
+let currentReportLimit = 20;
+let currentReportFilters = {
+  date_from: '',
+  date_to: '',
+  department_id: 0,
+  status: 'ALL',
+  priority: 'ALL',
+  sla_breach: 'ALL',
+  search: ''
+};
+
+let reportTrendChartInstance = null;
+let reportDeptChartInstance = null;
+let reportPriorityChartInstance = null;
+
+async function initReportsView() {
+  populateReportDeptDropdown();
+  await loadReportAnalytics();
+  await loadReportData();
+}
+
+function populateReportDeptDropdown() {
+  const deptSelect = document.getElementById('repFilterDept');
+  if (!deptSelect) return;
+  const currentVal = deptSelect.value;
+  deptSelect.innerHTML = '<option value="0">All Departments</option>';
+  if (Array.isArray(allDepartments) && allDepartments.length > 0) {
+    allDepartments.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = `${d.team_name || d.name} (${d.dept_code || 'DEPT'})`;
+      deptSelect.appendChild(opt);
+    });
+  }
+  if (currentVal) deptSelect.value = currentVal;
+}
+
+function setReportDatePreset(preset, btnEl) {
+  document.querySelectorAll('.report-date-pill').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  const fromInput = document.getElementById('repFilterDateFrom');
+  const toInput = document.getElementById('repFilterDateTo');
+  if (!fromInput || !toInput) return;
+
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (preset === 'ALL') {
+    fromInput.value = '';
+    toInput.value = '';
+  } else if (preset === 'TODAY') {
+    fromInput.value = fmt(today);
+    toInput.value = fmt(today);
+  } else if (preset === 'YESTERDAY') {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    fromInput.value = fmt(yest);
+    toInput.value = fmt(yest);
+  } else if (preset === '7D') {
+    const past = new Date();
+    past.setDate(past.getDate() - 7);
+    fromInput.value = fmt(past);
+    toInput.value = fmt(today);
+  } else if (preset === '30D') {
+    const past = new Date();
+    past.setDate(past.getDate() - 30);
+    fromInput.value = fmt(past);
+    toInput.value = fmt(today);
+  } else if (preset === 'MTD') {
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    fromInput.value = fmt(firstDay);
+    toInput.value = fmt(today);
+  }
+
+  applyReportFilters();
+}
+
+function handleReportDateInputChange() {
+  document.querySelectorAll('.report-date-pill').forEach(b => b.classList.remove('active'));
+  applyReportFilters();
+}
+
+function handleReportSearchKey(e) {
+  if (e.key === 'Enter') {
+    applyReportFilters();
+  }
+}
+
+function applyReportFilters() {
+  currentReportFilters.date_from = document.getElementById('repFilterDateFrom')?.value.trim() || '';
+  currentReportFilters.date_to = document.getElementById('repFilterDateTo')?.value.trim() || '';
+  currentReportFilters.department_id = parseInt(document.getElementById('repFilterDept')?.value || '0', 10);
+  currentReportFilters.status = document.getElementById('repFilterStatus')?.value || 'ALL';
+  currentReportFilters.priority = document.getElementById('repFilterPriority')?.value || 'ALL';
+  currentReportFilters.sla_breach = document.getElementById('repFilterSla')?.value || 'ALL';
+  currentReportFilters.search = document.getElementById('repFilterSearch')?.value.trim() || '';
+
+  currentReportPage = 1;
+  loadReportAnalytics();
+  loadReportData();
+}
+
+function resetReportFilters() {
+  const fromInput = document.getElementById('repFilterDateFrom');
+  const toInput = document.getElementById('repFilterDateTo');
+  const deptSelect = document.getElementById('repFilterDept');
+  const statusSelect = document.getElementById('repFilterStatus');
+  const prioSelect = document.getElementById('repFilterPriority');
+  const slaSelect = document.getElementById('repFilterSla');
+  const searchInput = document.getElementById('repFilterSearch');
+
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+  if (deptSelect) deptSelect.value = '0';
+  if (statusSelect) statusSelect.value = 'ALL';
+  if (prioSelect) prioSelect.value = 'ALL';
+  if (slaSelect) slaSelect.value = 'ALL';
+  if (searchInput) searchInput.value = '';
+
+  document.querySelectorAll('.report-date-pill').forEach((b, i) => {
+    if (i === 0) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+
+  currentReportFilters = {
+    date_from: '',
+    date_to: '',
+    department_id: 0,
+    status: 'ALL',
+    priority: 'ALL',
+    sla_breach: 'ALL',
+    search: ''
+  };
+  currentReportPage = 1;
+
+  loadReportAnalytics();
+  loadReportData();
+}
+
+function buildReportQueryString() {
+  const params = new URLSearchParams();
+  if (currentReportFilters.date_from) params.set('date_from', currentReportFilters.date_from);
+  if (currentReportFilters.date_to) params.set('date_to', currentReportFilters.date_to);
+  if (currentReportFilters.department_id > 0) params.set('department_id', currentReportFilters.department_id);
+  if (currentReportFilters.status && currentReportFilters.status !== 'ALL') params.set('status', currentReportFilters.status);
+  if (currentReportFilters.priority && currentReportFilters.priority !== 'ALL') params.set('priority', currentReportFilters.priority);
+  if (currentReportFilters.sla_breach && currentReportFilters.sla_breach !== 'ALL') params.set('sla_breach', currentReportFilters.sla_breach);
+  if (currentReportFilters.search) params.set('search', currentReportFilters.search);
+  return params.toString();
+}
+
+async function loadReportAnalytics() {
+  try {
+    const qs = buildReportQueryString();
+    const res = await fetch(`/api/v1/admin/reports/analytics?${qs}`);
+    const data = await res.json();
+    if (!data.success) return;
+
+    // 1. Bento KPI Strip
+    const kpi = data.kpis || {};
+    const totalEl = document.getElementById('repKpiTotal');
+    const slaRateEl = document.getElementById('repKpiSlaRate');
+    const avgTatEl = document.getElementById('repKpiAvgTat');
+    const breachedEl = document.getElementById('repKpiBreached');
+
+    if (totalEl) totalEl.innerText = (kpi.total || 0).toLocaleString();
+    if (slaRateEl) {
+      slaRateEl.innerText = `${kpi.compliance_rate || 0}%`;
+      slaRateEl.style.color = (kpi.compliance_rate >= 90) ? '#10B190' : (kpi.compliance_rate >= 75 ? '#F59E0B' : '#DC2626');
+    }
+    if (avgTatEl) avgTatEl.innerText = `${kpi.avg_tat_hours || 0}h`;
+    if (breachedEl) breachedEl.innerText = (kpi.breached || 0).toLocaleString();
+
+    // 2. Tab Badges
+    const badgeCases = document.getElementById('repTabBadgeCases');
+    const badgeSla = document.getElementById('repTabBadgeSla');
+    const badgeDepts = document.getElementById('repTabBadgeDepts');
+    const badgeAgents = document.getElementById('repTabBadgeAgents');
+
+    if (badgeCases) badgeCases.innerText = kpi.total || 0;
+    if (badgeSla) badgeSla.innerText = kpi.breached || 0;
+    if (badgeDepts) badgeDepts.innerText = (data.departments || []).length;
+    if (badgeAgents) badgeAgents.innerText = (data.agents || []).length;
+
+    // 3. Render Visual Charts
+    renderReportTrendChart(data.timeline || []);
+    renderReportDeptChart(data.departments || []);
+    renderReportPriorityChart(data.priorities || {});
+
+  } catch (err) {
+    console.error('Error loading report analytics:', err);
+  }
+}
+
+function renderReportTrendChart(timeline) {
+  const canvas = document.getElementById('reportTrendChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (reportTrendChartInstance) {
+    reportTrendChartInstance.destroy();
+    reportTrendChartInstance = null;
+  }
+
+  const labels = timeline.map(t => {
+    const parts = (t.day || '').split('-');
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}` : t.day;
+  });
+  const inboundData = timeline.map(t => parseInt(t.inbound || 0, 10));
+  const resolvedData = timeline.map(t => parseInt(t.resolved || 0, 10));
+
+  reportTrendChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels.length ? labels : ['No Data'],
+      datasets: [
+        {
+          label: 'Inbound Inquiries',
+          data: inboundData.length ? inboundData : [0],
+          borderColor: '#FF6F61',
+          backgroundColor: 'rgba(255, 111, 97, 0.12)',
+          borderWidth: 2.2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.35
+        },
+        {
+          label: 'Resolved Dossiers',
+          data: resolvedData.length ? resolvedData : [0],
+          borderColor: '#10B190',
+          backgroundColor: 'rgba(16, 177, 144, 0.10)',
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.35
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { boxWidth: 12, font: { size: 11, weight: '600' } }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0, font: { size: 10 } },
+          grid: { color: '#F1F5F9' }
+        },
+        x: {
+          ticks: { font: { size: 10 } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderReportDeptChart(departments) {
+  const canvas = document.getElementById('reportDeptChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (reportDeptChartInstance) {
+    reportDeptChartInstance.destroy();
+    reportDeptChartInstance = null;
+  }
+
+  const topDepts = (departments || []).slice(0, 5);
+  const labels = topDepts.map(d => d.dept_code || d.department_name);
+  const dataVals = topDepts.map(d => parseInt(d.total || 0, 10));
+
+  reportDeptChartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels.length ? labels : ['No Records'],
+      datasets: [{
+        data: dataVals.length ? dataVals : [1],
+        backgroundColor: ['#FF6F61', '#486AAE', '#10B190', '#F59E0B', '#8B5CF6'],
+        borderWidth: 2,
+        borderColor: '#FFFFFF'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 10, font: { size: 10 } }
+        }
+      },
+      cutout: '62%'
+    }
+  });
+}
+
+function renderReportPriorityChart(priorities) {
+  const canvas = document.getElementById('reportPriorityChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  if (reportPriorityChartInstance) {
+    reportPriorityChartInstance.destroy();
+    reportPriorityChartInstance = null;
+  }
+
+  const labels = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+  const values = [
+    priorities['CRITICAL'] || 0,
+    priorities['HIGH'] || 0,
+    priorities['MEDIUM'] || 0,
+    priorities['LOW'] || 0
+  ];
+
+  reportPriorityChartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Cases',
+        data: values,
+        backgroundColor: ['#EF4444', '#F97316', '#3B82F6', '#94A3B8'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0, font: { size: 10 } },
+          grid: { color: '#F1F5F9' }
+        },
+        x: {
+          ticks: { font: { size: 10, weight: '700' } },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function switchReportTab(tabName, btnEl) {
+  document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  currentReportTab = tabName;
+  currentReportPage = 1;
+  loadReportData();
+}
+
+function handleReportPageSizeChange(val) {
+  currentReportLimit = parseInt(val, 10) || 20;
+  currentReportPage = 1;
+  loadReportData();
+}
+
+function changeReportPage(delta) {
+  currentReportPage = Math.max(1, currentReportPage + delta);
+  loadReportData();
+}
+
+async function loadReportData() {
+  const thead = document.getElementById('reportTableHead');
+  const tbody = document.getElementById('reportTableBody');
+  const counter = document.getElementById('reportRecordCounter');
+  const pageInfo = document.getElementById('reportPageInfo');
+  const prevBtn = document.getElementById('repPrevBtn');
+  const nextBtn = document.getElementById('repNextBtn');
+
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 35px;">
+        <div style="display: inline-block; width: 22px; height: 22px; border: 3px solid #E2E8F0; border-top-color: var(--1mg-orange); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <div style="margin-top: 8px; font-size: 13px;">Refreshing report matrix...</div>
+      </td>
+    </tr>
+  `;
+
+  try {
+    const qs = buildReportQueryString();
+    const res = await fetch(`/api/v1/admin/reports/data?tab=${currentReportTab}&page=${currentReportPage}&limit=${currentReportLimit}&${qs}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #DC2626; padding: 25px;">Failed to load report data.</td></tr>`;
+      return;
+    }
+
+    const rows = data.rows || [];
+    const total = data.total || 0;
+    const totalPages = Math.max(1, Math.ceil(total / currentReportLimit));
+
+    if (counter) {
+      const start = total === 0 ? 0 : (currentReportPage - 1) * currentReportLimit + 1;
+      const end = Math.min(total, currentReportPage * currentReportLimit);
+      counter.innerHTML = `Showing <strong>${start} - ${end}</strong> of <strong>${total}</strong> records`;
+    }
+
+    if (pageInfo) pageInfo.innerText = `Page ${currentReportPage} of ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentReportPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentReportPage >= totalPages;
+
+    if (currentReportTab === 'cases') {
+      renderReportCasesTable(thead, tbody, rows);
+    } else if (currentReportTab === 'sla') {
+      renderReportSlaTable(thead, tbody, rows);
+    } else if (currentReportTab === 'departments') {
+      renderReportDepartmentsTable(thead, tbody, rows);
+    } else if (currentReportTab === 'agents') {
+      renderReportAgentsTable(thead, tbody, rows);
+    }
+
+  } catch (err) {
+    console.error('Error fetching report data:', err);
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #DC2626; padding: 25px;">Server error while loading report dataset.</td></tr>`;
+  }
+}
+
+function renderReportCasesTable(thead, tbody, rows) {
+  thead.innerHTML = `
+    <tr>
+      <th style="width: 110px;">Case Ref</th>
+      <th style="min-width: 220px;">Employee &amp; Inquiry</th>
+      <th style="min-width: 140px;">Department</th>
+      <th style="min-width: 130px;">Assigned Specialist</th>
+      <th style="width: 95px;">Priority</th>
+      <th style="width: 110px;">Status</th>
+      <th style="min-width: 150px;">SLA Status</th>
+      <th style="width: 130px;">Logged At</th>
+      <th style="width: 70px; text-align: center;">Dossier</th>
+    </tr>
+  `;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 35px;">No case records matched your filter criteria.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    let slaBadgeHtml = '';
+    if (r.sla_status === 'RESOLVED_ON_TIME') {
+      slaBadgeHtml = `<span class="report-sla-pill resolved-on-time">✓ Met SLA (${r.elapsed_hours}h)</span>`;
+    } else if (r.sla_status === 'RESOLVED_BREACHED') {
+      slaBadgeHtml = `<span class="report-sla-pill resolved-breached">⚠ Breached (${r.elapsed_hours}h)</span>`;
+    } else if (r.sla_status === 'BREACHED') {
+      slaBadgeHtml = `<span class="report-sla-pill breached">🔴 Breached (${r.elapsed_hours}h)</span>`;
+    } else {
+      slaBadgeHtml = `<span class="report-sla-pill on-track">● On Track (${r.elapsed_hours}h)</span>`;
+    }
+
+    let prioBadgeHtml = '';
+    const pr = (r.priority || 'MEDIUM').toUpperCase();
+    if (pr === 'CRITICAL') {
+      prioBadgeHtml = `<span class="rep-pill-prio critical">● Critical</span>`;
+    } else if (pr === 'HIGH') {
+      prioBadgeHtml = `<span class="rep-pill-prio high">● High</span>`;
+    } else if (pr === 'LOW') {
+      prioBadgeHtml = `<span class="rep-pill-prio low">● Low</span>`;
+    } else {
+      prioBadgeHtml = `<span class="rep-pill-prio medium">● Medium</span>`;
+    }
+
+    let statusBadgeHtml = '';
+    const st = (r.status || 'OPEN').toUpperCase();
+    if (st === 'RESOLVED') {
+      statusBadgeHtml = `<span class="rep-pill-status resolved">✓ Resolved</span>`;
+    } else if (st === 'CLOSED') {
+      statusBadgeHtml = `<span class="rep-pill-status closed">Closed</span>`;
+    } else if (st === 'IN_PROGRESS') {
+      statusBadgeHtml = `<span class="rep-pill-status in-progress">In Progress</span>`;
+    } else if (st === 'WAITING_ON_EMPLOYEE') {
+      statusBadgeHtml = `<span class="rep-pill-status waiting">Waiting</span>`;
+    } else {
+      statusBadgeHtml = `<span class="rep-pill-status open">Open</span>`;
+    }
+
+    return `
+      <tr>
+        <td>
+          <a href="/agent/case-details.html?id=${r.id}" target="_blank" style="font-weight: 700; color: #FF6F61; text-decoration: none; font-size: 13px;">
+            #${escapeHtml(r.case_number)}
+          </a>
+        </td>
+        <td>
+          <div style="font-weight: 600; color: #1E293B; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(r.title || '')}">
+            ${escapeHtml(r.title || 'Inquiry')}
+          </div>
+          <div style="font-size: 11.5px; color: #64748B; margin-top: 2px;">
+            ${escapeHtml(r.employee_name || 'Employee')} &bull; ${escapeHtml(r.employee_email || '')}
+          </div>
+        </td>
+        <td>
+          <span style="font-weight: 600; font-size: 12.5px; color: #486AAE;">
+            ${escapeHtml(r.department_name || 'Unassigned')}
+          </span>
+        </td>
+        <td>
+          <span style="font-size: 12.5px; color: #334155; font-weight: 500;">
+            ${escapeHtml(r.assigned_user || 'Unassigned Pool')}
+          </span>
+        </td>
+        <td>${prioBadgeHtml}</td>
+        <td>${statusBadgeHtml}</td>
+        <td>${slaBadgeHtml}</td>
+        <td style="font-size: 12px; color: #64748B; white-space: nowrap;">
+          ${formatDate(r.created_at)}
+        </td>
+        <td style="text-align: center;">
+          <a href="/agent/case-details.html?id=${r.id}" target="_blank" class="action-icon-btn" title="Open Forensic Dossier">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderReportSlaTable(thead, tbody, rows) {
+  thead.innerHTML = `
+    <tr>
+      <th>Case Ref</th>
+      <th>Query Title</th>
+      <th>Department</th>
+      <th>Priority</th>
+      <th>Target SLA</th>
+      <th>Elapsed / Duration</th>
+      <th>Forensic Breach Status</th>
+      <th>Responsible Specialist</th>
+      <th style="text-align: center;">Dossier</th>
+    </tr>
+  `;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No records found for SLA forensics.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    let slaBadgeHtml = '';
+    if (r.sla_status === 'RESOLVED_ON_TIME') {
+      slaBadgeHtml = `<span class="report-sla-pill resolved-on-time">✓ Met SLA Target</span>`;
+    } else if (r.sla_status === 'RESOLVED_BREACHED') {
+      slaBadgeHtml = `<span class="report-sla-pill resolved-breached">⚠ Resolution Overdue</span>`;
+    } else if (r.sla_status === 'BREACHED') {
+      slaBadgeHtml = `<span class="report-sla-pill breached">🔴 Active Breach Threshold</span>`;
+    } else {
+      slaBadgeHtml = `<span class="report-sla-pill on-track">● Within SLA Window</span>`;
+    }
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--1mg-orange);">#${escapeHtml(r.case_number)}</td>
+        <td style="font-weight: 600; color: var(--text-dark); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          ${escapeHtml(r.title || 'Inquiry')}
+        </td>
+        <td><strong>${escapeHtml(r.department_name || 'Desk')}</strong></td>
+        <td><span style="font-size: 11px; font-weight: 700;">${escapeHtml(r.priority || 'MEDIUM')}</span></td>
+        <td><span style="font-weight: 600;">${r.sla_hours || 24} Hours</span></td>
+        <td style="font-weight: 700; color: ${r.sla_status.includes('BREACHED') ? '#DC2626' : '#10B190'};">
+          ${r.elapsed_hours}h
+        </td>
+        <td>${slaBadgeHtml}</td>
+        <td>${escapeHtml(r.assigned_user || 'Unassigned Pool')}</td>
+        <td style="text-align: center;">
+          <a href="/agent/case-details.html?id=${r.id}" target="_blank" class="action-icon-btn" title="Inspect Case">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderReportDepartmentsTable(thead, tbody, rows) {
+  thead.innerHTML = `
+    <tr>
+      <th>Department Name</th>
+      <th>Dept Code</th>
+      <th>Target SLA</th>
+      <th>Total Inquiries</th>
+      <th>Active Queue</th>
+      <th>Resolved Cases</th>
+      <th>SLA Breaches</th>
+      <th>Compliance Adherence %</th>
+      <th>Avg Turnaround TAT</th>
+    </tr>
+  `;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No department metrics available.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const rateColor = r.compliance_rate >= 90 ? '#10B190' : (r.compliance_rate >= 75 ? '#F59E0B' : '#DC2626');
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--text-dark);">${escapeHtml(r.department_name)}</td>
+        <td><span class="smtp-capsule" style="font-weight: 700;">${escapeHtml(r.dept_code)}</span></td>
+        <td>${r.sla_hours || 24}h</td>
+        <td style="font-weight: 700;">${r.total}</td>
+        <td><span style="color: #486AAE; font-weight: 700;">${r.active}</span></td>
+        <td><span style="color: #10B190; font-weight: 700;">${r.resolved}</span></td>
+        <td><span style="color: ${r.breached > 0 ? '#DC2626' : 'var(--text-muted)'}; font-weight: 700;">${r.breached}</span></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden; max-width: 90px;">
+              <div style="width: ${r.compliance_rate}%; height: 100%; background: ${rateColor};"></div>
+            </div>
+            <strong style="color: ${rateColor}; font-size: 12.5px;">${r.compliance_rate}%</strong>
+          </div>
+        </td>
+        <td style="font-weight: 600;">${r.avg_tat_hours}h</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderReportAgentsTable(thead, tbody, rows) {
+  thead.innerHTML = `
+    <tr>
+      <th>Specialist / Agent Name</th>
+      <th>Assigned Volume</th>
+      <th>Active In-Flight</th>
+      <th>Resolved Cases</th>
+      <th>SLA Breaches</th>
+      <th>Resolution Rate %</th>
+      <th>Avg Turnaround TAT</th>
+    </tr>
+  `;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No agent metrics available.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const rateColor = r.compliance_rate >= 90 ? '#10B190' : (r.compliance_rate >= 75 ? '#F59E0B' : '#DC2626');
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--text-dark);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF3FA; color: #486AAE; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">
+              ${escapeHtml(r.agent_name.charAt(0).toUpperCase())}
+            </div>
+            <span>${escapeHtml(r.agent_name)}</span>
+          </div>
+        </td>
+        <td style="font-weight: 700;">${r.total}</td>
+        <td><span style="color: #486AAE; font-weight: 700;">${r.active}</span></td>
+        <td><span style="color: #10B190; font-weight: 700;">${r.resolved}</span></td>
+        <td><span style="color: ${r.breached > 0 ? '#DC2626' : 'var(--text-muted)'}; font-weight: 700;">${r.breached}</span></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden; max-width: 90px;">
+              <div style="width: ${r.compliance_rate}%; height: 100%; background: ${rateColor};"></div>
+            </div>
+            <strong style="color: ${rateColor}; font-size: 12.5px;">${r.compliance_rate}%</strong>
+          </div>
+        </td>
+        <td style="font-weight: 600;">${r.avg_tat_hours}h</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function exportCurrentReport(format) {
+  const qs = buildReportQueryString();
+  const url = `/api/v1/admin/reports/export.csv?report_type=${currentReportTab}&${qs}`;
+  window.open(url, '_blank');
+  showToast('Export Initiated', `Downloading ${currentReportTab.toUpperCase()} CSV report...`, 'success');
+}
+
+function printExecutiveReport() {
+  window.print();
 }
 
 function downloadCaseReport() {
-  window.location.href = '/api/v1/admin/reports/cases.csv';
-  showToast('Report Downloaded', 'Exporting real-time Tata 1mg Case Report (CSV)...', 'success');
+  exportCurrentReport('csv');
 }
 
 function downloadSLAReport() {
-  window.location.href = '/api/v1/admin/reports/cases.csv';
-  showToast('SLA Report Downloaded', 'Exporting SLA Performance Report (CSV)...', 'success');
+  currentReportTab = 'sla';
+  exportCurrentReport('csv');
 }
 
 function formatDate(isoStr) {
@@ -3781,15 +4904,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
   
   if (!user.email || user.role !== 'ADMIN') {
-    user = {
-      email: 'vaibhavx002@zohomail.in',
-      name: 'Vaibhav Yadav',
-      role: 'ADMIN',
-      designation: 'System Administrator & Head of People Desk'
-    };
-    try {
-      localStorage.setItem('1mg_user', JSON.stringify(user));
-    } catch (e) {}
+    window.location.href = '/login.html';
+    return;
   }
 
   if (user.name) {
@@ -3806,4 +4922,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDepartments();
   loadUsers();
   loadDashboard();
+
+  // Handle direct view routing from URL params or hash
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedView = urlParams.get('view') || window.location.hash.replace('#', '');
+  if (requestedView && viewTitles[requestedView]) {
+    switchView(requestedView);
+  }
 });

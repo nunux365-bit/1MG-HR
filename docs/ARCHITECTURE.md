@@ -73,30 +73,30 @@ flowchart TD
 
 ### 2. Core Architectural Components
 
-#### 2.1 Frontend & Application Layer
-- **Framework**: Next.js 14/15 with React Server Components (RSC) and Server Actions.
-- **Styling & UI**: Tailwind CSS + shadcn/ui + Radix UI primitives.
-- **State Management & Data Fetching**: TanStack React Query v5 for client state + Server Components for data hydration.
-- **Real-Time Communication**: Server-Sent Events (SSE) or WebSockets for live ticket updates, agent-employee chat, and SLA notifications.
+#### 2.1 Backend & Application Layer
+- **Framework**: Python 3.10+ with FastAPI, Starlette, and Uvicorn.
+- **API Architecture**: Modular RESTful APIs with OpenAPI / Swagger documentation (`/docs`).
+- **Database Connectivity**: Dual-mode engine: Primary ultra-low latency Neon HTTPS SQL API (port 443, firewall-proof) with automatic fallback to psycopg2 TCP (port 5432).
+- **Static Asset Serving**: High-speed GZip compression middleware (`minimum_size=1000`) serving frontend assets, admin console, and agent workbench.
 
-#### 2.2 AI & Knowledge Engine (RAG)
-- **Model**: Google Gemini 1.5 Pro / Flash via official Gemini SDK.
-- **Embeddings**: `text-embedding-004` stored in PostgreSQL with the `pgvector` extension.
-- **Knowledge Base Source**: Tata 1mg employee handbooks, leave policies, health insurance coverage guides, diagnostic protocol documents, travel reimbursement guidelines.
-- **Fallback Logic**: When AI confidence is below threshold ($< 80\%$) or requires employee-specific manual action, the query seamlessly converts into a structured support ticket.
+#### 2.2 Frontend & Presentation Layer
+- **Design System**: Custom Tata 1mg Enterprise Design System in semantic HTML5 and responsive modern CSS3.
+- **Client Architecture**: Modular Vanilla ES6 JavaScript controllers:
+  - `login.js`: Multi-step email detection, app password validation, and onboarding.
+  - `agent.js`: Multi-pane Agent Triage Cockpit, live IMAP mailbox sync, and AI copilot.
+  - `admin.js`: Universal administrative control, dynamic department routing, and staff roster.
+  - `case-details.js`: 360° Case Dossier, Darwinbox HRMS integration, and forensic audit trail.
 
-#### 2.3 Model Context Protocol (MCP) Integration
-- Implements the MCP protocol to provide standard tools to the AI assistant:
-  - `mcp_tata1mg_get_employee_leave_balance`
-  - `mcp_tata1mg_get_payslip_status`
-  - `mcp_tata1mg_get_assigned_assets`
-  - `mcp_tata1mg_check_claim_reimbursement`
-- Ensures sandboxed, authenticated execution with principle of least privilege.
+#### 2.3 AI & Machine Learning Classification Engine
+- **Architecture**: 2-Stage automated NLP classification pipeline:
+  - **Stage 1 (Weighted Keyword Scoring)**: Multi-word strong phrases (+3.2 Subject, +2.2 Body) and weak keywords (+1.5 Subject, +0.8 Body) evaluated dynamically across all active departments.
+  - **Stage 2 (Intent Classifier)**: Scikit-learn `LinearSVC` with `TfidfVectorizer` (sublinear TF, n-gram range 1-2).
+- **Training & Hot-Reloading**: In-memory hot-reload cache with serialized `.pkl` model weights exported to `backend/app/classification/models/`.
 
-#### 2.4 Data & Storage Architecture
-- **Primary Database**: Neon PostgreSQL (Serverless PostgreSQL with connection pooling and automated branch management for preview environments).
-- **Blob Storage**: Secure cloud storage (AWS S3 or Cloudflare R2) with pre-signed URLs for query attachments (e.g., medical claims, hardware issue screenshots).
-- **Message Broker / Async Jobs**: Redis + BullMQ for handling background SLA timers, notification fan-out, and auto-escalations.
+#### 2.4 Omni-Channel Ingestion & Notification Engine
+- **Inbound Mailbox Ingestion**: Secure IMAP (SSL Port 993) supporting Google Workspace and Zoho Mail with spam filtering, thread grouping, and entity extraction.
+- **Outbound Email Dispatch**: RFC-2822 compliant MIME email generator with anti-spam headers and resilient SMTP delivery (TLS Port 587 / SSL Port 465 fallback).
+- **Audit & Compliance**: Immutable JSONB event logging for all status transitions, reassignments, SLA overrides, and communication dispatches.
 
 ---
 

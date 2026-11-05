@@ -423,7 +423,7 @@ def bootstrap_standard_departments():
             "dept_code": "DEPT-ATTENDANCE",
             "team_name": "Attendance HR",
             "category_code": "ATTENDANCE",
-            "dept_gmail": "vaibhavx002@zohomail.in",
+            "dept_gmail": "attendance.desk@1mg.com",
             "sla_hours": 24,
             "default_priority": "HIGH",
             "color_accent": "#2563EB",

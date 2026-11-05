@@ -46,14 +46,8 @@ function initAgentSession() {
   }
 
   if (!currentUser.email) {
-    currentUser = {
-      id: 1,
-      email: 'vaibhavv7676@gmail.com',
-      name: 'Vaibhav Yadav',
-      role: 'AGENT',
-      designation: 'People Desk Specialist'
-    };
-    localStorage.setItem('1mg_user', JSON.stringify(currentUser));
+    window.location.href = '/login.html';
+    return;
   }
 
   const nameEl = document.getElementById('navAgentName');
@@ -997,7 +991,9 @@ function renderInboundInquiry(c) {
 }
 
 /**
- * function renderConversationThread(c, logs) {
+ * Renders conversation thread.
+ */
+function renderConversationThread(c, logs) {
   const listEl = document.getElementById('conversationStreamList');
   const countLabel = document.getElementById('threadCountLabel');
   if (!listEl) return;
@@ -1503,7 +1499,9 @@ function renderDarwinboxProfile(c) {
 }
 
 /**
- * function renderAuditTimeline(logs) {
+ * Renders audit timeline.
+ */
+function renderAuditTimeline(logs) {
   const stream = document.getElementById('auditTimelineStream');
   const countLabel = document.getElementById('auditEventsCountLabel');
   if (!stream) return;

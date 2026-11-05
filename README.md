@@ -32,9 +32,9 @@ Every aspect of the platform is documented in detail within the [`docs/`](file:/
 ---
 
 ## 🚀 Quick Tech Stack Summary
-- **Frontend**: Responsive Web (HTML5, Modern CSS3 with Tata 1mg Design System, Vanilla / Modular ES6 JavaScript)
-- **Backend**: Python 3.10+ (FastAPI, Uvicorn, Pydantic, HTTPX, SQLite / PostgreSQL / Neon)
-- **Architecture**: Modular RESTful APIs with OpenAPI / Swagger documentation (`/docs`)
-- **AI / Query Resolution Engine**: Google Gemini API + Internal Policy RAG
-- **Protocols & Integrations**: Model Context Protocol (MCP) server bridge for HRMS, leave balances, and IT asset lookup
-- **Authentication**: Enterprise Google Workspace SSO + Mobile OTP authentication for field & warehouse staff
+- **Frontend**: Responsive Web (HTML5, Modern CSS3 with Tata 1mg Design System, Modular ES6 JavaScript)
+- **Backend**: Python 3.10+ (FastAPI, Uvicorn, Pydantic, HTTPX, Neon PostgreSQL over HTTPS/TCP)
+- **Architecture**: Modular RESTful APIs with interactive Swagger documentation (`/docs`)
+- **AI & Classification Engine**: 2-Stage NLP & Machine Learning Engine (Stage 1 Weighted Keyword Scoring + Stage 2 Scikit-Learn LinearSVC with TF-IDF and dynamic in-memory hot-reloading)
+- **Email & Omni-Channel Ingestion**: IMAP SSL (993) automated mailbox polling, spam classifier, and RFC-2822 compliant SMTP delivery (TLS 587)
+- **Directory & Sync**: Central Darwinbox HRMS employee matching and immutable JSONB audit logging

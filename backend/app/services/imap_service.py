@@ -53,8 +53,8 @@ def get_imap_config() -> tuple[str, int, str, str]:
     except (ValueError, TypeError):
         imap_port = 993
         
-    imap_user = (os.getenv("IMAP_USER") or os.getenv("SMTP_USER") or "vaibhav.v1@1mg.com").strip()
-    imap_pass = (os.getenv("IMAP_PASS") or os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "dtefkmddefzhxtfr").strip()
+    imap_user = (os.getenv("IMAP_USER") or os.getenv("SMTP_USER") or "").strip()
+    imap_pass = (os.getenv("IMAP_PASS") or os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "").strip()
     
     return imap_host, imap_port, imap_user, imap_pass
 

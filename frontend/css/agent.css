@@ -353,6 +353,17 @@ body.admin-body {
   box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);
 }
 
+.stream-tab-btn#tabAssignedMe.active {
+  background: #EFF6FF !important;
+  color: #2563EB !important;
+  border-color: #BFDBFE !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
+}
+.stream-tab-btn#tabAssignedMe.active .tab-count-pill {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
 .tab-count-pill {
   font-size: 10px;
   font-weight: 800;
@@ -362,9 +373,209 @@ body.admin-body {
   border-radius: 999px;
   transition: all 0.15s ease;
 }
+.tab-count-pill.badge-assigned {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  border: 1px solid #BFDBFE;
+}
 .stream-tab-btn.active .tab-count-pill {
   background: #E11D48;
   color: #FFFFFF;
+}
+
+/* Colleague Assignment Stream Chips */
+.apple-chip.chip-assigned-me {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #93C5FD;
+  font-weight: 700;
+}
+.apple-chip.chip-assigned-other {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+  font-weight: 600;
+}
+.apple-chip.chip-unassigned-pool {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  font-weight: 600;
+}
+
+/* Colleague Assignment Handover Banner */
+.assignment-handover-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  border: 1px solid #BAE6FD;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.handover-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+.handover-avatar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #0284C7;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.handover-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.handover-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #0369A1;
+}
+.handover-lead {
+  font-weight: 500;
+  color: #0369A1;
+}
+.handover-name {
+  font-weight: 800;
+  color: #0C4A6E;
+}
+.handover-you-tag {
+  font-size: 10px;
+  font-weight: 800;
+  background: #0284C7;
+  color: #FFFFFF;
+  padding: 2px 7px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.handover-notes-row {
+  font-size: 12px;
+  color: #075985;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.btn-handover-reassign {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #7DD3FC;
+  color: #0284C7;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn-handover-reassign:hover {
+  background: #0284C7;
+  color: #FFFFFF;
+}
+
+/* Agent Identity Switcher Dropdown */
+.agent-switch-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  width: 290px;
+  padding: 8px;
+  z-index: 1000;
+}
+.agent-switch-header {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94A3B8;
+  padding: 6px 8px 8px;
+  border-bottom: 1px solid #F1F5F9;
+}
+.agent-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.agent-switch-item:hover {
+  background: #F8FAFC;
+}
+.agent-switch-item.active {
+  background: #EFF6FF;
+}
+.as-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.as-meta {
+  flex: 1;
+  min-width: 0;
+}
+.as-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0F172A;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.as-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.as-badge.head { background: #FEF3C7; color: #D97706; }
+.as-badge.spec { background: #E0F2FE; color: #0284C7; }
+.as-badge.admin { background: #F3E8FF; color: #7E22CE; }
+.as-email {
+  font-size: 11px;
+  color: #64748B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.specialist-you-pill {
+  font-size: 9.5px;
+  font-weight: 800;
+  background: #0284C7;
+  color: #FFFFFF;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 .subbar-right {

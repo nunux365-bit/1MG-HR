@@ -45,20 +45,52 @@ function openResolveModalForCurrent() {
   openResolveModal(currentSelectedCaseId, caseNum);
 }
 
-// User Profile & Fallback Demo User (Multi-department aware)
+// User Profiles & Switcher Definitions (tata1mg_desk)
+const KNOWN_PROFILES = {
+  1: { id: 1, name: 'Vaibhav Yadav (Admin)', email: 'vaibhav.v1@1mg.com', role: 'ADMIN', is_dept_head: true, department_id: 11, department_ids: [11], department_name: 'People Desk' }
+};
+
 let currentUser = JSON.parse(localStorage.getItem('1mg_user') || '{}');
 if (!currentUser.email) {
-  currentUser = {
-    id: 5,
-    name: 'Vaibhav Yadav',
-    email: 'vaibhavv7676@gmail.com',
-    role: 'HR_AGENT',
-    is_dept_head: true,
-    department_id: 11,
-    department_ids: [11],
-    department_name: 'People Desk'
-  };
+  window.location.href = '/login.html';
+}
+
+function toggleAgentSwitchDropdown() {
+  const menu = document.getElementById('agentSwitchMenu');
+  if (menu) {
+    const isShowing = menu.style.display === 'block';
+    menu.style.display = isShowing ? 'none' : 'block';
+    if (!isShowing) {
+      // Highlight current
+      document.querySelectorAll('.agent-switch-item').forEach(it => {
+        const email = it.querySelector('.as-email')?.innerText || '';
+        it.classList.toggle('active', email.includes(currentUser.email));
+      });
+    }
+  }
+}
+
+// Close switcher dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('agentSwitchMenu');
+  const userMenu = document.querySelector('.user-profile-menu');
+  if (menu && menu.style.display === 'block' && userMenu && !userMenu.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+
+function switchAgentProfile(userId) {
+  const prof = KNOWN_PROFILES[userId];
+  if (!prof) return;
+  currentUser = { ...prof };
   localStorage.setItem('1mg_user', JSON.stringify(currentUser));
+  window._hasShownAssignedNotice = false;
+  const menu = document.getElementById('agentSwitchMenu');
+  if (menu) menu.style.display = 'none';
+  initUserSession();
+  showToast(`Switched active colleague to ${currentUser.name} (${currentUser.is_dept_head ? 'Dept Head' : 'Specialist'})`, 'info');
+  loadInboxEmails();
+  loadCases();
 }
 
 // Canned Responses Library
@@ -704,15 +736,17 @@ async function loadInboxEmails(options = {}) {
   }
 
   let mailboxParam = '';
-  if (currentUser?.is_dept_head && (currentUser?.dept_gmail || currentUser?.email)) {
-    mailboxParam = `&account_email=${encodeURIComponent(currentUser.dept_gmail || currentUser.email)}`;
+  if (currentUser?.is_dept_head && currentUser?.dept_gmail && currentUser?.dept_gmail.includes('@')) {
+    mailboxParam = `&account_email=${encodeURIComponent(currentUser.dept_gmail)}`;
   }
+
+  const userParam = currentUser?.id ? `&user_id=${currentUser.id}&user_email=${encodeURIComponent(currentUser.email || '')}` : '';
 
   const searchInput = document.getElementById('inboxSearchInput');
   const searchParam = searchInput && searchInput.value ? `&search=${encodeURIComponent(searchInput.value.trim())}` : '';
 
   try {
-    const res = await fetch(`/api/v1/inbox/emails?tab=${currentInboxTriageTab}${deptParam}${mailboxParam}${searchParam}`);
+    const res = await fetch(`/api/v1/inbox/emails?tab=${currentInboxTriageTab}${deptParam}${mailboxParam}${userParam}${searchParam}`);
     const data = await res.json();
 
     if (data.success) {
@@ -736,8 +770,25 @@ async function loadInboxEmails(options = {}) {
         const cActionable = document.getElementById('countActionableBadge');
         const cUnclaimed = document.getElementById('countUnclaimedMailBadge');
         const cNoise = document.getElementById('countNoiseBadge');
+        const cAssignedMe = document.getElementById('countAssignedMeBadge');
+
+        if (cUseful) cUseful.innerText = data.counts.useful ?? 0;
+        if (cActionable) cActionable.innerText = data.counts.actionable ?? 0;
+        if (cUnclaimed) cUnclaimed.innerText = data.counts.unclaimed ?? 0;
+        if (cNoise) cNoise.innerText = data.counts.noise ?? 0;
+        if (cAssignedMe) {
+          cAssignedMe.innerText = data.counts.assigned_to_me ?? 0;
+        }
+
         window.lastInboxEmailCounts = data.counts;
         updateSidebarBadges();
+
+        // If user has assigned cases and we just loaded, announce quietly
+        if (!isSilent && data.counts.assigned_to_me > 0 && !window._hasShownAssignedNotice) {
+          window._hasShownAssignedNotice = true;
+          const assignedCount = data.counts.assigned_to_me;
+          showToast(`👤 Notice: You have ${assignedCount} inquiry${assignedCount > 1 ? 's' : ''} assigned to you in "Assigned to Me" tab`, 'info');
+        }
       }
 
       renderInboxEmailStream();
@@ -774,7 +825,19 @@ async function loadInboxEmails(options = {}) {
 function setInboxTriageTab(tab, btnEl) {
   currentInboxTriageTab = tab;
   document.querySelectorAll('#inboxView .stream-tab-btn').forEach(b => b.classList.remove('active'));
-  if (btnEl) btnEl.classList.add('active');
+  if (btnEl) {
+    btnEl.classList.add('active');
+  } else {
+    const tabMap = {
+      'useful': 'tabUsefulMail',
+      'actionable': 'tabActionableMail',
+      'unclaimed': 'tabUnclaimedMail',
+      'noise': 'tabNoiseMail',
+      'assigned_to_me': 'tabAssignedMe'
+    };
+    const tabBtn = document.getElementById(tabMap[tab] || 'tabUsefulMail');
+    if (tabBtn) tabBtn.classList.add('active');
+  }
   loadInboxEmails();
 }
 
@@ -868,6 +931,20 @@ function renderInboxEmailStream() {
       ? `<span class="apple-chip" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; border: 1px solid #BFDBFE;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> ${e.thread_count} msgs</span>`
       : '';
 
+    // Colleague Assignment Chip
+    const isAssignedToMe = (
+      (e.assigned_user_id && currentUser?.id && e.assigned_user_id === currentUser.id) ||
+      (e.assigned_user_email && currentUser?.email && e.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())
+    );
+    let assignmentChip = '';
+    if (isAssignedToMe) {
+      assignmentChip = `<span class="apple-chip chip-assigned-me" title="Assigned directly to you"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Assigned to You</span>`;
+    } else if (e.assigned_user_name) {
+      assignmentChip = `<span class="apple-chip chip-assigned-other" title="Assigned to ${escapeHtml(e.assigned_user_name)}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${escapeHtml(e.assigned_user_name)}</span>`;
+    } else {
+      assignmentChip = `<span class="apple-chip chip-unassigned-pool" title="Unassigned in Desk Pool">⚡ Pool</span>`;
+    }
+
     const catKey = (e.category || 'INQUIRY').toLowerCase();
     const formattedCat = formatCategoryTitle(e.category);
     const isUrgent = Boolean(ai.is_urgent || (ai.urgency || '').includes('HIGH'));
@@ -913,6 +990,7 @@ function renderInboxEmailStream() {
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span>${escapeHtml(slaText)}</span>
           </span>
+          ${assignmentChip}
           ${threadChip}
           ${statusChip}
         </div>
@@ -1334,6 +1412,36 @@ async function selectInboxEmail(emailId) {
       ribAssignee.title = `Specialist: ${email.assigned_user_name} (${email.assigned_user_email || ''})`;
     } else {
       ribAssignee.style.display = 'none';
+    }
+  }
+
+  // 1b. Update Colleague Assignment & Handover Banner
+  const assignBanner = document.getElementById('inboxAssignmentBanner');
+  const handoverName = document.getElementById('inboxHandoverName');
+  const handoverYouTag = document.getElementById('inboxHandoverYouTag');
+  const notesRow = document.getElementById('inboxHandoverNotesRow');
+  const notesText = document.getElementById('inboxHandoverNotesText');
+
+  const isAssignedToMe = (
+    (email.assigned_user_id && currentUser?.id && email.assigned_user_id === currentUser.id) ||
+    (email.assigned_user_email && currentUser?.email && email.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  if (assignBanner) {
+    if (email.assigned_user_name || email.assigned_user_id || (email.transfer_notes && email.transfer_notes.trim())) {
+      assignBanner.style.display = 'flex';
+      if (handoverName) handoverName.innerText = email.assigned_user_name || 'Desk Specialist';
+      if (handoverYouTag) handoverYouTag.style.display = isAssignedToMe ? 'inline-flex' : 'none';
+      if (notesRow && notesText) {
+        if (email.transfer_notes && email.transfer_notes.trim()) {
+          notesText.innerText = email.transfer_notes.trim();
+          notesRow.style.display = 'flex';
+        } else {
+          notesRow.style.display = 'none';
+        }
+      }
+    } else {
+      assignBanner.style.display = 'none';
     }
   }
 
@@ -1762,7 +1870,7 @@ async function convertCurrentInboxEmail() {
         department_id: currentUser?.department_id || email?.department_id || 11,
         assigned_user: currentUser?.name || 'Vaibhav Yadav',
         actor_name: currentUser?.name || 'Vaibhav Yadav',
-        actor_email: currentUser?.email || 'vaibhavv7676@gmail.com'
+        actor_email: currentUser?.email || 'vaibhav.v1@1mg.com'
       })
     });
     const data = await res.json();
@@ -2085,7 +2193,7 @@ async function handleTransferDepartmentSubmit(event) {
         notes: notes,
         user_id: currentUser?.id,
         user_name: currentUser?.name || 'Department Head',
-        user_email: currentUser?.email || 'vaibhavv7676@gmail.com'
+        user_email: currentUser?.email || 'vaibhav.v1@1mg.com'
       })
     });
     const data = await res.json();
@@ -3347,12 +3455,13 @@ function populateAgentSpecialistFilter() {
   });
 
   let html = `<option value="ALL">All Specialists</option>`;
+  html += `<option value="MINE">★ Assigned to Me (${escapeHtml(currentUser.name || 'You')})</option>`;
   specialists.forEach(spec => {
     html += `<option value="${escapeHtml(spec)}">${escapeHtml(spec)}</option>`;
   });
 
   select.innerHTML = html;
-  if (currentVal && specialists.has(currentVal)) {
+  if (currentVal && (currentVal === "MINE" || specialists.has(currentVal))) {
     select.value = currentVal;
   }
 }
@@ -3460,7 +3569,16 @@ function renderAgentCasesTable() {
     }
 
     // 6. Specialist Filter
-    if (agentSpecialistFilter !== "ALL" && c.assigned_user !== agentSpecialistFilter) return false;
+    if (agentSpecialistFilter === "MINE") {
+      const isMine = (
+        (c.assigned_user && currentUser?.name && c.assigned_user.toLowerCase() === currentUser.name.toLowerCase()) ||
+        (c.assigned_user_email && currentUser?.email && c.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (c.assigned_user_id && currentUser?.id && c.assigned_user_id === currentUser.id)
+      );
+      if (!isMine) return false;
+    } else if (agentSpecialistFilter !== "ALL" && c.assigned_user !== agentSpecialistFilter) {
+      return false;
+    }
 
     // 7. Omni-Search Query
     if (agentCaseSearchQuery) {
@@ -3640,11 +3758,14 @@ function renderAgentCasesTable() {
         <!-- 7. Assigned Specialist -->
         <td>
           <div class="specialist-wrap">
-            <div class="specialist-avatar-dot">
+            <div class="specialist-avatar-dot" style="${((c.assigned_user && currentUser?.name && c.assigned_user.toLowerCase() === currentUser.name.toLowerCase()) || (c.assigned_user_email && currentUser?.email && c.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())) ? 'background: #0284C7; color: #FFFFFF;' : ''}">
               ${(c.assigned_user || "U")[0].toUpperCase()}
             </div>
             <div>
-              <div class="specialist-name">${escapeHtml(c.assigned_user || "Unassigned")}</div>
+              <div class="specialist-name">
+                ${escapeHtml(c.assigned_user || "Unassigned")}
+                ${((c.assigned_user && currentUser?.name && c.assigned_user.toLowerCase() === currentUser.name.toLowerCase()) || (c.assigned_user_email && currentUser?.email && c.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())) ? '<span class="specialist-you-pill">You</span>' : ''}
+              </div>
               <div class="specialist-email">${escapeHtml(c.assigned_user_email || "Central Pool")}</div>
             </div>
           </div>

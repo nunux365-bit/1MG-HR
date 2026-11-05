@@ -23,9 +23,9 @@ def get_smtp_config():
         port = int(os.getenv("SMTP_PORT", 587))
     except (ValueError, TypeError):
         port = 587
-    user = os.getenv("SMTP_USER", "vaibhav.v1@1mg.com").strip()
-    password = (os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "dtefkmddefzhxtfr").strip()
-    from_header = os.getenv("SMTP_FROM", f"Tata 1mg People Desk <{user}>").strip()
+    user = os.getenv("SMTP_USER", "").strip()
+    password = (os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "").strip()
+    from_header = os.getenv("SMTP_FROM", f"Tata 1mg People Desk <{user}>" if user else "Tata 1mg People Desk").strip()
     return host, port, user, password, from_header
 
 def generate_welcome_email_content(

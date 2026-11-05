@@ -157,16 +157,30 @@
           Admin View
         </button>
 
-        <!-- User Profile Avatar -->
-        <div class="user-profile-menu" style="padding: 4px 10px 4px 5px; display: flex; align-items: center; gap: 8px;">
-          <div class="user-avatar" id="agentAvatar" style="width: 28px; height: 28px; font-size: 12px;">VY</div>
-          <div style="display: flex; flex-direction: column; line-height: 1.2;">
+        <!-- User Profile Avatar & Switcher -->
+        <div class="user-profile-menu" style="padding: 4px 10px 4px 5px; display: flex; align-items: center; gap: 8px; position: relative;">
+          <div class="user-avatar" id="agentAvatar" style="width: 28px; height: 28px; font-size: 12px; cursor: pointer;" onclick="toggleAgentSwitchDropdown()" title="Switch Specialist Identity">VY</div>
+          <div style="display: flex; flex-direction: column; line-height: 1.2; cursor: pointer;" onclick="toggleAgentSwitchDropdown()" title="Switch Specialist Identity">
             <div style="display: flex; align-items: center;">
               <span style="font-size: 12.5px; font-weight: 700; color: var(--text-dark);" id="agentHeaderName">Vaibhav Yadav</span>
               <span id="deptHeadBadge" style="display: none; font-size: 9.5px; font-weight: 700; background: #FEF3C7; color: #D97706; border: 1px solid #FCD34D; padding: 1px 5px; border-radius: 4px; margin-left: 5px;">⭐ DEPT HEAD</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 4px; opacity: 0.6;"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
-            <span style="font-size: 10.5px; color: var(--text-muted);" id="agentDeptTag">Attendance HR Desk</span>
+            <span style="font-size: 10.5px; color: var(--text-muted);" id="agentDeptTag">People Desk</span>
           </div>
+
+          <!-- Quick Agent Switcher Dropdown -->
+          <div id="agentSwitchMenu" class="agent-switch-dropdown" style="display: none;">
+            <div class="agent-switch-header">Active Admin:</div>
+            <div class="agent-switch-item" onclick="switchAgentProfile(1)">
+              <div class="as-avatar" style="background: linear-gradient(135deg, #BF5AF2, #8944AB);">VY</div>
+              <div class="as-meta">
+                <div class="as-name">Vaibhav Yadav <span class="as-badge admin">Super Admin</span></div>
+                <div class="as-email">vaibhav.v1@1mg.com · People Desk</div>
+              </div>
+            </div>
+          </div>
+
           <button onclick="handleSignOut()" style="background: none; border: none; cursor: pointer; color: #EF4444; font-size: 11.5px; font-weight: 700; margin-left: 4px;" title="Sign out">
             Sign Out
           </button>
@@ -202,6 +216,11 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                 <span>Actionable HR</span>
                 <span class="tab-count-pill" id="countActionableBadge">0</span>
+              </button>
+              <button class="stream-tab-btn" id="tabAssignedMe" onclick="setInboxTriageTab('assigned_to_me', this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Assigned to Me</span>
+                <span class="tab-count-pill badge-assigned" id="countAssignedMeBadge">0</span>
               </button>
               <button class="stream-tab-btn" id="tabUnclaimedMail" onclick="setInboxTriageTab('unclaimed', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -383,6 +402,31 @@
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  <!-- Colleague Assignment & Handover Banner -->
+                  <div class="assignment-handover-banner" id="inboxAssignmentBanner" style="display: none;">
+                    <div class="handover-banner-left">
+                      <div class="handover-avatar-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      </div>
+                      <div class="handover-banner-text">
+                        <div class="handover-title-row">
+                          <span class="handover-lead">Assigned Specialist:</span>
+                          <span class="handover-name" id="inboxHandoverName">Unassigned</span>
+                          <span class="handover-you-tag" id="inboxHandoverYouTag" style="display: none;">Assigned to You</span>
+                        </div>
+                        <div class="handover-notes-row" id="inboxHandoverNotesRow" style="display: none;">
+                          <span class="notes-quote-icon">“</span>
+                          <span class="notes-text" id="inboxHandoverNotesText"></span>
+                          <span class="notes-quote-icon">”</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button class="btn-handover-reassign" onclick="openTransferDepartmentModal()" title="Reassign ownership or desk">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                      <span>Reassign</span>
+                    </button>
                   </div>
 
                   <!-- AI Smart Digest Strip (Sleek, Compact, High-Value) -->

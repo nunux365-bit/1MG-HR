@@ -34,30 +34,34 @@ source venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
-#### 3. Start the Backend API Server (FastAPI)
+#### 3. Initialize & Migrate the Database
+Run the automated database initialization script to create tables, sequences, and seed default departments:
+```bash
+python backend/app/db_init.py
+```
+
+#### 4. Start the Backend API Server (FastAPI)
 ```bash
 python run.py
 # or
 python3 -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 9000
 ```
-Interactive API documentation will be available at: [http://localhost:9000/docs](http://localhost:9000/docs)
+Interactive Swagger API documentation will be available at: [http://localhost:9000/docs](http://localhost:9000/docs)
 
-#### 4. Launch the Frontend
-The frontend is built with clean HTML5, CSS3, and JavaScript and can be served directly by FastAPI or opened with any static file server:
-- Employee Portal: [http://localhost:9000/](http://localhost:9000/)
-- Agent Workbench: [http://localhost:9000/agent.html](http://localhost:9000/agent.html)
-- Admin & Analytics: [http://localhost:9000/admin.html](http://localhost:9000/admin.html)
+#### 5. Launch the Application
+The frontend is built with responsive HTML5, CSS3, and ES6 JavaScript and is served directly by the FastAPI server:
+- **Employee Sign-In**: [http://localhost:9000/](http://localhost:9000/) or [http://localhost:9000/login.html](http://localhost:9000/login.html)
+- **Agent Workbench & AI Cockpit**: [http://localhost:9000/agent.html](http://localhost:9000/agent.html)
+- **Executive Admin Console**: [http://localhost:9000/admin.html](http://localhost:9000/admin.html)
 
 ---
 
-### 4. Available NPM Scripts
+### 4. Key Management Commands & Workflows
 
-| Script | Command | Purpose |
+| Task | Command | Purpose |
 | :--- | :--- | :--- |
-| `dev` | `next dev` | Start development server with hot-reloading |
-| `build` | `next build` | Create optimized production build |
-| `start` | `next start` | Run production build locally |
-| `lint` | `next lint` | Run ESLint static code analysis |
-| `test` | `vitest` | Run unit and integration tests |
-| `test:e2e` | `playwright test` | Run browser end-to-end tests |
-| `db:seed` | `ts-node prisma/seed.ts` | Seed sample data into the database |
+| **Start Server** | `python run.py` | Runs FastAPI server on configured `PORT` (default: 9000) with hot-reload |
+| **Database Migration** | `python backend/app/db_init.py` | Idempotently creates tables, sequences, safe columns, and default departments |
+| **API Health Check** | `curl http://localhost:9000/api/health` | Verifies server and database responsiveness |
+| **API Swagger Docs** | Open `/docs` in browser | Interactive API testing playground with live schemas |
+| **Train AI Model** | Via Admin Console or `POST /api/v1/departments/{id}/train` | Trains scikit-learn LinearSVC models and hot-reloads memory weights |

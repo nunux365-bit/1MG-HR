@@ -10,7 +10,7 @@ NEON_HOST = os.getenv("NEON_HOST", "ep-delicate-band-b3531bbp-pooler.c-4.ap-sout
 NEON_PORT = int(os.getenv("NEON_PORT", 5432))
 NEON_DBNAME = os.getenv("NEON_DBNAME", "tata1mg_desk")
 NEON_USER = os.getenv("NEON_USER", "neondb_owner")
-NEON_PASSWORD = os.getenv("NEON_PASSWORD", "npg_prCYPycw8L7q")
+NEON_PASSWORD = os.getenv("NEON_PASSWORD", "")
 
 # Clean standard connection string pointing directly to tata1mg_desk
 DATABASE_URL = os.getenv(
@@ -40,7 +40,7 @@ NEON_HTTP_HOST = NEON_HOST.replace("-pooler", "")
 NEON_HTTP_URL = f"https://{NEON_HTTP_HOST}/sql"
 NEON_CONN_STR = f"postgresql://{NEON_USER}:{NEON_PASSWORD}@{NEON_HTTP_HOST}/{NEON_DBNAME}?sslmode=require"
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "vaibhavx002@zohomail.in")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "vaibhav.v1@1mg.com")
 ADMIN_APP_PASSWORD = os.getenv("ADMIN_APP_PASSWORD", "")
 PORT = int(os.getenv("PORT", 9000))
 HOST = os.getenv("HOST", "0.0.0.0")

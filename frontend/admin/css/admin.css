@@ -3714,3 +3714,341 @@ button.badge-role-scope:hover .swap-icon-svg {
   color: #FFFFFF;
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
+
+/* ==========================================================================
+   8. EXECUTIVE REPORTS & OPERATIONAL ANALYTICS COMMAND CENTER
+   ========================================================================== */
+.report-cockpit-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  align-items: flex-end;
+  margin-top: 14px;
+}
+
+.report-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-filter-item label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.report-filter-item .form-input {
+  height: 38px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  padding: 0 12px;
+  background: #FFFFFF;
+  color: var(--text-dark);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.report-filter-item .form-input:focus {
+  border-color: var(--1mg-orange);
+  box-shadow: 0 0 0 3px var(--1mg-orange-glow);
+  outline: none;
+}
+
+.report-date-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.report-date-pill {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: #FFFFFF;
+  color: var(--text-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.report-date-pill:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+.report-date-pill.active {
+  background: var(--1mg-orange);
+  color: #FFFFFF;
+  border-color: var(--1mg-orange);
+  box-shadow: 0 2px 6px rgba(255, 111, 97, 0.3);
+}
+
+.report-charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 1200px) {
+  .report-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.report-chart-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.report-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.report-chart-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.report-chart-subtitle {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.report-chart-canvas-box {
+  position: relative;
+  height: 220px;
+  width: 100%;
+}
+
+.report-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid var(--border-light);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+
+.report-tab-btn {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+}
+
+.report-tab-btn:hover {
+  color: var(--text-dark);
+}
+
+.report-tab-btn.active {
+  color: var(--1mg-orange);
+  border-bottom-color: var(--1mg-orange);
+}
+
+.report-tab-badge {
+  background: var(--bg-page);
+  color: var(--text-body);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.report-tab-btn.active .report-tab-badge {
+  background: var(--1mg-orange-light);
+  color: var(--1mg-orange);
+}
+
+.report-toolbar-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.report-record-counter {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.report-record-counter strong {
+  color: var(--text-dark);
+}
+
+.report-sla-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.report-sla-pill.on-track {
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+}
+
+.report-sla-pill.resolved-on-time {
+  background: #F0FDF4;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+}
+
+.report-sla-pill.breached {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+
+.report-sla-pill.resolved-breached {
+  background: #FFFBEB;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+/* Modern Segmented Tabs Bar */
+.report-tabs-bar {
+  display: inline-flex;
+  background: #F1F5F9;
+  padding: 5px;
+  border-radius: 12px;
+  gap: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #E2E8F0;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.report-tab-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.report-tab-btn:hover {
+  color: #1E293B;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.report-tab-btn.active {
+  background: #FFFFFF;
+  color: #FF6F61;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.report-tab-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #E2E8F0;
+  color: #475569;
+}
+
+.report-tab-btn.active .report-tab-badge {
+  background: #FFF2ED;
+  color: #FF6F61;
+}
+
+/* Status & Priority Capsules */
+.rep-pill-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.rep-pill-status.open { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; }
+.rep-pill-status.in-progress { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+.rep-pill-status.waiting { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
+.rep-pill-status.resolved { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+.rep-pill-status.closed { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+
+.rep-pill-prio {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rep-pill-prio.critical { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+.rep-pill-prio.high { background: #FFF7ED; color: #EA580C; border: 1px solid #FFEDD5; }
+.rep-pill-prio.medium { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
+.rep-pill-prio.low { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+@media print {
+  .sidebar, .top-header, .report-cockpit-card, .dept-hero-actions, .report-toolbar-strip, .pagination {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  .bento-kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  .data-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

@@ -7,10 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://neondb_owner:npg_prCYPycw8L7q@ep-delicate-band-b3531bbp-pooler.c-4.ap-southeast-1.aws.neon.tech/tata1mg_desk?sslmode=require"
-)
+DB_URL = os.getenv("DATABASE_URL")
+if not DB_URL:
+    neon_user = os.getenv("NEON_USER", "neondb_owner")
+    neon_pass = os.getenv("NEON_PASSWORD", "")
+    neon_host = os.getenv("NEON_HOST", "ep-delicate-band-b3531bbp-pooler.c-4.ap-southeast-1.aws.neon.tech")
+    neon_db = os.getenv("NEON_DBNAME", "tata1mg_desk")
+    DB_URL = f"postgresql://{neon_user}:{neon_pass}@{neon_host}/{neon_db}?sslmode=require"
 
 INIT_SQL = """
 -- 1. USERS & AGENTS TABLE
@@ -86,6 +89,7 @@ CREATE TABLE IF NOT EXISTS cases (
     assigned_team VARCHAR(100),
     assigned_user VARCHAR(150),
     assigned_user_email VARCHAR(255),
+    assigned_user_id INT,
     status VARCHAR(50) DEFAULT 'OPEN',         -- 'OPEN', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_ON_EMPLOYEE', 'RESOLVED', 'CLOSED'
     priority VARCHAR(20) DEFAULT 'MEDIUM',     -- 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
     sla_hours INT DEFAULT 24,
@@ -93,18 +97,104 @@ CREATE TABLE IF NOT EXISTS cases (
     resolution_notes TEXT,
     resolved_by VARCHAR(150),
     resolved_at TIMESTAMPTZ,
+    employee_id INT,
+    employee_code VARCHAR(50),
+    company_email VARCHAR(255),
+    personal_email VARCHAR(255),
+    manager VARCHAR(150),
+    mobile_number VARCHAR(50),
+    is_profile_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. AUDIT LOGS TABLE
+-- Safe migration columns for existing cases table
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS employee_id INT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS employee_code VARCHAR(50);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS company_email VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS personal_email VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS manager VARCHAR(150);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_profile_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS assigned_user_id INT;
+
+-- 5. EMPLOYEES MASTER TABLE (Central HRMS / Darwinbox Active Directory)
+CREATE TABLE IF NOT EXISTS employees (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50),
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(255),
+    department VARCHAR(100),
+    designation VARCHAR(150),
+    manager_name VARCHAR(150),
+    location VARCHAR(100),
+    source VARCHAR(50) DEFAULT 'HRMS',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. INBOUND EMAILS TABLE (Omni-channel Mailbox & AI Triage Queue)
+CREATE TABLE IF NOT EXISTS emails (
+    id SERIAL PRIMARY KEY,
+    provider VARCHAR(50) DEFAULT 'GMAIL',
+    provider_message_id VARCHAR(255),
+    account_email VARCHAR(255),
+    thread_id VARCHAR(255),
+    parent_id INT,
+    sender_name VARCHAR(150),
+    sender_email VARCHAR(255),
+    subject VARCHAR(500),
+    body TEXT,
+    received_at TIMESTAMPTZ DEFAULT NOW(),
+    employee_id INT,
+    classification_status VARCHAR(50) DEFAULT 'CLASSIFIED',
+    category VARCHAR(100),
+    category_confidence NUMERIC,
+    intent VARCHAR(100),
+    intent_score NUMERIC,
+    requires_review INT DEFAULT 0,
+    processing_status VARCHAR(50) DEFAULT 'COMPLETED',
+    category_reason TEXT,
+    decision_status VARCHAR(50),
+    extracted_fields TEXT,
+    validation_result TEXT,
+    is_actionable INT DEFAULT 1,
+    actionable_reason TEXT,
+    department_id INT REFERENCES hr_departments(id) ON DELETE SET NULL,
+    case_id INT REFERENCES cases(id) ON DELETE SET NULL,
+    case_number VARCHAR(50),
+    is_converted INT DEFAULT 0,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_by_user_id INT,
+    read_by_name VARCHAR(150),
+    read_at TIMESTAMPTZ,
+    assigned_user_id INT,
+    assigned_user_name VARCHAR(150),
+    assigned_user_email VARCHAR(255),
+    transfer_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. SYSTEM BROADCASTS TABLE
+CREATE TABLE IF NOT EXISTS system_broadcasts (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(20) DEFAULT 'INFO',
+    target_dept VARCHAR(100) DEFAULT 'ALL',
+    created_by VARCHAR(150),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     case_id INT REFERENCES cases(id) ON DELETE CASCADE,
     case_number VARCHAR(50),
     actor_email VARCHAR(255) NOT NULL,
     actor_name VARCHAR(150) NOT NULL,
-    action VARCHAR(100) NOT NULL,               -- e.g. 'CASE_CREATED', 'AGENT_ASSIGNED', 'STATUS_CHANGED'
+    action VARCHAR(100) NOT NULL,
     details JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -117,16 +207,16 @@ ON CONFLICT (prefix) DO NOTHING;
 -- SEED: Initial Departments for Tata 1mg
 INSERT INTO hr_departments (dept_code, team_name, dept_gmail, sla_hours, default_priority, description)
 VALUES 
-    ('DEPT-ATTENDANCE', 'Attendance HR', 'vaibhavx002@zohomail.in', 24, 'HIGH', 'Handles biometric punches, shift attendance, timesheets, and regularization queries.'),
+    ('DEPT-ATTENDANCE', 'Attendance HR', 'attendance.desk@1mg.com', 24, 'HIGH', 'Handles biometric punches, shift attendance, timesheets, and regularization queries.'),
     ('DEPT-PAYROLL', 'Payroll HR', 'payroll.desk@1mg.com', 24, 'HIGH', 'Handles salary slips, tax TDS declarations, Form 16, and bank account changes.'),
-    ('DEPT-PEOPLEDESK', 'Central People Desk', 'peopledesk@1mg.com', 48, 'MEDIUM', 'Central employee helpdesk and general query triage for all departments.'),
+    ('DEPT-PEOPLEDESK', 'Central People Desk', 'vaibhav.v1@1mg.com', 48, 'MEDIUM', 'Central employee helpdesk and general query triage for all departments.'),
     ('DEPT-IT-ASSET', 'IT Asset & Hardware', 'it.support@1mg.com', 48, 'MEDIUM', 'Handles laptops, VPN access, hardware repairs, and peripheral requests.'),
     ('DEPT-BGV', 'Background Verification', 'bgv.verify@1mg.com', 72, 'MEDIUM', 'Handles employee background verification, document checks, and experience verification.')
 ON CONFLICT (dept_code) DO NOTHING;
 
 -- SEED: Admin User
 INSERT INTO users (email, name, role, is_dept_head, designation, status)
-VALUES ('vaibhavx002@zohomail.in', 'Vaibhav Yadav', 'ADMIN', TRUE, 'System Administrator & Head of People Desk', 'ACTIVE')
+VALUES ('vaibhav.v1@1mg.com', 'Vaibhav Yadav', 'ADMIN', TRUE, 'System Administrator & Head of People Desk', 'ACTIVE')
 ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', status = 'ACTIVE';
 """
 
@@ -142,12 +232,18 @@ def init_database():
     depts = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM users;")
     users = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM employees;")
+    emps = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM emails;")
+    emails_cnt = cur.fetchone()[0]
     cur.execute("SELECT last_number FROM case_sequences WHERE prefix='1MG';")
     seq = cur.fetchone()[0]
     
     print(f"✓ Migration applied successfully!")
     print(f"✓ Departments seeded: {depts}")
     print(f"✓ Users in database: {users}")
+    print(f"✓ HRMS Employee records: {emps}")
+    print(f"✓ Inbound Emails in triage queue: {emails_cnt}")
     print(f"✓ Sequence generator ready: prefix='1MG', next={seq + 1}")
     
     cur.close()

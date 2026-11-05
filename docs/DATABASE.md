@@ -7,127 +7,194 @@
 
 ```mermaid
 erDiagram
-    DEPARTMENT ||--o{ CATEGORY : contains
-    DEPARTMENT ||--o{ USER : employs
-    USER ||--o{ TICKET : creates
-    USER ||--o{ TICKET : assigned_to
-    USER ||--o{ TICKET_MESSAGE : sends
-    TICKET ||--o{ TICKET_MESSAGE : includes
-    TICKET ||--o{ TICKET_ATTACHMENT : has
-    TICKET }o--|| CATEGORY : categorized_under
-    TICKET }o--|| DEPARTMENT : routed_to
-    CATEGORY ||--o{ KNOWLEDGE_ARTICLE : classifies
-    TICKET ||--o{ SLA_BREACH_LOG : triggers
-    USER ||--o{ AUDIT_LOG : actions
+    HR_DEPARTMENTS ||--o{ USER_DEPARTMENTS : maps
+    USERS ||--o{ USER_DEPARTMENTS : assigned
+    HR_DEPARTMENTS ||--o{ CASES : receives
+    USERS ||--o{ CASES : assigned_agent
+    CASES ||--o{ AUDIT_LOGS : tracks
+    EMPLOYEES ||--o{ CASES : matches
+    EMAILS ||--o{ CASES : converted_to
+    HR_DEPARTMENTS ||--o{ EMAILS : routed_to
 ```
 
 ---
 
-### 2. SQL Schema Definition (PostgreSQL 15+ / Neon)
+### 2. SQL Schema Definition (PostgreSQL 15+ / Neon Database)
 
 ```sql
--- Enable necessary extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "vector"; -- for RAG embeddings
-
--- ENUMS
-CREATE TYPE user_role AS ENUM (
-    'EMPLOYEE', 
-    'FIELD_STAFF', 
-    'AGENT', 
-    'DEPT_LEAD', 
-    'SUPER_ADMIN'
-);
-
-CREATE TYPE ticket_priority AS ENUM (
-    'P0_CRITICAL', 
-    'P1_HIGH', 
-    'P2_MEDIUM', 
-    'P3_LOW'
-);
-
-CREATE TYPE ticket_status AS ENUM (
-    'OPEN', 
-    'AI_HANDLED', 
-    'ASSIGNED', 
-    'IN_PROGRESS', 
-    'WAITING_ON_EMPLOYEE', 
-    'RESOLVED', 
-    'CLOSED', 
-    'ESCALATED'
-);
-
-CREATE TYPE message_type AS ENUM (
-    'PUBLIC_REPLY', 
-    'INTERNAL_NOTE', 
-    'SYSTEM_ACTIVITY', 
-    'AI_RESPONSE'
-);
-
--- 1. DEPARTMENTS
-CREATE TABLE departments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) NOT NULL UNIQUE,
-    code VARCHAR(20) NOT NULL UNIQUE, -- e.g., 'HR', 'IT', 'PAYROLL', 'LOGISTICS', 'DIAGNOSTICS'
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. USERS (Tata 1mg Employees & Agents)
+-- 1. USERS TABLE (System Administrators & Support Agents)
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    emp_id VARCHAR(50) NOT NULL UNIQUE, -- e.g. '1MG-8492'
-    full_name VARCHAR(150) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    role user_role DEFAULT 'EMPLOYEE',
-    department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
-    work_location VARCHAR(100), -- 'Gurgaon HQ', 'Okhla Warehouse', 'Bangalore Lab', etc.
-    designation VARCHAR(100),
-    is_active BOOLEAN DEFAULT TRUE,
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'HR_AGENT', -- 'ADMIN', 'HR_AGENT'
+    password_hash VARCHAR(255),                  -- NULL until first-time password setup
+    is_dept_head BOOLEAN DEFAULT FALSE,
+    department_id INT REFERENCES hr_departments(id),
+    designation VARCHAR(150),
+    status VARCHAR(20) DEFAULT 'ACTIVE',          -- 'ACTIVE', 'INACTIVE'
+    mail_app_password VARCHAR(255),
+    mail_configured BOOLEAN DEFAULT FALSE,
+    mail_last_synced_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. CATEGORIES & SUBCATEGORIES
-CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    department_id UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    default_priority ticket_priority DEFAULT 'P2_MEDIUM',
-    sla_resolution_hours INT DEFAULT 24,
-    is_active BOOLEAN DEFAULT TRUE,
+-- 2. HR DEPARTMENTS TABLE (Routing Desks & AI Intent Profiles)
+CREATE TABLE hr_departments (
+    id SERIAL PRIMARY KEY,
+    dept_code VARCHAR(50) UNIQUE NOT NULL,       -- e.g. 'DEPT-ATTENDANCE', 'DEPT-PAYROLL'
+    team_name VARCHAR(100) NOT NULL,
+    dept_gmail VARCHAR(255) NOT NULL,
+    sla_hours INT DEFAULT 24,
+    default_priority VARCHAR(20) DEFAULT 'MEDIUM',
+    description TEXT,
+    category_code VARCHAR(50),
+    color_accent VARCHAR(20) DEFAULT '#FF6F61',
+    strong_keywords JSONB DEFAULT '[]'::jsonb,
+    weak_keywords JSONB DEFAULT '[]'::jsonb,
+    intents JSONB DEFAULT '[]'::jsonb,
+    ai_model_status VARCHAR(20) DEFAULT 'UNTRAINED',
+    model_accuracy NUMERIC(5,2) DEFAULT 0.0,
+    trained_at TIMESTAMPTZ,
+    dept_app_password VARCHAR(255),
+    imap_host VARCHAR(255),
+    imap_port INT DEFAULT 993,
+    mail_sync_status VARCHAR(50) DEFAULT 'NOT_CONFIGURED',
+    mail_last_synced_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. USER DEPARTMENTS (Multi-department assignment for Agents)
+CREATE TABLE user_departments (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    department_id INT NOT NULL REFERENCES hr_departments(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, department_id)
+);
+
+-- 4. CASE SEQUENCES TABLE (Collision-Free Atomic 5-Digit Sequence Generator)
+CREATE TABLE case_sequences (
+    prefix VARCHAR(20) PRIMARY KEY DEFAULT '1MG',
+    last_number BIGINT DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. CASES TABLE (Core Employee Query Lifecycle)
+CREATE TABLE cases (
+    id SERIAL PRIMARY KEY,
+    case_number VARCHAR(50) UNIQUE NOT NULL,      -- e.g. '1MG00001'
+    employee_email VARCHAR(255) NOT NULL,
+    employee_name VARCHAR(150),
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    department_id INT REFERENCES hr_departments(id) ON DELETE SET NULL,
+    assigned_team VARCHAR(100),
+    assigned_user VARCHAR(150),
+    assigned_user_email VARCHAR(255),
+    assigned_user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'OPEN',          -- 'OPEN', 'IN_PROGRESS', 'WAITING_ON_EMPLOYEE', 'RESOLVED', 'CLOSED'
+    priority VARCHAR(20) DEFAULT 'MEDIUM',      -- 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'
+    sla_hours INT DEFAULT 24,
+    due_at TIMESTAMPTZ,
+    resolution_notes TEXT,
+    resolved_by VARCHAR(150),
+    resolved_at TIMESTAMPTZ,
+    employee_id INT,
+    employee_code VARCHAR(50),
+    company_email VARCHAR(255),
+    personal_email VARCHAR(255),
+    manager VARCHAR(150),
+    mobile_number VARCHAR(50),
+    is_profile_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. EMPLOYEES MASTER TABLE (Central Darwinbox HRMS Active Directory)
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50) UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(255),
+    department VARCHAR(100),
+    designation VARCHAR(150),
+    manager_name VARCHAR(150),
+    location VARCHAR(100),
+    source VARCHAR(50) DEFAULT 'HRMS',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. INBOUND EMAILS TABLE (Omni-channel Mailbox & AI Triage Queue)
+CREATE TABLE emails (
+    id SERIAL PRIMARY KEY,
+    provider VARCHAR(50) DEFAULT 'GMAIL',
+    provider_message_id VARCHAR(255),
+    account_email VARCHAR(255),
+    thread_id VARCHAR(255),
+    parent_id INT REFERENCES emails(id) ON DELETE SET NULL,
+    sender_name VARCHAR(150),
+    sender_email VARCHAR(255),
+    subject VARCHAR(500),
+    body TEXT,
+    received_at TIMESTAMPTZ DEFAULT NOW(),
+    employee_id INT REFERENCES employees(id),
+    classification_status VARCHAR(50) DEFAULT 'CLASSIFIED',
+    category VARCHAR(100),
+    category_confidence NUMERIC,
+    intent VARCHAR(100),
+    intent_score NUMERIC,
+    requires_review INT DEFAULT 0,
+    processing_status VARCHAR(50) DEFAULT 'COMPLETED',
+    category_reason TEXT,
+    decision_status VARCHAR(50),
+    extracted_fields TEXT,
+    validation_result TEXT,
+    is_actionable INT DEFAULT 1,
+    actionable_reason TEXT,
+    department_id INT REFERENCES hr_departments(id) ON DELETE SET NULL,
+    case_id INT REFERENCES cases(id) ON DELETE SET NULL,
+    case_number VARCHAR(50),
+    is_converted INT DEFAULT 0,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_by_user_id INT,
+    read_by_name VARCHAR(150),
+    read_at TIMESTAMPTZ,
+    assigned_user_id INT REFERENCES users(id),
+    assigned_user_name VARCHAR(150),
+    assigned_user_email VARCHAR(255),
+    transfer_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. SYSTEM BROADCASTS TABLE
+CREATE TABLE system_broadcasts (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(20) DEFAULT 'INFO',
+    target_dept VARCHAR(100) DEFAULT 'ALL',
+    created_by VARCHAR(150),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. TICKETS
-CREATE TABLE tickets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_number VARCHAR(30) NOT NULL UNIQUE, -- e.g. 'TKT-2026-001082'
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    status ticket_status DEFAULT 'OPEN',
-    priority ticket_priority DEFAULT 'P2_MEDIUM',
-    department_id UUID NOT NULL REFERENCES departments(id),
-    category_id UUID NOT NULL REFERENCES categories(id),
-    requester_id UUID NOT NULL REFERENCES users(id),
-    assignee_id UUID REFERENCES users(id),
-    sla_due_at TIMESTAMPTZ NOT NULL,
-    first_responded_at TIMESTAMPTZ,
-    resolved_at TIMESTAMPTZ,
-    closed_at TIMESTAMPTZ,
-    is_escalated BOOLEAN DEFAULT FALSE,
-    csat_rating INT CHECK (csat_rating BETWEEN 1 AND 5),
-    csat_feedback TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+-- 9. AUDIT LOGS TABLE (Immutable Forensic Audit Trail)
+CREATE TABLE audit_logs (
+    id SERIAL PRIMARY KEY,
+    case_id INT REFERENCES cases(id) ON DELETE CASCADE,
+    case_number VARCHAR(50),
+    actor_email VARCHAR(255) NOT NULL,
+    actor_name VARCHAR(150) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    details JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- 5. TICKET MESSAGES & THREADS
-CREATE TABLE ticket_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+```
     ticket_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
     message_type message_type DEFAULT 'PUBLIC_REPLY',

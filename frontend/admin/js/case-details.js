@@ -34,14 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 function initAdminSession() {
   let user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
   if (!user.email || !user.role || user.role.toUpperCase() !== 'ADMIN') {
-    user = {
-      id: 1,
-      email: 'vaibhavx002@zohomail.in',
-      name: 'Vaibhav Yadav',
-      role: 'ADMIN',
-      designation: 'System Administrator & Head of People Desk'
-    };
-    localStorage.setItem('1mg_user', JSON.stringify(user));
+    window.location.href = '/login.html';
+    return;
   }
 
   const nameEl = document.getElementById('detailsAdminName');
@@ -49,7 +43,7 @@ function initAdminSession() {
   const avatarEl = document.getElementById('detailsAdminAvatar');
 
   if (nameEl) nameEl.innerText = user.name || 'Administrator';
-  if (emailEl) emailEl.innerText = user.email || 'vaibhavx002@zohomail.in';
+  if (emailEl) emailEl.innerText = user.email || 'vaibhav.v1@1mg.com';
   if (avatarEl) avatarEl.innerText = (user.name || 'A')[0].toUpperCase();
 }
 
@@ -57,12 +51,12 @@ function getCurrentAdminActor() {
   try {
     const user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
     return {
-      email: user.email || 'vaibhavx002@zohomail.in',
+      email: user.email || 'vaibhav.v1@1mg.com',
       name: user.name || 'Vaibhav Yadav'
     };
   } catch (e) {
     return {
-      email: 'vaibhavx002@zohomail.in',
+      email: 'vaibhav.v1@1mg.com',
       name: 'Vaibhav Yadav'
     };
   }
