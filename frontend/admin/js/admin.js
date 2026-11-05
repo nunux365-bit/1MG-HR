@@ -1007,13 +1007,13 @@ async function loadDashboard(timeframe = currentDashboardTimeframe) {
 
     if (elTotal) elTotal.innerText = stats.total_cases ?? 0;
     if (elProg) elProg.innerText = stats.in_progress ?? 0;
-    if (elSlaComp) elSlaComp.innerText = `${stats.sla_compliance ?? 98.4}%`;
-    if (elAvgRes) elAvgRes.innerText = `${stats.avg_resolution_hours ?? 3.2}h`;
-    if (elAgents) elAgents.innerText = stats.active_agents ?? 0;
+    if (elSlaComp) elSlaComp.innerText = `${stats.sla_compliance ?? 100.0}%`;
+    if (elAvgRes) elAvgRes.innerText = (stats.total_cases > 0 ? `${stats.avg_resolution_hours ?? 0.0}h` : '0.0h');
+    if (elAgents) elAgents.innerText = stats.active_agents ?? 1;
     if (elAiAcc) elAiAcc.innerText = `${stats.ai_accuracy ?? 96.8}%`;
     if (elBreachedSub) elBreachedSub.innerText = `${stats.breached_cases ?? 0} cases breached`;
     if (elUrgentBadge) elUrgentBadge.innerText = `${stats.urgent_cases ?? 0} Urgent`;
-    if (elDeptsCount) elDeptsCount.innerText = `${stats.departments ?? 6} Queues`;
+    if (elDeptsCount) elDeptsCount.innerText = `${stats.departments ?? 8} Queues`;
 
     // SLA Summary Strip
     const elWithinSla = document.getElementById('statWithinSla');
@@ -1064,8 +1064,8 @@ function renderChartInflowVelocity(trend) {
   if (!canvas || typeof Chart === 'undefined') return;
 
   const labels = (trend && trend.labels && trend.labels.length) ? trend.labels : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const incoming = (trend && trend.incoming) ? trend.incoming : [14, 22, 19, 27, 24, 12, 18];
-  const resolved = (trend && trend.resolved) ? trend.resolved : [12, 20, 18, 25, 23, 11, 17];
+  const incoming = (trend && trend.incoming && trend.incoming.length) ? trend.incoming : new Array(labels.length).fill(0);
+  const resolved = (trend && trend.resolved && trend.resolved.length) ? trend.resolved : new Array(labels.length).fill(0);
 
   if (window.dashCharts.inflow) {
     window.dashCharts.inflow.destroy();
@@ -1156,9 +1156,14 @@ function renderChartDepartmentDistribution(deptData) {
   const canvas = document.getElementById('chartDepartmentDist');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const labels = (deptData && deptData.labels && deptData.labels.length) ? deptData.labels : ['Attendance', 'Payroll', 'Benefits', 'Leave', 'BGV', 'People Desk'];
-  const counts = (deptData && deptData.counts && deptData.counts.length) ? deptData.counts : [28, 24, 18, 14, 10, 8];
-  const colors = (deptData && deptData.colors && deptData.colors.length) ? deptData.colors : ['#FF6F61', '#0284C7', '#10B190', '#F59E0B', '#8B5CF6', '#486AAE'];
+  const rawLabels = (deptData && deptData.labels && deptData.labels.length) ? deptData.labels : ['Central People Desk'];
+  const rawCounts = (deptData && deptData.counts && deptData.counts.length) ? deptData.counts : new Array(rawLabels.length).fill(0);
+  const colors = ['#FF6F61', '#0284C7', '#10B190', '#F59E0B', '#8B5CF6', '#486AAE', '#EC4899', '#14B8A6'];
+
+  const totalSum = rawCounts.reduce((a, b) => a + b, 0);
+  const chartData = totalSum === 0 ? [1] : rawCounts;
+  const chartLabels = totalSum === 0 ? ['No Inquiries Logged Yet'] : rawLabels;
+  const chartColors = totalSum === 0 ? ['#E2E8F0'] : colors.slice(0, rawLabels.length);
 
   if (window.dashCharts.department) {
     window.dashCharts.department.destroy();
@@ -1168,10 +1173,10 @@ function renderChartDepartmentDistribution(deptData) {
   window.dashCharts.department = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: labels,
+      labels: chartLabels,
       datasets: [{
-        data: counts,
-        backgroundColor: colors,
+        data: chartData,
+        backgroundColor: chartColors,
         borderWidth: 2,
         borderColor: '#FFFFFF',
         hoverOffset: 6
@@ -1188,6 +1193,7 @@ function renderChartDepartmentDistribution(deptData) {
           cornerRadius: 8,
           callbacks: {
             label: function(context) {
+              if (totalSum === 0) return ' No Inquiries Logged Yet (0)';
               const total = context.dataset.data.reduce((a, b) => a + b, 0) || 1;
               const val = context.parsed;
               const pct = Math.round((val / total) * 100);
@@ -1202,11 +1208,11 @@ function renderChartDepartmentDistribution(deptData) {
   // Populate Legend List
   const legendContainer = document.getElementById('deptLegendList');
   if (legendContainer) {
-    legendContainer.innerHTML = labels.map((lbl, idx) => `
+    legendContainer.innerHTML = rawLabels.map((lbl, idx) => `
       <div class="dept-legend-item">
         <span class="dot" style="background: ${colors[idx % colors.length]};"></span>
         <span>${escapeHtml(lbl)}</span>
-        <span class="count-badge">${counts[idx] ?? 0}</span>
+        <span class="count-badge">${rawCounts[idx] ?? 0}</span>
       </div>
     `).join('');
   }
@@ -1219,22 +1225,27 @@ function renderChartSlaHealth(slaHealth) {
   const canvas = document.getElementById('chartSlaHealth');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const within = slaHealth ? slaHealth.within_sla : 86;
-  const approaching = slaHealth ? slaHealth.approaching_sla : 10;
-  const breached = slaHealth ? slaHealth.breached : 4;
+  const within = slaHealth ? (slaHealth.within_sla || 0) : 0;
+  const approaching = slaHealth ? (slaHealth.approaching_sla || 0) : 0;
+  const breached = slaHealth ? (slaHealth.breached || 0) : 0;
+  const total = within + approaching + breached;
 
   if (window.dashCharts.sla) {
     window.dashCharts.sla.destroy();
   }
 
+  const chartData = total === 0 ? [1] : [within, approaching, breached];
+  const chartColors = total === 0 ? ['#E2E8F0'] : ['#10B190', '#F59E0B', '#EF4444'];
+  const chartLabels = total === 0 ? ['No Active Inquiries'] : ['Within SLA', 'Approaching (<4h)', 'Breached'];
+
   const ctx = canvas.getContext('2d');
   window.dashCharts.sla = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Within SLA', 'Approaching (<2h)', 'Breached'],
+      labels: chartLabels,
       datasets: [{
-        data: [within, approaching, breached],
-        backgroundColor: ['#10B190', '#F59E0B', '#EF4444'],
+        data: chartData,
+        backgroundColor: chartColors,
         borderWidth: 2,
         borderColor: '#FFFFFF',
         hoverOffset: 5
@@ -1248,7 +1259,13 @@ function renderChartSlaHealth(slaHealth) {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#1E293B',
-          cornerRadius: 8
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              if (total === 0) return ' No Active Inquiries (0)';
+              return ` ${context.label}: ${context.parsed}`;
+            }
+          }
         }
       }
     }
@@ -1262,9 +1279,9 @@ function renderChartPriorityDistribution(priorityData) {
   const canvas = document.getElementById('chartPriorityDist');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const labels = (priorityData && priorityData.labels) ? priorityData.labels : ['Critical', 'High', 'Medium', 'Low'];
-  const counts = (priorityData && priorityData.counts) ? priorityData.counts : [4, 18, 42, 12];
-  const barColors = ['#EF4444', '#F59E0B', '#3B82F6', '#94A3B8'];
+  const labels = (priorityData && priorityData.labels) ? priorityData.labels : ['High', 'Medium', 'Low'];
+  const counts = (priorityData && priorityData.counts) ? priorityData.counts : [0, 0, 0];
+  const barColors = ['#EF4444', '#F59E0B', '#3B82F6'];
 
   if (window.dashCharts.priority) {
     window.dashCharts.priority.destroy();
@@ -1979,7 +1996,7 @@ async function loadCases() {
             </button>
             <div class="case-channel-tag">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-              <span>Zoho IMAP</span>
+              <span>Corporate Email</span>
             </div>
           </td>
 
