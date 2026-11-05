@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Request, Query
 from pydantic import BaseModel, EmailStr
@@ -513,13 +514,13 @@ def toggle_admin_role(user_id: int, request: Request):
     is_becoming_admin = (current_role != "ADMIN")
 
     if not is_becoming_admin:
-        if user["email"].lower() == ADMIN_EMAIL.lower():
+        if user["id"] == 1 or user["email"].lower() == ADMIN_EMAIL.lower():
             raise HTTPException(
                 status_code=400,
                 detail="Cannot revoke Administrator role from the root System Administrator."
             )
         new_role = "HR_AGENT"
-        new_desig = user.get("designation") or "Support Specialist"
+        new_desig = "Support Specialist" if user.get("designation") == "Administrator" else (user.get("designation") or "Support Specialist")
         msg = f"{user['name']} has been reverted to HR Agent."
         email_res = None
     else:
@@ -549,15 +550,18 @@ def toggle_admin_role(user_id: int, request: Request):
     )
 
     # Record in Audit Log
+    details_str = json.dumps({
+        "target_user_id": user_id,
+        "email": user["email"],
+        "old_role": current_role,
+        "new_role": new_role
+    })
     execute_query(
         """
         INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
         VALUES (%s, 'Administrator', 'ROLE_CHANGED', %s::jsonb, NOW());
         """,
-        (
-            ADMIN_EMAIL,
-            f'{{"target_user_id": {user_id}, "email": "{user["email"]}", "old_role": "{current_role}", "new_role": "{new_role}"}}'
-        ),
+        (ADMIN_EMAIL, details_str),
         commit=True
     )
 
@@ -618,15 +622,17 @@ def toggle_role_scope(user_id: int, request: Request):
         )
     
     # Record in Audit Log
+    details_str = json.dumps({
+        "target_user_id": user_id,
+        "email": user["email"],
+        "new_role_scope": scope_title
+    })
     execute_query(
         """
         INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
         VALUES (%s, 'Administrator', 'ROLE_SCOPE_CHANGED', %s::jsonb, NOW());
         """,
-        (
-            ADMIN_EMAIL,
-            f'{{"target_user_id": {user_id}, "email": "{user["email"]}", "new_role_scope": "{scope_title}"}}'
-        ),
+        (ADMIN_EMAIL, details_str),
         commit=True
     )
     
@@ -641,28 +647,31 @@ def toggle_role_scope(user_id: int, request: Request):
 def remove_user(user_id: int):
     """
     Removes a user / staff member from the system.
-    Protects primary Admin accounts from accidental deletion.
+    Protects the root primary System Administrator account from accidental deletion.
     """
     user = execute_query("SELECT id, name, email, role FROM users WHERE id = %s;", (user_id,), fetch_one=True)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
         
-    if user["role"] == "ADMIN" or user["email"].lower() == ADMIN_EMAIL.lower():
-        raise HTTPException(status_code=400, detail="Cannot remove primary System Administrator account.")
+    if user["id"] == 1 or user["email"].lower() == ADMIN_EMAIL.lower():
+        raise HTTPException(status_code=400, detail="Cannot remove root Primary System Administrator account.")
         
-    # Remove user
+    # 1. Clean up references
+    execute_query("DELETE FROM user_departments WHERE user_id = %s;", (user_id,), commit=True)
+    execute_query("UPDATE cases SET assigned_user_id = 1, assigned_user = 'Vaibhav Yadav' WHERE assigned_user_id = %s;", (user_id,), commit=True)
+    execute_query("UPDATE emails SET assigned_user_id = NULL, assigned_user_name = NULL, assigned_user_email = NULL WHERE assigned_user_id = %s;", (user_id,), commit=True)
+
+    # 2. Remove user
     execute_query("DELETE FROM users WHERE id = %s;", (user_id,), commit=True)
     
-    # Audit log
+    # 3. Audit log
+    details_str = json.dumps({"removed_user_id": user_id, "name": user["name"], "email": user["email"]})
     execute_query(
         """
         INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
         VALUES (%s, 'Administrator', 'USER_REMOVED', %s::jsonb, NOW());
         """,
-        (
-            ADMIN_EMAIL,
-            f'{{"removed_user_id": {user_id}, "name": "{user["name"]}", "email": "{user["email"]}"}}'
-        ),
+        (ADMIN_EMAIL, details_str),
         commit=True
     )
     

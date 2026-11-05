@@ -11,10 +11,91 @@ Supports resilient SMTP delivery with TLS (Port 587) and automatic SSL (Port 465
 import os
 import smtplib
 import ssl
+import httpx
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate, make_msgid
 from backend.app.config import ADMIN_EMAIL
+
+def send_via_http_api(to_email: str, subject: str, html: str, text: str, to_name: str = "", from_email: str = None) -> dict:
+    """
+    Dispatches email via HTTPS (Port 443) using modern transactional email APIs (Resend, Brevo, SendGrid).
+    Immunized against Render Free tier firewall restrictions that block outbound SMTP ports 25, 465, and 587.
+    """
+    resend_key = os.getenv("RESEND_API_KEY", "").strip()
+    brevo_key = os.getenv("BREVO_API_KEY", "").strip()
+    sendgrid_key = os.getenv("SENDGRID_API_KEY", "").strip()
+    sender = from_email or os.getenv("SMTP_FROM") or "Tata 1mg People Desk <onboarding@resend.dev>"
+
+    # 1. Resend API (Port 443 HTTPS)
+    if resend_key:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                    json={
+                        "from": sender if "@" in sender and "<" in sender else "Tata 1mg People Desk <onboarding@resend.dev>",
+                        "to": [to_email],
+                        "subject": subject,
+                        "html": html,
+                        "text": text
+                    }
+                )
+                if res.status_code in [200, 201]:
+                    print(f"[EmailService Success] Dispatched '{subject}' to {to_email} via Resend HTTPS (Port 443)")
+                    return {"sent": True, "method": "RESEND_HTTPS_443", "id": res.json().get("id")}
+                print(f"[EmailService Warning] Resend returned {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"[EmailService Warning] Resend HTTPS failed: {e}")
+
+    # 2. Brevo API (Port 443 HTTPS)
+    if brevo_key:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    headers={"api-key": brevo_key, "Content-Type": "application/json"},
+                    json={
+                        "sender": {"name": "Tata 1mg People Desk", "email": os.getenv("SMTP_USER", "vaibhav.v1@1mg.com")},
+                        "to": [{"email": to_email, "name": to_name or to_email}],
+                        "subject": subject,
+                        "htmlContent": html,
+                        "textContent": text
+                    }
+                )
+                if res.status_code in [200, 201]:
+                    print(f"[EmailService Success] Dispatched '{subject}' to {to_email} via Brevo HTTPS (Port 443)")
+                    return {"sent": True, "method": "BREVO_HTTPS_443", "id": res.json().get("messageId")}
+                print(f"[EmailService Warning] Brevo returned {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"[EmailService Warning] Brevo HTTPS failed: {e}")
+
+    # 3. SendGrid API (Port 443 HTTPS)
+    if sendgrid_key:
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    headers={"Authorization": f"Bearer {sendgrid_key}", "Content-Type": "application/json"},
+                    json={
+                        "personalizations": [{"to": [{"email": to_email}]}],
+                        "from": {"email": os.getenv("SMTP_USER", "vaibhav.v1@1mg.com"), "name": "Tata 1mg People Desk"},
+                        "subject": subject,
+                        "content": [
+                            {"type": "text/plain", "value": text},
+                            {"type": "text/html", "value": html}
+                        ]
+                    }
+                )
+                if res.status_code in [200, 202]:
+                    print(f"[EmailService Success] Dispatched '{subject}' to {to_email} via SendGrid HTTPS (Port 443)")
+                    return {"sent": True, "method": "SENDGRID_HTTPS_443"}
+                print(f"[EmailService Warning] SendGrid returned {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"[EmailService Warning] SendGrid HTTPS failed: {e}")
+
+    return {"sent": False, "error": "No HTTP Email API configured or all attempts failed."}
 
 def get_smtp_config():
     """Dynamically resolves latest SMTP credentials from environment or defaults."""
@@ -461,6 +542,27 @@ def send_welcome_email(
     else:
         dispatch_error = "SMTP credentials not configured."
 
+    # ATTEMPT 3: HTTPS API Fallback (Port 443 via Resend, Brevo, SendGrid - bypasses Render Free SMTP block)
+    http_res = send_via_http_api(
+        to_email=agent_email,
+        to_name=agent_name,
+        subject=subject,
+        html=html,
+        text=plain_text,
+        from_email=from_header
+    )
+    if http_res.get("sent"):
+        return {
+            "sent": True,
+            "method": http_res.get("method"),
+            "subject": subject,
+            "recipient": agent_email,
+            "sender": admin_sender,
+            "activation_link": activation_link,
+            "html": html,
+            "error": None
+        }
+
     # Return structured failure with full preview
     return {
         "sent": False,
@@ -549,6 +651,16 @@ def send_raw_smtp_email(
         except Exception as e2:
             err = f"SMTP dispatch failed: {e1} | {e2}"
             print(f"[EmailService Error] {err}")
+            # Fallback to Port 443 HTTPS API
+            http_res = send_via_http_api(
+                to_email=recipient_email,
+                subject=subject,
+                html=html_content,
+                text=plain_text,
+                from_email=from_header
+            )
+            if http_res.get("sent"):
+                return {"sent": True, "method": http_res.get("method"), "recipient": recipient_email}
             return {"sent": False, "method": "FAILED", "error": err}
 
 def send_employee_id_request_email(
