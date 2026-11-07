@@ -10,15 +10,15 @@ logger = logging.getLogger("backend.database")
 
 # Persistent shared HTTP client with connection pooling to eliminate TLS handshake overhead
 _http_client = httpx.Client(
-    timeout=httpx.Timeout(10.0, connect=4.0),
-    limits=httpx.Limits(max_keepalive_connections=25, max_connections=50, keepalive_expiry=60.0)
+    timeout=httpx.Timeout(20.0, connect=10.0),
+    limits=httpx.Limits(max_keepalive_connections=25, max_connections=50, keepalive_expiry=120.0)
 )
 
 def get_db_connection():
     """
-    Returns a live psycopg2 connection with a 3-second timeout.
+    Returns a live psycopg2 connection with a 10-second timeout.
     """
-    return psycopg2.connect(DATABASE_URL, connect_timeout=3)
+    return psycopg2.connect(DATABASE_URL, connect_timeout=10)
 
 def _sanitize_param_for_neon(val):
     if isinstance(val, (datetime, date)):

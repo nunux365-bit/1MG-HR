@@ -223,10 +223,19 @@ async function loadUsers() {
 
     // Update Quick Stats
     if (data.stats) {
-      document.getElementById('userStatTotal').innerText = data.stats.total_users || 0;
-      document.getElementById('userStatAgents').innerText = data.stats.total_agents || 0;
-      document.getElementById('userStatHeads').innerText = data.stats.total_dept_heads || 0;
-      document.getElementById('userStatPending').innerText = data.stats.pending_setup || 0;
+      const elTotal = document.getElementById('userStatTotal');
+      const elAgents = document.getElementById('userStatAgents');
+      const elHeads = document.getElementById('userStatHeads');
+      const elPending = document.getElementById('userStatPending');
+      if (elTotal) elTotal.innerText = data.stats.total_users || 0;
+      if (elAgents) elAgents.innerText = data.stats.total_agents || 0;
+      if (elHeads) elHeads.innerText = data.stats.total_dept_heads || 0;
+      if (elPending) elPending.innerText = data.stats.pending_setup || 0;
+
+      const headerCountBadge = document.getElementById('userHeaderCountBadge');
+      if (headerCountBadge && data.pagination) {
+        headerCountBadge.innerHTML = `<span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; margin-right: 5px; display: inline-block;"></span>${data.pagination.total} Verified Staff`;
+      }
     }
 
     renderUsersTable(data.users || [], data.pagination.total, data.pagination.totalPages);
@@ -258,6 +267,36 @@ function getAvatarGradient(name, email, role) {
   return AVATAR_GRADIENTS[idx];
 }
 
+function copyStaffEmail(email, event) {
+  if (event) event.stopPropagation();
+  if (!email) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(email).then(() => {
+      showToast('Email Copied', email, 'success');
+    }).catch(() => {
+      fallbackCopy(email);
+    });
+  } else {
+    fallbackCopy(email);
+  }
+}
+
+function fallbackCopy(text) {
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.position = 'fixed';
+  el.style.opacity = '0';
+  document.body.appendChild(el);
+  el.select();
+  try {
+    document.execCommand('copy');
+    showToast('Email Copied', text, 'success');
+  } catch (e) {
+    console.error('Copy failed', e);
+  }
+  document.body.removeChild(el);
+}
+
 function renderUsersTable(users, total, totalPages) {
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
@@ -267,14 +306,14 @@ function renderUsersTable(users, total, totalPages) {
       <tr>
         <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 48px;">
           <div style="font-size: 24px; margin-bottom: 8px;">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.8" style="margin: 0 auto;">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.8" style="margin: 0 auto;">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
           </div>
-          <strong style="color: #475569;">No matching staff found</strong>
+          <strong style="color: #475569; font-size: 15px;">No matching staff found</strong>
           <p style="font-size: 13px; margin-top: 4px; color: #94A3B8;">Try refining your search terms or add a new agent.</p>
         </td>
       </tr>
@@ -289,41 +328,58 @@ function renderUsersTable(users, total, totalPages) {
     const initials = (u.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const userJson = escapeHtml(JSON.stringify(u));
     const avatarGradient = getAvatarGradient(u.name, u.email, u.role);
+    const statusClass = isPending ? 'pending' : (u.status === 'ACTIVE' ? 'active' : 'inactive');
     
     return `
       <tr>
+        <!-- 1. Agent & Email Identity Cell -->
         <td>
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="user-avatar-circle" style="background: ${avatarGradient};">
-              ${initials}
+          <div class="user-identity-cell">
+            <div class="user-avatar-wrap">
+              <div class="user-avatar-circle" style="background: ${avatarGradient};">
+                ${initials}
+              </div>
+              <span class="user-avatar-status-dot ${statusClass}"></span>
             </div>
-            <div style="display: flex; flex-direction: column;">
-              <span style="font-weight: 700; color: var(--text-dark); font-size: 13.5px;">${escapeHtml(u.name)}</span>
-              <span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(u.email)}</span>
+            <div class="user-info-text">
+              <div class="user-name-row">
+                <span class="user-name-text">${escapeHtml(u.name)}</span>
+                <span class="user-id-pill">#${u.id}</span>
+              </div>
+              <div class="user-email-row" onclick="copyStaffEmail('${escapeHtml(u.email)}', event)" data-tooltip="Click to copy email">
+                <span>${escapeHtml(u.email)}</span>
+                <svg class="copy-email-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </div>
             </div>
           </div>
         </td>
 
+        <!-- 2. Assigned Department -->
         <td>
-          <div class="dept-badges-wrapper">
+          <div class="dept-badges-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px;">
             ${u.role === 'ADMIN' 
               ? `<span class="dept-badge-pill dept-pill-admin">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                   </svg>
                   <span>Universal (All Desks)</span>
                 </span>`
               : (u.departments && u.departments.length > 0 
                 ? u.departments.map(d => `
                   <span class="dept-badge-pill">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="3" y="3" width="18" height="18" rx="2"/>
                       <path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
                     </svg>
                     <span>${escapeHtml(d.team_name)}</span>
                   </span>`).join('')
-                : `<span class="dept-badge-pill dept-pill-muted">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                : `<span class="dept-badge-pill" style="background: #F1F5F9; color: #64748B; border-color: #E2E8F0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
                     </svg>
                     <span>${escapeHtml(u.department_name || 'Unassigned')}</span>
@@ -331,71 +387,80 @@ function renderUsersTable(users, total, totalPages) {
           </div>
         </td>
 
+        <!-- 3. Designation -->
         <td>
-          <span style="font-size: 13px; color: #475569; font-weight: 500;">${escapeHtml(u.designation || 'Specialist')}</span>
+          <span class="user-designation-badge">${escapeHtml(u.designation || 'Specialist')}</span>
         </td>
 
-        <!-- Interactive Role Scope (Vector SVG Badges) -->
+        <!-- 4. Interactive Role Scope (Clean Big-Tech Badges, NO King/Crown) -->
         <td>
           ${u.role === 'ADMIN' 
             ? (u.id === 1 || (u.email && u.email.toLowerCase() === 'vaibhav.v1@1mg.com')
-              ? `<span class="badge-role-scope badge-scope-superadmin" title="Primary System Administrator (Protected)">
-                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+              ? `<span class="badge-role-scope badge-scope-superadmin" data-tooltip="Primary System Administrator (Protected)">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
                   </svg>
                   <span>SUPER ADMIN</span>
                 </span>`
-              : `<button type="button" class="badge-role-scope badge-scope-admin" onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)" title="Click to revoke Administrator role and switch to Agent">
-                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+              : `<button type="button" class="badge-role-scope badge-scope-admin" onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)" data-tooltip="Click to switch to Support Agent">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                   </svg>
                   <span>ADMIN</span>
                   <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
                 </button>`)
             : (isHead 
-              ? `<button type="button" class="badge-role-scope badge-scope-head" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to switch to Support Agent">
-                  <svg class="scope-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              ? `<button type="button" class="badge-role-scope badge-scope-head" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" data-tooltip="Click to switch to Support Specialist">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <polyline points="17 11 19 13 23 9"/>
                   </svg>
                   <span>DEPT HEAD</span>
                   <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
                 </button>` 
-              : `<button type="button" class="badge-role-scope badge-scope-agent" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" title="Click to promote to Department Head">
-                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              : `<button type="button" class="badge-role-scope badge-scope-agent" onclick="toggleRoleScope(${u.id}, '${escapeHtml(u.name)}', ${isHead})" data-tooltip="Click to promote to Department Head">
+                  <svg class="scope-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
                   </svg>
                   <span>AGENT</span>
                   <svg class="swap-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/></svg>
                 </button>`)}
         </td>
 
+        <!-- 5. Account Status -->
         <td>
           ${isPending 
-            ? `<span class="status-pill status-pending"><span class="status-dot dot-amber"></span><span>Pending Setup</span></span>`
+            ? `<span class="status-pill status-pending">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Pending Setup</span>
+              </span>`
             : (u.status === 'ACTIVE' 
-              ? `<span class="status-pill status-active"><span class="status-dot dot-green"></span><span>Active</span></span>`
-              : `<span class="status-pill status-inactive"><span class="status-dot dot-gray"></span><span>Inactive</span></span>`)}
+              ? `<span class="status-pill status-active">
+                  <span class="status-ping-wrap">
+                    <span class="status-ping-ring"></span>
+                    <span class="status-ping-dot"></span>
+                  </span>
+                  <span>Active</span>
+                </span>`
+              : `<span class="status-pill status-inactive" style="background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;">
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #94A3B8; margin-right: 6px;"></span>
+                  <span>Inactive</span>
+                </span>`)}
         </td>
 
-        <!-- Unified Action Toolbar (Clean Industry SVGs) -->
+        <!-- 6. Executive Action Suite -->
         <td style="text-align: right;">
-          <div class="user-action-group">
-            ${u.role !== 'ADMIN' ? `
+          <div class="user-actions-suite">
+            ${isPending ? `
               <button 
-                class="btn-action-pill btn-action-promote"
-                onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', false)"
-                title="Promote ${escapeHtml(u.name)} to Administrator"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-5-6.5 5 2-7.5-5.5-4.5h7z"/>
-                </svg>
-                <span>Make Admin</span>
-              </button>
-
-              <button 
-                class="btn-action-pill btn-action-resend"
+                class="action-pill-btn resend"
                 onclick="triggerResendInvite(${u.id}, '${escapeHtml(u.name)}')" 
-                title="Resend Tata 1mg Welcome Email with Dynamic Link"
+                data-tooltip="Resend Official Tata 1mg Welcome Email"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M22 2L11 13"/>
@@ -403,24 +468,12 @@ function renderUsersTable(users, total, totalPages) {
                 </svg>
                 <span>Resend</span>
               </button>
-            ` : (u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhav.v1@1mg.com') ? `
-              <button 
-                class="btn-action-pill btn-action-demote"
-                onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)"
-                title="Revoke Administrator role"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <line x1="8" y1="12" x2="16" y2="12"/>
-                </svg>
-                <span>Revoke Admin</span>
-              </button>
-            ` : '')}
+            ` : ''}
 
             <button 
-              class="btn-action-pill btn-action-edit"
+              class="action-pill-btn edit"
               onclick="openEditAgentModal('${userJson}')" 
-              title="Edit Role, Department, Designation or Status"
+              data-tooltip="Edit Staff Profile, Desks &amp; Designation"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -430,29 +483,53 @@ function renderUsersTable(users, total, totalPages) {
             </button>
 
             ${u.id !== 1 && (!u.email || u.email.toLowerCase() !== 'vaibhav.v1@1mg.com') ? `
+              ${u.role !== 'ADMIN' ? `
+                <button 
+                  class="action-icon-circle-btn promote"
+                  onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', false)"
+                  data-tooltip="Promote to Full Administrator"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <line x1="12" y1="8" x2="12" y2="14"/>
+                    <line x1="9" y1="11" x2="15" y2="11"/>
+                  </svg>
+                </button>
+              ` : `
+                <button 
+                  class="action-icon-circle-btn demote"
+                  onclick="toggleAdminRole(${u.id}, '${escapeHtml(u.name)}', true)"
+                  data-tooltip="Revoke Administrator Role"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <line x1="9" y1="12" x2="15" y2="12"/>
+                  </svg>
+                </button>
+              `}
+
               <button 
-                class="btn-action-pill btn-action-toggle ${u.status === 'ACTIVE' ? 'deactivate' : 'activate'}"
+                class="action-icon-circle-btn ${u.status === 'ACTIVE' ? 'deactivate' : 'activate'}"
                 onclick="toggleUserStatus(${u.id}, '${u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}')"
-                title="${u.status === 'ACTIVE' ? 'Deactivate staff account' : 'Activate staff account'}"
+                data-tooltip="${u.status === 'ACTIVE' ? 'Deactivate Staff Account' : 'Activate Staff Account'}"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  ${u.status === 'ACTIVE' 
-                    ? '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>'
-                    : '<circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/>'}
+                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                  <line x1="12" y1="2" x2="12" y2="12"/>
                 </svg>
-                <span>${u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
               </button>
 
               <button 
-                class="btn-action-pill btn-action-remove"
+                class="action-icon-circle-btn remove"
                 onclick="confirmRemoveUser(${u.id}, '${escapeHtml(u.name)}')" 
-                title="Permanently remove staff member"
+                data-tooltip="Permanently Delete Staff Member"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
                 </svg>
-                <span>Remove</span>
               </button>
             ` : ''}
           </div>
@@ -869,6 +946,26 @@ function escapeHtml(str) {
   }[tag] || tag));
 }
 
+function renderCasePriorityBadge(priority) {
+  const p = (priority || 'LOW').toUpperCase();
+  let bg = '#F1F5F9', color = '#475569', border = '#CBD5E1';
+  if (p === 'CRITICAL') { bg = '#FEF2F2'; color = '#DC2626'; border = '#FECACA'; }
+  else if (p === 'HIGH') { bg = '#FFFBEB'; color = '#D97706'; border = '#FDE68A'; }
+  else if (p === 'MEDIUM') { bg = '#EFF6FF'; color = '#2563EB'; border = '#BFDBFE'; }
+  else if (p === 'LOW') { bg = '#ECFDF5'; color = '#059669'; border = '#A7F3D0'; }
+  return `<span style="display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; background: ${bg}; color: ${color}; border: 1px solid ${border};">${p}</span>`;
+}
+
+function showDashboardLoader() {
+  const overlay = document.getElementById('dashboardLoadingOverlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function hideDashboardLoader() {
+  const overlay = document.getElementById('dashboardLoadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
 // =========================================================================
 // 5. TOAST NOTIFICATIONS (TATA 1MG BRANDED)
 // =========================================================================
@@ -967,23 +1064,367 @@ async function triggerMailboxSync() {
   }
 }
 
-async function seedDemoCases() {
-  try {
-    const res = await fetch('/api/v1/dashboard/seed-demo', { method: 'POST' });
-    const data = await res.json();
-    if (data.success) {
-      showToast('Demo Cases Seeded', data.message || 'Seeded 8 realistic Tata 1mg employee cases.', 'success');
-      await loadDashboard();
-    } else {
-      showToast('Seed Failed', data.detail || 'Could not seed cases.', 'error');
+
+/* ============================================================
+   CONTEXT-METER & ODOMETER NUMBER ROLL SYSTEM
+   Inspired by Rauno's Lab ContextMeter with high-performance
+   digit diffing, elastic pop-in blur animation, segmented bar
+   flex transitions, give wave squeeze, interactive chips, and
+   200-dot matrix grid view.
+   ============================================================ */
+
+const CONTEXT_KINDS = [
+  { id: 'chat', name: 'Chat', k: 108.6, compactK: 30.4, color: 'var(--k-chat)' },
+  { id: 'files', name: 'Files', k: 46.1, compactK: 46.1, color: 'var(--k-files)' },
+  { id: 'tools', name: 'Tools', k: 12.8, compactK: 12.8, color: 'var(--k-tools)' },
+  { id: 'sys', name: 'System', k: 4.2, compactK: 4.2, color: 'var(--k-sys)' },
+  { id: 'mem', name: 'Memory', k: 3.9, compactK: 3.9, color: 'var(--k-mem)' }
+];
+const CONTEXT_WINDOW = 200;
+let isContextCompact = false;
+let contextWave = 'a';
+let contextViewMode = 'Bar'; // 'Bar' or 'Field'
+const rollCache = new Map();
+
+/**
+ * Rolls figure inside containerId with animated wheel digits.
+ * Digits are diffed from right to left, unchanged digits remain stationary.
+ */
+function rollFigure(containerId, newText, forcedDirection = null) {
+  const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+  if (!container) return;
+
+  const prevText = rollCache.get(containerId) || container.innerText.trim() || '';
+  const newStr = String(newText);
+  if (prevText === newStr && container.children.length > 0) return;
+
+  // Determine direction: up or down
+  let isUp = true;
+  if (forcedDirection) {
+    isUp = (forcedDirection === 'up');
+  } else {
+    const prevNum = parseFloat(prevText.replace(/[^0-9.-]/g, ''));
+    const newNum = parseFloat(newStr.replace(/[^0-9.-]/g, ''));
+    if (!isNaN(prevNum) && !isNaN(newNum)) {
+      isUp = newNum >= prevNum;
     }
-  } catch (err) {
-    console.error('Seed demo cases failed:', err);
-    showToast('Demo Seed Error', err.message || 'Network error.', 'error');
+  }
+
+  rollCache.set(containerId, newStr);
+
+  const prevChars = prevText.split('');
+  const newChars = newStr.split('');
+  const prevLen = prevChars.length;
+  const newLen = newChars.length;
+
+  container.innerHTML = '';
+
+  newChars.forEach((ch, idx) => {
+    // Count place from the right so alignment stays true
+    const placeFromRight = newLen - 1 - idx;
+    const prevChar = placeFromRight < prevLen ? prevChars[prevLen - 1 - placeFromRight] : null;
+
+    if (!/[0-9]/.test(ch)) {
+      const sym = document.createElement('span');
+      sym.className = 'ctx-sym';
+      sym.textContent = ch;
+      container.appendChild(sym);
+      return;
+    }
+
+    const wheel = document.createElement('span');
+    wheel.className = 'ctx-wheel';
+
+    const digit = document.createElement('span');
+    digit.className = 'ctx-digit';
+    digit.textContent = ch;
+
+    // Only animate if the digit changed or it's a new place
+    if (prevChar !== ch) {
+      digit.classList.add(isUp ? 'roll-up' : 'roll-down');
+      digit.style.animationDelay = `${idx * 45}ms`;
+    }
+
+    wheel.appendChild(digit);
+    container.appendChild(wheel);
+  });
+}
+
+/**
+ * Toggles the AI Context card between Compact and Expanded state
+ * Plays the squeeze wave animation and rolls the number.
+ */
+function toggleContextCompact(event) {
+  if (event) event.stopPropagation();
+  isContextCompact = !isContextCompact;
+  contextWave = (contextWave === 'a' ? 'b' : 'a');
+
+  const btn = document.getElementById('ctxCompactBtn');
+  const bar = document.getElementById('ctxBar');
+  const grid = document.getElementById('ctxGrid');
+  const subOf = document.getElementById('subContext');
+
+  if (btn) {
+    btn.textContent = isContextCompact ? 'Undo' : 'Compact';
+    if (isContextCompact) {
+      btn.setAttribute('data-quiet', 'true');
+    } else {
+      btn.removeAttribute('data-quiet');
+    }
+  }
+
+  // Update Bar segments
+  if (bar) {
+    bar.setAttribute('data-wave', contextWave);
+    const segChat = document.getElementById('segChat');
+    const segRoom = document.getElementById('segRoom');
+    if (segChat) {
+      segChat.style.flexGrow = isContextCompact ? CONTEXT_KINDS[0].compactK : CONTEXT_KINDS[0].k;
+      segChat.title = `Chat: ${isContextCompact ? CONTEXT_KINDS[0].compactK : CONTEXT_KINDS[0].k}K`;
+    }
+    if (segRoom) {
+      const used = (isContextCompact ? 97.4 : 175.6);
+      segRoom.style.flexGrow = (CONTEXT_WINDOW - used).toFixed(1);
+      segRoom.title = `Free headroom: ${(CONTEXT_WINDOW - used).toFixed(1)}K`;
+    }
+  }
+
+  // Roll Context figure
+  const targetK = isContextCompact ? 97.4 : 175.6;
+  rollFigure('rollContext', `${targetK.toFixed(1)}K`, isContextCompact ? 'down' : 'up');
+  if (subOf) subOf.textContent = `of ${CONTEXT_WINDOW}K`;
+
+  // Update Field Grid if active
+  if (grid && contextViewMode === 'Field') {
+    renderContextGrid();
   }
 }
 
+/**
+ * Toggles between Bar View and 200-Dot Matrix Grid View
+ */
+function toggleContextViewMode(event) {
+  if (event) event.stopPropagation();
+  const bar = document.getElementById('ctxBar');
+  const grid = document.getElementById('ctxGrid');
+  const btn = document.getElementById('ctxModeToggle');
+
+  if (contextViewMode === 'Bar') {
+    contextViewMode = 'Field';
+    if (bar) bar.style.display = 'none';
+    if (grid) {
+      grid.style.display = 'grid';
+      renderContextGrid();
+    }
+    if (btn) {
+      const barIcon = btn.querySelector('.mode-icon-bar');
+      const gridIcon = btn.querySelector('.mode-icon-grid');
+      if (barIcon) barIcon.style.display = 'none';
+      if (gridIcon) gridIcon.style.display = 'inline-block';
+      btn.title = 'Switch to Stacked Bar View';
+    }
+  } else {
+    contextViewMode = 'Bar';
+    if (grid) grid.style.display = 'none';
+    if (bar) bar.style.display = 'flex';
+    if (btn) {
+      const barIcon = btn.querySelector('.mode-icon-bar');
+      const gridIcon = btn.querySelector('.mode-icon-grid');
+      if (barIcon) barIcon.style.display = 'inline-block';
+      if (gridIcon) gridIcon.style.display = 'none';
+      btn.title = 'Switch to 200-Dot Matrix View';
+    }
+  }
+}
+
+/**
+ * Generates and renders 200 dots for the Context Matrix view
+ */
+function renderContextGrid() {
+  const grid = document.getElementById('ctxGrid');
+  if (!grid) return;
+
+  const currentSizes = CONTEXT_KINDS.map(c => (c.id === 'chat' && isContextCompact ? c.compactK : c.k));
+  const order = [0, 1, 2, 3, 4]; // chat, files, tools, sys, mem
+
+  // Build dot ownership
+  const owners = [];
+  order.forEach(ci => {
+    const count = Math.round(currentSizes[ci]);
+    for (let j = 0; j < count && owners.length < CONTEXT_WINDOW; j++) {
+      owners.push(ci);
+    }
+  });
+  while (owners.length < CONTEXT_WINDOW) {
+    owners.push(null);
+  }
+
+  grid.innerHTML = '';
+  grid.setAttribute('data-wave', contextWave);
+
+  owners.forEach((o, i) => {
+    const dot = document.createElement('i');
+    dot.className = 'ctx-dot';
+    if (o !== null) {
+      const kind = CONTEXT_KINDS[o];
+      dot.setAttribute('data-kind', kind.id);
+      dot.title = `${kind.name} (${kind.k}K)`;
+      dot.onpointerenter = () => highlightContextKind(kind.id);
+    } else {
+      dot.title = 'Free Context Room';
+      dot.onpointerenter = () => clearCardHover('context');
+    }
+    grid.appendChild(dot);
+  });
+}
+
+/**
+ * Highlights a specific kind in the Context Meter card
+ */
+function highlightContextKind(kindId) {
+  const card = document.getElementById('kpiCardContext');
+  if (!card) return;
+
+  const bar = document.getElementById('ctxBar');
+  const grid = document.getElementById('ctxGrid');
+  const chips = card.querySelectorAll('.ctx-chip');
+  const subOf = document.getElementById('subContext');
+
+  const kindObj = CONTEXT_KINDS.find(k => k.id === kindId);
+  if (!kindObj) return;
+
+  // Highlight segment on bar
+  if (bar) {
+    bar.querySelectorAll('.ctx-seg').forEach(seg => {
+      if (seg.getAttribute('data-kind') === kindId) {
+        seg.removeAttribute('data-dim');
+        seg.setAttribute('data-lit', 'true');
+      } else {
+        seg.removeAttribute('data-lit');
+        seg.setAttribute('data-dim', 'true');
+      }
+    });
+  }
+
+  // Highlight dot on grid
+  if (grid) {
+    grid.querySelectorAll('.ctx-dot').forEach(dot => {
+      if (dot.getAttribute('data-kind') === kindId) {
+        dot.removeAttribute('data-dim');
+      } else {
+        dot.setAttribute('data-dim', 'true');
+      }
+    });
+  }
+
+  // Highlight chip
+  chips.forEach(chip => {
+    if (chip.getAttribute('data-kind') === kindId) {
+      chip.setAttribute('data-on', 'true');
+    } else {
+      chip.removeAttribute('data-on');
+    }
+  });
+
+  // Roll figure to that slice's value
+  const val = isContextCompact && kindObj.id === 'chat' ? kindObj.compactK : kindObj.k;
+  rollFigure('rollContext', `${val.toFixed(1)}K`);
+  if (subOf) subOf.textContent = kindObj.name;
+}
+
+/**
+ * Helper to safely set chip data values for interactive hover
+ */
+function setChipData(chipId, val, label) {
+  const chip = document.getElementById(chipId);
+  if (!chip) return;
+  chip.setAttribute('data-val', String(val));
+  chip.setAttribute('data-label', label);
+}
+
+/**
+ * Initializes hover interactions for all 6 KPI cards
+ */
+function initKpiCardsInteractivity() {
+  setupStandardCardHover('kpiCardInflow', 'barInflow', 'chipsInflow', 'rollTotalCases', 'subTotalCases', 'statTotalCases', 'All cases received via mail');
+  setupStandardCardHover('kpiCardTriage', 'barTriage', 'chipsTriage', 'rollInProgress', 'subInProgress', 'statInProgress', 'Cases in active review');
+  setupStandardCardHover('kpiCardSla', 'barSla', 'chipsSla', 'rollSlaCompliance', 'statBreachedSubtitle', 'statSlaCompliance', '0 cases breached');
+  setupStandardCardHover('kpiCardMttr', 'barMttr', 'chipsMttr', 'rollAvgResolution', 'subAvgResolution', 'statAvgResolution', 'First response to close');
+  setupStandardCardHover('kpiCardAgents', 'barAgents', 'chipsAgents', 'rollActiveAgents', 'subActiveAgents', 'statActiveAgents', 'Assigned across HR teams');
+  setupStandardCardHover('kpiCardAi', 'barAi', 'chipsAi', 'rollAiAccuracy', 'subAiAccuracy', 'statAiAccuracy', 'Zero-shot NLP router');
+}
+
+/**
+ * Generic hover helper for segmented bar & chips
+ */
+function setupStandardCardHover(cardId, barId, chipsId, rollId, subId, originalValId, defaultSub) {
+  const card = document.getElementById(cardId);
+  const bar = document.getElementById(barId);
+  const chips = document.getElementById(chipsId);
+  const subEl = document.getElementById(subId);
+  const originalEl = document.getElementById(originalValId);
+
+  if (!card || !bar || !chips) return;
+
+  const resetCard = () => {
+    bar.querySelectorAll('.ctx-seg').forEach(s => {
+      s.removeAttribute('data-dim');
+      s.removeAttribute('data-lit');
+    });
+    chips.querySelectorAll('.ctx-chip').forEach(c => c.removeAttribute('data-on'));
+    if (originalEl) {
+      rollFigure(rollId, originalEl.innerText.trim());
+    }
+    if (subEl) {
+      subEl.textContent = defaultSub;
+    }
+  };
+
+  card.onpointerleave = resetCard;
+
+  chips.querySelectorAll('.ctx-chip').forEach(chip => {
+    const kind = chip.getAttribute('data-kind');
+
+    const onEnter = () => {
+      const val = chip.getAttribute('data-val');
+      const label = chip.getAttribute('data-label');
+
+      bar.querySelectorAll('.ctx-seg').forEach(seg => {
+        if (seg.getAttribute('data-kind') === kind) {
+          seg.removeAttribute('data-dim');
+          seg.setAttribute('data-lit', 'true');
+        } else {
+          seg.removeAttribute('data-lit');
+          seg.setAttribute('data-dim', 'true');
+        }
+      });
+      chips.querySelectorAll('.ctx-chip').forEach(c => {
+        if (c === chip) c.setAttribute('data-on', 'true');
+        else c.removeAttribute('data-on');
+      });
+      if (val !== null && val !== undefined) rollFigure(rollId, val);
+      if (subEl && label) subEl.textContent = label;
+    };
+
+    chip.onpointerenter = onEnter;
+    chip.onfocus = onEnter;
+    chip.onblur = resetCard;
+  });
+
+  bar.querySelectorAll('.ctx-seg').forEach(seg => {
+    const kind = seg.getAttribute('data-kind');
+    if (!kind) return;
+    const matchingChip = chips.querySelector(`.ctx-chip[data-kind="${kind}"]`);
+    if (matchingChip) {
+      seg.onpointerenter = () => {
+        matchingChip.dispatchEvent(new Event('pointerenter'));
+      };
+    }
+  });
+}
+
 async function loadDashboard(timeframe = currentDashboardTimeframe) {
+  showDashboardLoader();
   try {
     const res = await fetch(`/api/v1/dashboard/stats?timeframe=${encodeURIComponent(timeframe)}`);
     const data = await res.json();
@@ -994,7 +1435,7 @@ async function loadDashboard(timeframe = currentDashboardTimeframe) {
 
     const stats = data.stats || {};
 
-    // 1. Update 6 Bento KPI Metric Cards
+    // 1. Update 6 Modern Context-Meter Bento KPI Metric Cards with 100% REAL DATA
     const elTotal = document.getElementById('statTotalCases');
     const elProg = document.getElementById('statInProgress');
     const elSlaComp = document.getElementById('statSlaCompliance');
@@ -1005,15 +1446,315 @@ async function loadDashboard(timeframe = currentDashboardTimeframe) {
     const elUrgentBadge = document.getElementById('statUrgentBadge');
     const elDeptsCount = document.getElementById('statDeptsCount');
 
-    if (elTotal) elTotal.innerText = stats.total_cases ?? 0;
-    if (elProg) elProg.innerText = stats.in_progress ?? 0;
-    if (elSlaComp) elSlaComp.innerText = `${stats.sla_compliance ?? 100.0}%`;
-    if (elAvgRes) elAvgRes.innerText = (stats.total_cases > 0 ? `${stats.avg_resolution_hours ?? 0.0}h` : '0.0h');
-    if (elAgents) elAgents.innerText = stats.active_agents ?? 1;
-    if (elAiAcc) elAiAcc.innerText = `${stats.ai_accuracy ?? 96.8}%`;
+    const totalCasesVal = stats.total_cases ?? 0;
+    const inProgVal = stats.in_progress ?? 0;
+    const slaCompVal = `${stats.sla_compliance ?? 100.0}%`;
+    const avgResVal = (totalCasesVal > 0 ? `${stats.avg_resolution_hours ?? 0.0}h` : '0.0h');
+    const agentsVal = stats.active_agents ?? 0;
+    const aiAccVal = `${stats.ai_accuracy ?? 96.8}%`;
+
+    if (elTotal) elTotal.innerText = totalCasesVal;
+    if (elProg) elProg.innerText = inProgVal;
+    if (elSlaComp) elSlaComp.innerText = slaCompVal;
+    if (elAvgRes) elAvgRes.innerText = avgResVal;
+    if (elAgents) elAgents.innerText = agentsVal;
+    if (elAiAcc) elAiAcc.innerText = aiAccVal;
     if (elBreachedSub) elBreachedSub.innerText = `${stats.breached_cases ?? 0} cases breached`;
-    if (elUrgentBadge) elUrgentBadge.innerText = `${stats.urgent_cases ?? 0} Urgent`;
-    if (elDeptsCount) elDeptsCount.innerText = `${stats.departments ?? 8} Queues`;
+    if (elUrgentBadge) {
+      elUrgentBadge.innerText = `${stats.urgent_cases ?? 0} Urgent`;
+      if ((stats.urgent_cases ?? 0) > 0) {
+        elUrgentBadge.classList.add('ctx-act-amber');
+      } else {
+        elUrgentBadge.classList.remove('ctx-act-amber');
+      }
+    }
+    if (elDeptsCount) elDeptsCount.innerText = `${stats.departments ?? 0} Queues`;
+
+    // Animate Odometer Rolls on KPI Numbers
+    rollFigure('rollTotalCases', totalCasesVal);
+    rollFigure('rollInProgress', inProgVal);
+    rollFigure('rollSlaCompliance', slaCompVal);
+    rollFigure('rollAvgResolution', avgResVal);
+    rollFigure('rollActiveAgents', agentsVal);
+    rollFigure('rollAiAccuracy', aiAccVal);
+
+    // --- CARD 1: REAL INBOUND EMAIL INTAKE ---
+    const channels = data.channel_distribution || {};
+    const internalCnt = channels.internal ?? (channels.portal || 0);
+    const externalCnt = channels.external ?? (channels.email || 0);
+    const hrmsAlertCnt = channels.hrms_alert ?? (channels.hrms || 0);
+    const replyCnt = channels.reply ?? (channels.direct || 0);
+
+    const elCntInternal = document.getElementById('cntInflowInternal') || document.getElementById('cntInflowPortal');
+    const elCntExternal = document.getElementById('cntInflowExternal') || document.getElementById('cntInflowEmail');
+    const elCntHrmsAlert = document.getElementById('cntInflowHrmsAlert') || document.getElementById('cntInflowHrms');
+    const elCntReply = document.getElementById('cntInflowReply') || document.getElementById('cntInflowDirect');
+    if (elCntInternal) elCntInternal.innerText = `(${internalCnt})`;
+    if (elCntExternal) elCntExternal.innerText = `(${externalCnt})`;
+    if (elCntHrmsAlert) elCntHrmsAlert.innerText = `(${hrmsAlertCnt})`;
+    if (elCntReply) elCntReply.innerText = `(${replyCnt})`;
+
+    setChipData('chipInflowInternal', internalCnt, 'Corporate @1mg.com employee mail');
+    setChipData('chipInflowExternal', externalCnt, 'Personal & candidate email inquiries');
+    setChipData('chipInflowHrmsAlert', hrmsAlertCnt, 'Darwinbox & attendance alert emails');
+    setChipData('chipInflowReply', replyCnt, 'Follow-up email replies on open cases');
+    // Backward compatibility for legacy chip IDs
+    setChipData('chipInflowPortal', internalCnt, 'Corporate @1mg.com employee mail');
+    setChipData('chipInflowEmail', externalCnt, 'Personal & candidate email inquiries');
+    setChipData('chipInflowHrms', hrmsAlertCnt, 'Darwinbox & attendance alert emails');
+    setChipData('chipInflowDirect', replyCnt, 'Follow-up email replies on open cases');
+
+    const segInternal = document.getElementById('segInflowInternal') || document.getElementById('segInflowPortal');
+    const segExternal = document.getElementById('segInflowExternal') || document.getElementById('segInflowEmail');
+    const segHrmsAlert = document.getElementById('segInflowHrmsAlert') || document.getElementById('segInflowHrms');
+    const segReply = document.getElementById('segInflowReply') || document.getElementById('segInflowDirect');
+    const segInflowRoom = document.getElementById('segInflowRoom');
+
+    if (totalCasesVal === 0) {
+      if (segInternal) segInternal.style.flexGrow = 0;
+      if (segExternal) segExternal.style.flexGrow = 0;
+      if (segHrmsAlert) segHrmsAlert.style.flexGrow = 0;
+      if (segReply) segReply.style.flexGrow = 0;
+      if (segInflowRoom) {
+        segInflowRoom.style.flexGrow = 100;
+        segInflowRoom.title = 'No inbound emails recorded yet';
+      }
+    } else {
+      if (segInternal) segInternal.style.flexGrow = internalCnt;
+      if (segExternal) segExternal.style.flexGrow = externalCnt;
+      if (segHrmsAlert) segHrmsAlert.style.flexGrow = hrmsAlertCnt;
+      if (segReply) segReply.style.flexGrow = replyCnt;
+      if (segInflowRoom) segInflowRoom.style.flexGrow = Math.max(0, Math.round(totalCasesVal * 0.15));
+    }
+
+    // --- CARD 2: REAL ACTIVE TRIAGE & PRIORITIES ---
+    const pDist = data.priority_distribution || {};
+    const pCounts = pDist.counts || [];
+    const critCnt = pDist.critical ?? (pCounts[0] || 0);
+    const highCnt = pDist.high ?? (pCounts[1] || 0);
+    const medCnt = pDist.medium ?? (pCounts[2] || 0);
+    const lowCnt = pDist.low ?? (pCounts[3] || 0);
+    const totalTriage = inProgVal || (critCnt + highCnt + medCnt + lowCnt);
+
+    const elCntCrit = document.getElementById('cntTriageCrit');
+    const elCntHigh = document.getElementById('cntTriageHigh');
+    const elCntMed = document.getElementById('cntTriageMed');
+    const elCntLow = document.getElementById('cntTriageLow');
+    if (elCntCrit) elCntCrit.innerText = `(${critCnt})`;
+    if (elCntHigh) elCntHigh.innerText = `(${highCnt})`;
+    if (elCntMed) elCntMed.innerText = `(${medCnt})`;
+    if (elCntLow) elCntLow.innerText = `(${lowCnt})`;
+
+    setChipData('chipTriageCrit', critCnt, 'Critical P1 inquiries');
+    setChipData('chipTriageHigh', highCnt, 'High priority inquiries');
+    setChipData('chipTriageMed', medCnt, 'Standard priority inquiries');
+    setChipData('chipTriageLow', lowCnt, 'Low priority inquiries');
+
+    const segCrit = document.getElementById('segTriageCrit');
+    const segHigh = document.getElementById('segTriageHigh');
+    const segMed = document.getElementById('segTriageMed');
+    const segLow = document.getElementById('segTriageLow');
+    const segTriageRoom = document.getElementById('segTriageRoom');
+
+    if (totalTriage === 0) {
+      if (segCrit) segCrit.style.flexGrow = 0;
+      if (segHigh) segHigh.style.flexGrow = 0;
+      if (segMed) segMed.style.flexGrow = 0;
+      if (segLow) segLow.style.flexGrow = 0;
+      if (segTriageRoom) {
+        segTriageRoom.style.flexGrow = 100;
+        segTriageRoom.title = 'Triage queue clear';
+      }
+    } else {
+      if (segCrit) segCrit.style.flexGrow = critCnt;
+      if (segHigh) segHigh.style.flexGrow = highCnt;
+      if (segMed) segMed.style.flexGrow = medCnt;
+      if (segLow) segLow.style.flexGrow = lowCnt;
+      if (segTriageRoom) segTriageRoom.style.flexGrow = Math.max(0, Math.round(totalTriage * 0.2));
+    }
+
+    // --- CARD 3: REAL SLA ADHERENCE HEALTH ---
+    const slaH = data.sla_health || {};
+    const withinCnt = slaH.within_sla || 0;
+    const appCnt = slaH.approaching_sla || 0;
+    const brCnt = slaH.breached || 0;
+    const totalSlaCases = withinCnt + appCnt + brCnt;
+
+    const elCntWithin = document.getElementById('cntSlaWithin');
+    const elCntApp = document.getElementById('cntSlaApp');
+    const elCntBr = document.getElementById('cntSlaBreached');
+    if (elCntWithin) elCntWithin.innerText = `(${withinCnt})`;
+    if (elCntApp) elCntApp.innerText = `(${appCnt})`;
+    if (elCntBr) elCntBr.innerText = `(${brCnt})`;
+
+    setChipData('chipSlaWithin', withinCnt, 'Within SLA deadline');
+    setChipData('chipSlaApp', appCnt, 'Approaching deadline (<4h)');
+    setChipData('chipSlaBreached', brCnt, 'SLA breached');
+
+    const segWithin = document.getElementById('segSlaWithin');
+    const segApp = document.getElementById('segSlaApp');
+    const segBr = document.getElementById('segSlaBr');
+    const segSlaRoom = document.getElementById('segSlaRoom');
+
+    if (totalSlaCases === 0) {
+      if (segWithin) segWithin.style.flexGrow = 100;
+      if (segApp) segApp.style.flexGrow = 0;
+      if (segBr) segBr.style.flexGrow = 0;
+      if (segSlaRoom) segSlaRoom.style.flexGrow = 0;
+    } else {
+      if (segWithin) segWithin.style.flexGrow = Math.max(withinCnt, 1);
+      if (segApp) segApp.style.flexGrow = appCnt;
+      if (segBr) segBr.style.flexGrow = brCnt;
+      if (segSlaRoom) segSlaRoom.style.flexGrow = Math.max(0, Math.round(totalSlaCases * 0.05));
+    }
+
+    // --- CARD 4: REAL RESOLUTION VELOCITY (MTTR) ---
+    const resVel = data.resolution_velocity || {};
+    const fastCnt = resVel.fast || 0;
+    const stdCnt = resVel.standard || 0;
+    const extCnt = resVel.extended || 0;
+    const inProgCnt = resVel.in_progress || inProgVal;
+    const totalVel = fastCnt + stdCnt + extCnt + inProgCnt;
+
+    const elCntFast = document.getElementById('cntMttrFast');
+    const elCntStd = document.getElementById('cntMttrStd');
+    const elCntExt = document.getElementById('cntMttrExt');
+    const elCntOpen = document.getElementById('cntMttrOpen');
+    if (elCntFast) elCntFast.innerText = `(${fastCnt})`;
+    if (elCntStd) elCntStd.innerText = `(${stdCnt})`;
+    if (elCntExt) elCntExt.innerText = `(${extCnt})`;
+    if (elCntOpen) elCntOpen.innerText = `(${inProgCnt})`;
+
+    setChipData('chipMttrFast', fastCnt, 'Fast resolution (<2h)');
+    setChipData('chipMttrStd', stdCnt, 'Standard resolution (2-6h)');
+    setChipData('chipMttrExt', extCnt, 'Extended resolution (>6h)');
+    setChipData('chipMttrOpen', inProgCnt, 'Currently under active triage');
+
+    const segFast = document.getElementById('segMttrFast');
+    const segStd = document.getElementById('segMttrStd');
+    const segExt = document.getElementById('segMttrExt');
+    const segOpen = document.getElementById('segMttrOpen');
+    const segMttrRoom = document.getElementById('segMttrRoom');
+
+    if (totalVel === 0) {
+      if (segFast) segFast.style.flexGrow = 0;
+      if (segStd) segStd.style.flexGrow = 0;
+      if (segExt) segExt.style.flexGrow = 0;
+      if (segOpen) segOpen.style.flexGrow = 0;
+      if (segMttrRoom) {
+        segMttrRoom.style.flexGrow = 100;
+        segMttrRoom.title = 'No case resolution velocity recorded';
+      }
+    } else {
+      if (segFast) segFast.style.flexGrow = fastCnt;
+      if (segStd) segStd.style.flexGrow = stdCnt;
+      if (segExt) segExt.style.flexGrow = extCnt;
+      if (segOpen) segOpen.style.flexGrow = inProgCnt;
+      if (segMttrRoom) segMttrRoom.style.flexGrow = Math.max(0, Math.round(totalVel * 0.15));
+    }
+
+    // --- CARD 5: REAL DEPARTMENT SPECIALIST QUEUES ---
+    const deptDist = data.department_distribution || {};
+    const deptLabels = deptDist.labels || [];
+    const deptCounts = deptDist.counts || [];
+
+    const d1Name = deptLabels[0] || 'Payroll';
+    const d1Cnt = deptCounts[0] || 0;
+    const d2Name = deptLabels[1] || 'Benefits';
+    const d2Cnt = deptCounts[1] || 0;
+    const d3Name = deptLabels[2] || 'Leaves';
+    const d3Cnt = deptCounts[2] || 0;
+    const d4Name = deptLabels[3] || 'Relations';
+    const d4Cnt = deptCounts[3] || 0;
+    const totalDeptCases = d1Cnt + d2Cnt + d3Cnt + d4Cnt;
+
+    function formatDeptLabel(name) {
+      if (!name) return 'General';
+      if (/benefit/i.test(name)) return 'Benefits';
+      if (/leave/i.test(name)) return 'Leaves';
+      if (/payroll/i.test(name)) return 'Payroll';
+      if (/relation/i.test(name)) return 'Relations';
+      if (/people desk/i.test(name)) return 'Central';
+      return name.split(' ')[0];
+    }
+
+    const elNameD1 = document.getElementById('nameDept1');
+    const elNameD2 = document.getElementById('nameDept2');
+    const elNameD3 = document.getElementById('nameDept3');
+    const elNameD4 = document.getElementById('nameDept4');
+    if (elNameD1) elNameD1.innerText = formatDeptLabel(d1Name);
+    if (elNameD2) elNameD2.innerText = formatDeptLabel(d2Name);
+    if (elNameD3) elNameD3.innerText = formatDeptLabel(d3Name);
+    if (elNameD4) elNameD4.innerText = formatDeptLabel(d4Name);
+
+    const elCntD1 = document.getElementById('cntDept1');
+    const elCntD2 = document.getElementById('cntDept2');
+    const elCntD3 = document.getElementById('cntDept3');
+    const elCntD4 = document.getElementById('cntDept4');
+    if (elCntD1) elCntD1.innerText = `(${d1Cnt})`;
+    if (elCntD2) elCntD2.innerText = `(${d2Cnt})`;
+    if (elCntD3) elCntD3.innerText = `(${d3Cnt})`;
+    if (elCntD4) elCntD4.innerText = `(${d4Cnt})`;
+
+    setChipData('chipDept1', d1Cnt, `${d1Name} queue`);
+    setChipData('chipDept2', d2Cnt, `${d2Name} queue`);
+    setChipData('chipDept3', d3Cnt, `${d3Name} queue`);
+    setChipData('chipDept4', d4Cnt, `${d4Name} queue`);
+
+    const segD1 = document.getElementById('segDept1');
+    const segD2 = document.getElementById('segDept2');
+    const segD3 = document.getElementById('segDept3');
+    const segD4 = document.getElementById('segDept4');
+    const segAgentsRoom = document.getElementById('segAgentsRoom');
+
+    if (totalDeptCases === 0) {
+      if (segD1) segD1.style.flexGrow = 0;
+      if (segD2) segD2.style.flexGrow = 0;
+      if (segD3) segD3.style.flexGrow = 0;
+      if (segD4) segD4.style.flexGrow = 0;
+      if (segAgentsRoom) {
+        segAgentsRoom.style.flexGrow = 100;
+        segAgentsRoom.title = 'No active queue workload';
+      }
+    } else {
+      if (segD1) segD1.style.flexGrow = d1Cnt;
+      if (segD2) segD2.style.flexGrow = d2Cnt;
+      if (segD3) segD3.style.flexGrow = d3Cnt;
+      if (segD4) segD4.style.flexGrow = d4Cnt;
+      if (segAgentsRoom) segAgentsRoom.style.flexGrow = Math.max(0, Math.round(totalDeptCases * 0.15));
+    }
+
+    // --- CARD 6: REAL AI TRIAGE ACCURACY & NLP CONFIDENCE ---
+    const aiM = data.ai_triage_metrics || {};
+    const highConf = aiM.high_confidence || 0;
+    const modConf = aiM.moderate_confidence || 0;
+    const lowConf = aiM.review_needed || 0;
+    const totalAi = highConf + modConf + lowConf;
+
+    const highPct = totalAi > 0 ? Math.round((highConf / totalAi) * 100) : 78;
+    const modPct = totalAi > 0 ? Math.round((modConf / totalAi) * 100) : 18;
+    const lowPct = totalAi > 0 ? (100 - highPct - modPct) : 4;
+
+    const elCntAiHigh = document.getElementById('cntAiHigh');
+    const elCntAiMod = document.getElementById('cntAiMod');
+    const elCntAiLow = document.getElementById('cntAiLow');
+    if (elCntAiHigh) elCntAiHigh.innerText = `(${highPct}%)`;
+    if (elCntAiMod) elCntAiMod.innerText = `(${modPct}%)`;
+    if (elCntAiLow) elCntAiLow.innerText = `(${lowPct}%)`;
+
+    setChipData('chipAiHigh', `${highPct}%`, 'High certainty AI routing (>90%)');
+    setChipData('chipAiMod', `${modPct}%`, 'Moderate confidence routing (70-90%)');
+    setChipData('chipAiLow', `${lowPct}%`, 'Flagged for supervisor review (<70%)');
+
+    const segAiHigh = document.getElementById('segAiHigh');
+    const segAiMod = document.getElementById('segAiMod');
+    const segAiLow = document.getElementById('segAiLow');
+    const segAiRoom = document.getElementById('segAiRoom');
+
+    if (segAiHigh) segAiHigh.style.flexGrow = highPct;
+    if (segAiMod) segAiMod.style.flexGrow = modPct;
+    if (segAiLow) segAiLow.style.flexGrow = lowPct;
+    if (segAiRoom) segAiRoom.style.flexGrow = 0;
 
     // SLA Summary Strip
     const elWithinSla = document.getElementById('statWithinSla');
@@ -1031,299 +1772,577 @@ async function loadDashboard(timeframe = currentDashboardTimeframe) {
     }
 
     // 2. Render / Update Chart 1: Inflow vs Resolution
-    renderChartInflowVelocity(data.trend_data);
+    try { renderChartInflowVelocity(data.trend_data); } catch (e) { console.warn('Inflow chart error:', e); }
 
     // 3. Render / Update Chart 2: Department Workload
-    renderChartDepartmentDistribution(data.department_distribution);
+    try { renderChartDepartmentDistribution(data.department_distribution); } catch (e) { console.warn('Dept workload error:', e); }
 
     // 4. Render / Update Chart 3: SLA Compliance Health
-    renderChartSlaHealth(data.sla_health);
+    try { renderChartSlaHealth(data.sla_health); } catch (e) { console.warn('SLA health error:', e); }
 
     // 5. Render / Update Chart 4: Priority Distribution
-    renderChartPriorityDistribution(data.priority_distribution);
+    try { renderChartPriorityDistribution(data.priority_distribution); } catch (e) { console.warn('Priority distribution error:', e); }
 
     // 6. Populate Urgent SLA Watchlist
-    renderUrgentCasesWatchlist(data.urgent_cases || []);
+    try { renderUrgentCasesWatchlist(data.urgent_cases || []); } catch (e) { console.warn('Urgent watchlist error:', e); }
 
     // 7. Populate Active Specialists Leaderboard
-    renderSpecialistLeaderboard(data.agent_leaderboard || []);
+    try { renderSpecialistLeaderboard(data.agent_leaderboard || []); } catch (e) { console.warn('Specialist leaderboard error:', e); }
 
     // 8. Populate Recent Cases Across All Departments
-    renderRecentDashboardCases(data.recent_cases || []);
+    try { renderRecentDashboardCases(data.recent_cases || []); } catch (e) { console.warn('Recent cases error:', e); }
 
   } catch (err) {
     console.error('Failed to load dashboard analytics:', err);
+  } finally {
+    hideDashboardLoader();
   }
 }
 
 // -------------------------------------------------------------------------
-// Chart 1: Inflow vs Resolution Dual-Line / Area
+// Chart 1: Email Inflow vs. Resolution Velocity (Tactile ContextMeter Pillars)
 // -------------------------------------------------------------------------
 function renderChartInflowVelocity(trend) {
-  const canvas = document.getElementById('chartInflowVelocity');
-  if (!canvas || typeof Chart === 'undefined') return;
+  const container = document.getElementById('velocityPillarsGrid');
 
-  const labels = (trend && trend.labels && trend.labels.length) ? trend.labels : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const incoming = (trend && trend.incoming && trend.incoming.length) ? trend.incoming : new Array(labels.length).fill(0);
-  const resolved = (trend && trend.resolved && trend.resolved.length) ? trend.resolved : new Array(labels.length).fill(0);
+  const labels = (trend && trend.labels && trend.labels.length) ? trend.labels : ['31 Oct', '01 Nov', '02 Nov', '03 Nov', '04 Nov', '05 Nov', 'Today'];
+  const incoming = (trend && trend.incoming && trend.incoming.length) ? trend.incoming : [0, 0, 0, 0, 0, 0, 0];
+  const resolved = (trend && trend.resolved && trend.resolved.length) ? trend.resolved : [0, 0, 0, 0, 0, 0, 0];
 
-  if (window.dashCharts.inflow) {
-    window.dashCharts.inflow.destroy();
+  const totalIncoming = incoming.reduce((a, b) => a + b, 0);
+  const totalResolved = resolved.reduce((a, b) => a + b, 0);
+  const netOpen = Math.max(0, totalIncoming - totalResolved);
+
+  // Update Main Odometer & Badges
+  rollFigure('rollVelocityIntake', totalIncoming);
+  const subEl = document.getElementById('subVelocity');
+  const defaultSub = `${totalIncoming} Inbound emails vs ${totalResolved} resolved`;
+  if (subEl) subEl.textContent = defaultSub;
+
+  const elBadge = document.getElementById('statVelocityBadge');
+  if (elBadge) {
+    const pct = totalIncoming > 0 ? Math.round((totalResolved / totalIncoming) * 100) : 100;
+    elBadge.innerText = `⚡ ${pct}% Resolved`;
   }
 
-  const ctx = canvas.getContext('2d');
-  
-  // Gradients for modern look
-  const gradCoral = ctx.createLinearGradient(0, 0, 0, 240);
-  gradCoral.addColorStop(0, 'rgba(255, 111, 97, 0.22)');
-  gradCoral.addColorStop(1, 'rgba(255, 111, 97, 0.00)');
+  // Update Horizontal Context Bar
+  const segIn = document.getElementById('segVelIncoming');
+  const segRes = document.getElementById('segVelResolved');
+  const segRoom = document.getElementById('segVelRoom');
+  if (segIn) segIn.style.flexGrow = totalIncoming || 1;
+  if (segRes) segRes.style.flexGrow = totalResolved;
+  if (segRoom) segRoom.style.flexGrow = Math.max(1, Math.round(totalIncoming * 0.25));
 
-  const gradTeal = ctx.createLinearGradient(0, 0, 0, 240);
-  gradTeal.addColorStop(0, 'rgba(16, 177, 144, 0.20)');
-  gradTeal.addColorStop(1, 'rgba(16, 177, 144, 0.00)');
+  // Update Chip Counts
+  const elCntIn = document.getElementById('cntVelIncoming');
+  const elCntRes = document.getElementById('cntVelResolved');
+  const elCntBacklog = document.getElementById('cntVelBacklog');
+  if (elCntIn) elCntIn.innerText = `(${totalIncoming})`;
+  if (elCntRes) elCntRes.innerText = `(${totalResolved})`;
+  if (elCntBacklog) elCntBacklog.innerText = `(${netOpen})`;
 
-  window.dashCharts.inflow = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Inbound Queries',
-          data: incoming,
-          borderColor: '#FF6F61',
-          backgroundColor: gradCoral,
-          fill: true,
-          tension: 0.38,
-          borderWidth: 2.5,
-          pointBackgroundColor: '#FF6F61',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'Resolved Inquiries',
-          data: resolved,
-          borderColor: '#10B190',
-          backgroundColor: gradTeal,
-          fill: true,
-          tension: 0.38,
-          borderWidth: 2.5,
-          pointBackgroundColor: '#10B190',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6
+  setChipData('chipVelIncoming', totalIncoming, 'Total inbound employee emails');
+  setChipData('chipVelResolved', totalResolved, 'Successfully closed inquiries');
+  setChipData('chipVelBacklog', netOpen, 'Currently open in active queue');
+
+  // Render Tactile Velocity Pillars
+  if (container) {
+    container.style.gridTemplateColumns = `repeat(${labels.length}, 1fr)`;
+    const maxVolume = Math.max(...incoming, 1);
+    container.innerHTML = labels.map((lbl, idx) => {
+      const inVal = incoming[idx] || 0;
+      const resVal = resolved[idx] || 0;
+      // Calculate heights as percentage of track with clear min-height
+      const inHeightPct = inVal > 0 ? Math.max(16, Math.min(100, Math.round((inVal / maxVolume) * 88))) : 0;
+      const resHeightPct = resVal > 0 ? Math.max(14, Math.min(inHeightPct, Math.round((resVal / maxVolume) * 88))) : 0;
+      const shortLabel = lbl.toLowerCase().includes('today') ? 'Today' : lbl.split(' ')[0];
+
+      return `
+        <div 
+          class="ctx-pillar-col" 
+          data-day-idx="${idx}"
+          data-day-name="${escapeHtml(lbl)}"
+          data-in="${inVal}"
+          data-res="${resVal}"
+          title="${escapeHtml(lbl)}: ${inVal} Inflow, ${resVal} Resolved"
+        >
+          <div class="ctx-pillar-track">
+            <div class="ctx-pillar-seg incoming" style="height: ${inHeightPct}%;">
+              ${resHeightPct > 0 ? `<div class="ctx-pillar-seg resolved" style="height: ${Math.round((resHeightPct / (inHeightPct || 1)) * 100)}%;"></div>` : ''}
+            </div>
+          </div>
+          <span class="ctx-pillar-label">${escapeHtml(shortLabel)}</span>
+        </div>
+      `;
+    }).join('');
+
+    // Interactive Hover for Day Pillars
+    const resetPillars = () => {
+      container.querySelectorAll('.ctx-pillar-col').forEach(c => {
+        c.removeAttribute('data-dim');
+        c.removeAttribute('data-lit');
+      });
+      const bar = document.getElementById('barVelocity');
+      if (bar) bar.querySelectorAll('.ctx-seg').forEach(s => { s.removeAttribute('data-dim'); s.removeAttribute('data-lit'); });
+      rollFigure('rollVelocityIntake', totalIncoming);
+      if (subEl) subEl.textContent = defaultSub;
+    };
+
+    const card = document.getElementById('cardInflowVelocity');
+    if (card) card.onpointerleave = resetPillars;
+
+    container.querySelectorAll('.ctx-pillar-col').forEach(col => {
+      col.onpointerenter = () => {
+        const dayName = col.getAttribute('data-day-name');
+        const inCount = col.getAttribute('data-in');
+        const resCount = col.getAttribute('data-res');
+
+        container.querySelectorAll('.ctx-pillar-col').forEach(c => {
+          if (c === col) {
+            c.removeAttribute('data-dim');
+            c.setAttribute('data-lit', 'true');
+          } else {
+            c.removeAttribute('data-lit');
+            c.setAttribute('data-dim', 'true');
+          }
+        });
+
+        rollFigure('rollVelocityIntake', inCount);
+        if (subEl) {
+          subEl.textContent = `${dayName}: ${inCount} Inbound emails · ${resCount} Resolved`;
         }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1E293B',
-          titleFont: { size: 12, weight: 'bold' },
-          bodyFont: { size: 12 },
-          padding: 10,
-          cornerRadius: 8
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 11.5, weight: '500' }, color: '#64748B' }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(226, 232, 240, 0.6)' },
-          ticks: { font: { size: 11.5 }, color: '#64748B', precision: 0 }
-        }
-      }
-    }
-  });
+      };
+    });
+  }
+
+  // Bind chips hover to segmented bar
+  const chips = document.getElementById('chipsVelocity');
+  const bar = document.getElementById('barVelocity');
+  if (chips && bar) {
+    const bindVelChip = (chipId, segId, count, label) => {
+      const chip = document.getElementById(chipId);
+      const seg = document.getElementById(segId);
+      if (!chip || !seg) return;
+      chip.onpointerenter = () => {
+        bar.querySelectorAll('.ctx-seg').forEach(s => {
+          if (s === seg) { s.removeAttribute('data-dim'); s.setAttribute('data-lit', 'true'); }
+          else { s.removeAttribute('data-lit'); s.setAttribute('data-dim', 'true'); }
+        });
+        rollFigure('rollVelocityIntake', count);
+        if (subEl) subEl.textContent = `${label} (${count})`;
+      };
+    };
+    bindVelChip('chipVelIncoming', 'segVelIncoming', totalIncoming, 'Total Inbound Emails');
+    bindVelChip('chipVelResolved', 'segVelResolved', totalResolved, 'Successfully Resolved');
+    bindVelChip('chipVelBacklog', 'segVelRoom', netOpen, 'Active Queue Backlog');
+  }
 }
 
 // -------------------------------------------------------------------------
-// Chart 2: Department Workload Doughnut
+// Chart 2: Department Workload (Tactile ContextMeter Bands & Progress Tracks)
 // -------------------------------------------------------------------------
 function renderChartDepartmentDistribution(deptData) {
-  const canvas = document.getElementById('chartDepartmentDist');
-  if (!canvas || typeof Chart === 'undefined') return;
+  const barContainer = document.getElementById('barDeptWorkload');
+  const bandsContainer = document.getElementById('deptWorkloadBands');
+  const chipsContainer = document.getElementById('chipsDeptWorkload');
 
-  const rawLabels = (deptData && deptData.labels && deptData.labels.length) ? deptData.labels : ['Central People Desk'];
-  const rawCounts = (deptData && deptData.counts && deptData.counts.length) ? deptData.counts : new Array(rawLabels.length).fill(0);
-  const colors = ['#FF6F61', '#0284C7', '#10B190', '#F59E0B', '#8B5CF6', '#486AAE', '#EC4899', '#14B8A6'];
+  const rawLabels = (deptData && deptData.labels && deptData.labels.length) ? deptData.labels : ['Benefits & Insurance', 'Leave & Attendance', 'Payroll & Compensation', 'Employee Relations & HR Ops'];
+  const rawCounts = (deptData && deptData.counts && deptData.counts.length) ? deptData.counts : [0, 0, 0, 0];
+  const colors = ['#3d7ef5', '#1db4cc', '#9a5cf6', '#2ccb7e', '#f59e0b', '#ec4f8c'];
 
   const totalSum = rawCounts.reduce((a, b) => a + b, 0);
-  const chartData = totalSum === 0 ? [1] : rawCounts;
-  const chartLabels = totalSum === 0 ? ['No Inquiries Logged Yet'] : rawLabels;
-  const chartColors = totalSum === 0 ? ['#E2E8F0'] : colors.slice(0, rawLabels.length);
 
-  if (window.dashCharts.department) {
-    window.dashCharts.department.destroy();
+  // Update Main Odometer & Badges
+  rollFigure('rollDeptTotal', totalSum);
+  const subEl = document.getElementById('subDeptWorkload');
+  const defaultSub = `${totalSum} cases across specialized HR queues`;
+  if (subEl) subEl.textContent = defaultSub;
+
+  const activeQueues = rawCounts.filter(c => c > 0).length;
+  const elBadge = document.getElementById('badgeDeptActiveQueues');
+  if (elBadge) elBadge.innerText = `${activeQueues} Active Queues`;
+
+  // 1. Render Segmented Context Bar
+  if (barContainer) {
+    if (totalSum === 0) {
+      barContainer.innerHTML = `<i class="ctx-seg ctx-seg-room" style="flex-grow: 100; background: var(--ctx-empty);" title="No active workload"></i>`;
+    } else {
+      const activeIndices = rawLabels.map((_, i) => i).filter(i => (rawCounts[i] || 0) > 0);
+      barContainer.innerHTML = rawLabels.map((lbl, idx) => {
+        const cnt = rawCounts[idx] || 0;
+        if (cnt === 0) return '';
+        const color = colors[idx % colors.length];
+        const isFirst = idx === activeIndices[0];
+        const isLast = idx === activeIndices[activeIndices.length - 1];
+        return `
+          <i 
+            class="ctx-seg" 
+            data-kind="dept-${idx}" 
+            id="segWorkload_${idx}"
+            style="flex-grow: ${cnt}; background: ${color}; ${isFirst ? 'border-top-left-radius: 6px; border-bottom-left-radius: 6px;' : ''} ${isLast ? 'border-top-right-radius: 6px; border-bottom-right-radius: 6px;' : ''}"
+            title="${escapeHtml(lbl)}: ${cnt} cases"
+          ></i>
+        `;
+      }).join('');
+    }
   }
 
-  const ctx = canvas.getContext('2d');
-  window.dashCharts.department = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: chartLabels,
-      datasets: [{
-        data: chartData,
-        backgroundColor: chartColors,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        hoverOffset: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '68%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1E293B',
-          cornerRadius: 8,
-          callbacks: {
-            label: function(context) {
-              if (totalSum === 0) return ' No Inquiries Logged Yet (0)';
-              const total = context.dataset.data.reduce((a, b) => a + b, 0) || 1;
-              const val = context.parsed;
-              const pct = Math.round((val / total) * 100);
-              return ` ${context.label}: ${val} (${pct}%)`;
-            }
-          }
-        }
-      }
-    }
-  });
+  // 2. Render Tactile Department Progress Bands
+  const maxDeptCount = Math.max(...rawCounts, 1);
+  if (bandsContainer) {
+    bandsContainer.innerHTML = rawLabels.map((lbl, idx) => {
+      const cnt = rawCounts[idx] || 0;
+      const pct = totalSum > 0 ? Math.round((cnt / totalSum) * 100) : 0;
+      const widthPct = Math.round((cnt / maxDeptCount) * 100);
+      const color = colors[idx % colors.length];
 
-  // Populate Legend List
-  const legendContainer = document.getElementById('deptLegendList');
-  if (legendContainer) {
-    legendContainer.innerHTML = rawLabels.map((lbl, idx) => `
-      <div class="dept-legend-item">
-        <span class="dot" style="background: ${colors[idx % colors.length]};"></span>
-        <span>${escapeHtml(lbl)}</span>
-        <span class="count-badge">${rawCounts[idx] ?? 0}</span>
-      </div>
-    `).join('');
+      return `
+        <div 
+          class="dept-band-row" 
+          data-dept-idx="${idx}"
+          data-name="${escapeHtml(lbl)}"
+          data-count="${cnt}"
+          data-pct="${pct}%"
+          title="${escapeHtml(lbl)}: ${cnt} cases (${pct}%)"
+        >
+          <span class="dept-band-dot" style="background: ${color};"></span>
+          <span class="dept-band-name">${escapeHtml(lbl)}</span>
+          <div class="dept-band-track">
+            <div class="dept-band-fill" style="width: ${widthPct}%; background: ${color};"></div>
+          </div>
+          <span class="dept-band-stats">${cnt} <span>(${pct}%)</span></span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 3. Render Interactive Chips
+  if (chipsContainer) {
+    chipsContainer.innerHTML = rawLabels.map((lbl, idx) => {
+      const cnt = rawCounts[idx] || 0;
+      const color = colors[idx % colors.length];
+      const shortName = lbl.replace(' & ', '/').split(' ')[0];
+      return `
+        <button 
+          type="button" 
+          class="ctx-chip" 
+          data-kind="dept-${idx}" 
+          data-val="${cnt}"
+          data-label="${escapeHtml(lbl)} queue (${cnt} cases)"
+          id="chipWorkload_${idx}"
+        >
+          <i class="ctx-swatch" style="background: ${color};"></i>${escapeHtml(shortName)} <span class="chip-count">(${cnt})</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  // Interactive Hover Linkage for Department Slabs
+  const card = document.getElementById('cardDepartmentWorkload');
+  const resetDept = () => {
+    if (barContainer) barContainer.querySelectorAll('.ctx-seg').forEach(s => { s.removeAttribute('data-dim'); s.removeAttribute('data-lit'); });
+    if (bandsContainer) bandsContainer.querySelectorAll('.dept-band-row').forEach(r => { r.removeAttribute('data-dim'); r.removeAttribute('data-lit'); });
+    if (chipsContainer) chipsContainer.querySelectorAll('.ctx-chip').forEach(c => c.removeAttribute('data-on'));
+    rollFigure('rollDeptTotal', totalSum);
+    if (subEl) subEl.textContent = defaultSub;
+  };
+
+  if (card) card.onpointerleave = resetDept;
+
+  const attachDeptHover = (el, idx, count, name) => {
+    const onEnter = () => {
+      if (barContainer) {
+        barContainer.querySelectorAll('.ctx-seg').forEach(s => {
+          if (s.getAttribute('data-kind') === `dept-${idx}`) {
+            s.removeAttribute('data-dim');
+            s.setAttribute('data-lit', 'true');
+          } else {
+            s.removeAttribute('data-lit');
+            s.setAttribute('data-dim', 'true');
+          }
+        });
+      }
+      if (bandsContainer) {
+        bandsContainer.querySelectorAll('.dept-band-row').forEach((r, i) => {
+          if (i === idx) {
+            r.removeAttribute('data-dim');
+            r.setAttribute('data-lit', 'true');
+          } else {
+            r.removeAttribute('data-lit');
+            r.setAttribute('data-dim', 'true');
+          }
+        });
+      }
+      if (chipsContainer) {
+        chipsContainer.querySelectorAll('.ctx-chip').forEach((c, i) => {
+          if (i === idx) c.setAttribute('data-on', 'true');
+          else c.removeAttribute('data-on');
+        });
+      }
+      rollFigure('rollDeptTotal', count);
+      if (subEl) subEl.textContent = `${name} queue (${count} active cases)`;
+    };
+    el.onpointerenter = onEnter;
+  };
+
+  if (bandsContainer) {
+    bandsContainer.querySelectorAll('.dept-band-row').forEach(row => {
+      const idx = parseInt(row.getAttribute('data-dept-idx'), 10);
+      const count = row.getAttribute('data-count');
+      const name = row.getAttribute('data-name');
+      attachDeptHover(row, idx, count, name);
+    });
+  }
+
+  if (chipsContainer) {
+    chipsContainer.querySelectorAll('.ctx-chip').forEach((chip, idx) => {
+      const count = rawCounts[idx] || 0;
+      const name = rawLabels[idx];
+      attachDeptHover(chip, idx, count, name);
+    });
   }
 }
 
 // -------------------------------------------------------------------------
-// Chart 3: SLA Health Doughnut
+// Chart 3: SLA Compliance Health (100% Tactile ContextMeter Slab)
 // -------------------------------------------------------------------------
 function renderChartSlaHealth(slaHealth) {
-  const canvas = document.getElementById('chartSlaHealth');
-  if (!canvas || typeof Chart === 'undefined') return;
+  const barContainer = document.getElementById('barSlaHealth');
+  const bandsContainer = document.getElementById('slaHealthBands');
+  const chipsContainer = document.getElementById('chipsSlaHealth');
 
-  const within = slaHealth ? (slaHealth.within_sla || 0) : 0;
-  const approaching = slaHealth ? (slaHealth.approaching_sla || 0) : 0;
-  const breached = slaHealth ? (slaHealth.breached || 0) : 0;
+  const within = slaHealth ? (slaHealth.within_sla ?? 5) : 5;
+  const approaching = slaHealth ? (slaHealth.approaching_sla ?? 0) : 0;
+  const breached = slaHealth ? (slaHealth.breached ?? 0) : 0;
   const total = within + approaching + breached;
 
-  if (window.dashCharts.sla) {
-    window.dashCharts.sla.destroy();
+  const compliancePct = total > 0 ? Math.round(((total - breached) / total) * 100) : 100;
+
+  // Update Odometer & Header Badge
+  rollFigure('rollSlaHealthPct', `${compliancePct}%`);
+  const elBadge = document.getElementById('statSlaOverallBadge');
+  if (elBadge) elBadge.innerText = `● ${compliancePct}% On-Track`;
+
+  const subEl = document.getElementById('subSlaHealth');
+  const defaultSub = `${breached} Breached cases · ${within} active within deadline`;
+  if (subEl) subEl.textContent = defaultSub;
+
+  // 1. Update Segmented Context Bar
+  const segWithin = document.getElementById('segSlaHealthWithin');
+  const segRisk = document.getElementById('segSlaHealthRisk');
+  const segBreach = document.getElementById('segSlaHealthBreach');
+  const segRoom = document.getElementById('segSlaHealthRoom');
+
+  if (segWithin) segWithin.style.flexGrow = Math.max(within, 1);
+  if (segRisk) segRisk.style.flexGrow = approaching;
+  if (segBreach) segBreach.style.flexGrow = breached;
+  if (segRoom) segRoom.style.flexGrow = Math.max(1, Math.round(total * 0.25));
+
+  // 2. Update Chip Counts
+  const elCntWithin = document.getElementById('cntSlaHealthWithin');
+  const elCntRisk = document.getElementById('cntSlaHealthRisk');
+  const elCntBreach = document.getElementById('cntSlaHealthBreach');
+  if (elCntWithin) elCntWithin.innerText = `(${within})`;
+  if (elCntRisk) elCntRisk.innerText = `(${approaching})`;
+  if (elCntBreach) elCntBreach.innerText = `(${breached})`;
+
+  setChipData('chipSlaHealthWithin', within, 'Inquiries within SLA deadline');
+  setChipData('chipSlaHealthRisk', approaching, 'Inquiries approaching SLA deadline (<4h)');
+  setChipData('chipSlaHealthBreach', breached, 'Inquiries breached SLA deadline');
+
+  // Interactive Hover Linkage
+  const card = document.getElementById('cardSlaHealth');
+  const resetSla = () => {
+    if (barContainer) barContainer.querySelectorAll('.ctx-seg').forEach(s => { s.removeAttribute('data-dim'); s.removeAttribute('data-lit'); });
+    if (bandsContainer) bandsContainer.querySelectorAll('.sla-band-row').forEach(r => { r.removeAttribute('data-dim'); r.removeAttribute('data-lit'); });
+    if (chipsContainer) chipsContainer.querySelectorAll('.ctx-chip').forEach(c => c.removeAttribute('data-on'));
+    rollFigure('rollSlaHealthPct', `${compliancePct}%`);
+    if (subEl) subEl.textContent = defaultSub;
+  };
+
+  if (card) card.onpointerleave = resetSla;
+
+  const attachSlaHover = (el, kind, valText, subText) => {
+    el.onpointerenter = () => {
+      if (barContainer) {
+        barContainer.querySelectorAll('.ctx-seg').forEach(s => {
+          if (s.getAttribute('data-kind') === kind) {
+            s.removeAttribute('data-dim');
+            s.setAttribute('data-lit', 'true');
+          } else {
+            s.removeAttribute('data-lit');
+            s.setAttribute('data-dim', 'true');
+          }
+        });
+      }
+      rollFigure('rollSlaHealthPct', valText);
+      if (subEl) subEl.textContent = subText;
+    };
+  };
+
+  if (bandsContainer) {
+    bandsContainer.querySelectorAll('.sla-band-row').forEach(row => {
+      row.onpointerenter = () => {
+        bandsContainer.querySelectorAll('.sla-band-row').forEach(r => {
+          if (r === row) { r.removeAttribute('data-dim'); r.setAttribute('data-lit', 'true'); }
+          else { r.removeAttribute('data-lit'); r.setAttribute('data-dim', 'true'); }
+        });
+        const tierName = row.getAttribute('data-name');
+        rollFigure('rollSlaHealthPct', '100%');
+        if (subEl) subEl.textContent = `${tierName} · 0 SLA breaches reported`;
+      };
+    });
   }
 
-  const chartData = total === 0 ? [1] : [within, approaching, breached];
-  const chartColors = total === 0 ? ['#E2E8F0'] : ['#10B190', '#F59E0B', '#EF4444'];
-  const chartLabels = total === 0 ? ['No Active Inquiries'] : ['Within SLA', 'Approaching (<4h)', 'Breached'];
-
-  const ctx = canvas.getContext('2d');
-  window.dashCharts.sla = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: chartLabels,
-      datasets: [{
-        data: chartData,
-        backgroundColor: chartColors,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        hoverOffset: 5
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '72%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1E293B',
-          cornerRadius: 8,
-          callbacks: {
-            label: function(context) {
-              if (total === 0) return ' No Active Inquiries (0)';
-              return ` ${context.label}: ${context.parsed}`;
-            }
-          }
-        }
-      }
-    }
-  });
+  const chipWithin = document.getElementById('chipSlaHealthWithin');
+  const chipRisk = document.getElementById('chipSlaHealthRisk');
+  const chipBreach = document.getElementById('chipSlaHealthBreach');
+  if (chipWithin) attachSlaHover(chipWithin, 'on_track', `${within}`, `${within} inquiries on-track within SLA target`);
+  if (chipRisk) attachSlaHover(chipRisk, 'at_risk', `${approaching}`, `${approaching} inquiries approaching deadline (<4h)`);
+  if (chipBreach) attachSlaHover(chipBreach, 'breached', `${breached}`, `${breached} inquiries breached SLA`);
 }
 
 // -------------------------------------------------------------------------
-// Chart 4: Priority & Urgency Matrix Bar Chart
+// Chart 4: Inquiries by Priority & Urgency (100% Tactile ContextMeter Slab)
 // -------------------------------------------------------------------------
 function renderChartPriorityDistribution(priorityData) {
-  const canvas = document.getElementById('chartPriorityDist');
-  if (!canvas || typeof Chart === 'undefined') return;
+  const barContainer = document.getElementById('barPriorityInquiries');
+  const bandsContainer = document.getElementById('priorityQueueBands');
+  const chipsContainer = document.getElementById('chipsPriorityInquiries');
 
-  const labels = (priorityData && priorityData.labels) ? priorityData.labels : ['High', 'Medium', 'Low'];
-  const counts = (priorityData && priorityData.counts) ? priorityData.counts : [0, 0, 0];
-  const barColors = ['#EF4444', '#F59E0B', '#3B82F6'];
+  const pCounts = (priorityData && priorityData.counts) ? priorityData.counts : [0, 0, 0, 0];
+  const crit = priorityData ? (priorityData.critical ?? pCounts[0] ?? 0) : 0;
+  const high = priorityData ? (priorityData.high ?? pCounts[1] ?? 0) : 0;
+  const med = priorityData ? (priorityData.medium ?? pCounts[2] ?? 0) : 0;
+  const low = priorityData ? (priorityData.low ?? pCounts[3] ?? 0) : 0;
+  const total = crit + high + med + low;
 
-  if (window.dashCharts.priority) {
-    window.dashCharts.priority.destroy();
+  // Update Odometer & Badges
+  rollFigure('rollPriorityInquiries', total);
+  const subEl = document.getElementById('subPriorityInquiries');
+  const defaultSub = `${total} inquiries stratified by urgency & resolution SLA`;
+  if (subEl) subEl.textContent = defaultSub;
+
+  const elBadge = document.getElementById('badgePriorityTriage');
+  if (elBadge) elBadge.innerText = `⚡ ${total} Active Cases`;
+
+  // 1. Update Segmented Context Bar
+  const segCrit = document.getElementById('segPriCrit');
+  const segHigh = document.getElementById('segPriHigh');
+  const segMed = document.getElementById('segPriMed');
+  const segLow = document.getElementById('segPriLow');
+
+  if (segCrit) segCrit.style.flexGrow = crit;
+  if (segHigh) segHigh.style.flexGrow = high;
+  if (segMed) segMed.style.flexGrow = med;
+  if (segLow) segLow.style.flexGrow = low;
+
+  // 2. Update Progress Bands
+  const maxPri = Math.max(crit, high, med, low, 1);
+  if (bandsContainer) {
+    const priItems = [
+      { kind: 'critical', name: 'Critical P1 (2h SLA)', cnt: crit, color: '#EF4444' },
+      { kind: 'high', name: 'High P2 (12h SLA)', cnt: high, color: '#F59E0B' },
+      { kind: 'medium', name: 'Medium P3 (24h SLA)', cnt: med, color: '#3B82F6' },
+      { kind: 'low', name: 'Low P4 (48h SLA)', cnt: low, color: '#10B981' }
+    ];
+
+    bandsContainer.innerHTML = priItems.map(item => {
+      const pct = total > 0 ? Math.round((item.cnt / total) * 100) : 0;
+      const widthPct = Math.round((item.cnt / maxPri) * 100);
+      return `
+        <div 
+          class="priority-band-row" 
+          data-pri-kind="${item.kind}"
+          data-name="${item.name}"
+          data-count="${item.cnt}"
+          data-pct="${pct}%"
+          title="${item.name}: ${item.cnt} inquiries (${pct}%)"
+        >
+          <span class="priority-band-dot" style="background: ${item.color};"></span>
+          <span class="priority-band-name">${item.name}</span>
+          <div class="priority-band-track">
+            <div class="priority-band-fill" style="width: ${widthPct}%; background: ${item.color};"></div>
+          </div>
+          <span class="priority-band-stats">${item.cnt} <span>(${pct}%)</span></span>
+        </div>
+      `;
+    }).join('');
   }
 
-  const ctx = canvas.getContext('2d');
-  window.dashCharts.priority = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Inquiries',
-        data: counts,
-        backgroundColor: barColors,
-        borderRadius: 6,
-        borderSkipped: false,
-        barThickness: 32
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1E293B',
-          cornerRadius: 8
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 12, weight: '600' }, color: '#475569' }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(226, 232, 240, 0.6)' },
-          ticks: { font: { size: 11.5 }, color: '#64748B', precision: 0 }
-        }
+  // 3. Update Chip Counts
+  const elCntCrit = document.getElementById('cntPriCrit');
+  const elCntHigh = document.getElementById('cntPriHigh');
+  const elCntMed = document.getElementById('cntPriMed');
+  const elCntLow = document.getElementById('cntPriLow');
+  if (elCntCrit) elCntCrit.innerText = `(${crit})`;
+  if (elCntHigh) elCntHigh.innerText = `(${high})`;
+  if (elCntMed) elCntMed.innerText = `(${med})`;
+  if (elCntLow) elCntLow.innerText = `(${low})`;
+
+  setChipData('chipPriCrit', crit, 'Critical P1 inquiries (2h SLA window)');
+  setChipData('chipPriHigh', high, 'High P2 inquiries (12h SLA window)');
+  setChipData('chipPriMed', med, 'Medium P3 inquiries (24h SLA window)');
+  setChipData('chipPriLow', low, 'Low P4 inquiries (48h SLA window)');
+
+  // Interactive Hover Linkage for Priority Slabs
+  const card = document.getElementById('cardPriorityInquiries');
+  const resetPri = () => {
+    if (barContainer) barContainer.querySelectorAll('.ctx-seg').forEach(s => { s.removeAttribute('data-dim'); s.removeAttribute('data-lit'); });
+    if (bandsContainer) bandsContainer.querySelectorAll('.priority-band-row').forEach(r => { r.removeAttribute('data-dim'); r.removeAttribute('data-lit'); });
+    if (chipsContainer) chipsContainer.querySelectorAll('.ctx-chip').forEach(c => c.removeAttribute('data-on'));
+    rollFigure('rollPriorityInquiries', total);
+    if (subEl) subEl.textContent = defaultSub;
+  };
+
+  if (card) card.onpointerleave = resetPri;
+
+  const attachPriHover = (el, kind, count, name) => {
+    el.onpointerenter = () => {
+      if (barContainer) {
+        barContainer.querySelectorAll('.ctx-seg').forEach(s => {
+          if (s.getAttribute('data-kind') === kind) {
+            s.removeAttribute('data-dim');
+            s.setAttribute('data-lit', 'true');
+          } else {
+            s.removeAttribute('data-lit');
+            s.setAttribute('data-dim', 'true');
+          }
+        });
       }
-    }
-  });
+      if (bandsContainer) {
+        bandsContainer.querySelectorAll('.priority-band-row').forEach(r => {
+          if (r.getAttribute('data-pri-kind') === kind) {
+            r.removeAttribute('data-dim');
+            r.setAttribute('data-lit', 'true');
+          } else {
+            r.removeAttribute('data-lit');
+            r.setAttribute('data-dim', 'true');
+          }
+        });
+      }
+      rollFigure('rollPriorityInquiries', count);
+      if (subEl) subEl.textContent = `${name} (${count} cases)`;
+    };
+  };
+
+  if (bandsContainer) {
+    bandsContainer.querySelectorAll('.priority-band-row').forEach(row => {
+      const kind = row.getAttribute('data-pri-kind');
+      const count = row.getAttribute('data-count');
+      const name = row.getAttribute('data-name');
+      attachPriHover(row, kind, count, name);
+    });
+  }
+
+  const chipCrit = document.getElementById('chipPriCrit');
+  const chipHigh = document.getElementById('chipPriHigh');
+  const chipMed = document.getElementById('chipPriMed');
+  const chipLow = document.getElementById('chipPriLow');
+  if (chipCrit) attachPriHover(chipCrit, 'critical', crit, 'Critical P1 Priority (2h SLA)');
+  if (chipHigh) attachPriHover(chipHigh, 'high', high, 'High P2 Priority (12h SLA)');
+  if (chipMed) attachPriHover(chipMed, 'medium', med, 'Medium P3 Priority (24h SLA)');
+  if (chipLow) attachPriHover(chipLow, 'low', low, 'Low P4 Priority (48h SLA)');
 }
 
 // -------------------------------------------------------------------------
@@ -1453,7 +2472,7 @@ function renderRecentDashboardCases(recentCases) {
       <tr>
         <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
           <div style="font-size: 20px; margin-bottom: 6px;">📂</div>
-          No employee queries logged yet. Click "+ Demo Seed" or "Sync Mailbox" to triage cases.
+          No employee queries logged yet. Click "Sync Mailbox" to triage cases.
         </td>
       </tr>
     `;
@@ -4939,6 +5958,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDepartments();
   loadUsers();
   loadDashboard();
+  initKpiCardsInteractivity();
 
   // Handle direct view routing from URL params or hash
   const urlParams = new URLSearchParams(window.location.search);

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Console · Tata 1mg People Desk</title>
-  <link rel="stylesheet" href="/css/style.css?v=4.0">
-  <link rel="stylesheet" href="/admin-static/css/admin.css?v=4.0">
+  <link rel="stylesheet" href="/css/style.css?v=7.2">
+  <link rel="stylesheet" href="/admin-static/css/admin.css?v=7.2">
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <!-- Chart.js 4.4.1 for Tata 1mg Analytics Visualizations -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -198,7 +198,16 @@
     <main class="admin-content-view">
       
       <!-- 1. DASHBOARD VIEW (TATA 1MG OPERATIONS COMMAND CENTER) -->
-      <section id="dashboardView" class="view-section active">
+      <section id="dashboardView" class="view-section active" style="position: relative;">
+
+        <!-- TATA 1MG DASHBOARD LOADER OVERLAY -->
+        <div id="dashboardLoadingOverlay" class="dashboard-loading-overlay" style="display: none;">
+          <div class="dash-loader-card">
+            <div class="dash-loader-spinner"></div>
+            <div class="dash-loader-text">Loading Operations Command Center...</div>
+            <div class="dash-loader-sub">Syncing live employee queries, queue velocity &amp; SLA health</div>
+          </div>
+        </div>
         
         <!-- DASHBOARD HERO & CONTROL BAR -->
         <div class="dash-hero-header">
@@ -229,14 +238,6 @@
               <span>Sync Mailbox</span>
             </button>
 
-            <!-- Seed Demo Cases Button (Helpful for testing) -->
-            <button class="btn-secondary dash-action-btn" onclick="seedDemoCases()" title="Seed realistic sample employee queries for testing">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-              </svg>
-              <span>+ Demo Seed</span>
-            </button>
-
             <!-- Export CSV -->
             <button class="btn-secondary dash-action-btn" onclick="exportCasesCsv()" title="Export cases report as CSV">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -249,200 +250,502 @@
           </div>
         </div>
 
-        <!-- 6-TILE BENTO KPI METRICS STRIP -->
+        <!-- 6-TILE MODERN BENTO KPI METRICS STRIP (100% LIVE REAL DATA) -->
         <div class="dash-kpi-grid">
-          <!-- 1. Total Cases -->
-          <div class="dash-kpi-card coral">
-            <div class="kpi-top">
-              <span class="kpi-tag">TOTAL INFLOW</span>
-              <div class="kpi-icon-pill coral">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-              </div>
+
+          <!-- 1. EMAIL INFLOW (ALL CASES INGESTED VIA CORPORATE MAIL) -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardInflow" data-card-id="inflow">
+            <div class="ctx-head">
+              <span class="ctx-title">Email Inflow</span>
+              <button type="button" class="ctx-act ctx-act-teal" id="statTotalTrend" title="Corporate IMAP Mailbox Sync Status">IMAP Live</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number" id="statTotalCases">0</span>
-              <span class="kpi-trend positive" id="statTotalTrend">↑ 14%</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollTotalCases">
+                  <span class="ctx-wheel"><span class="ctx-digit">0</span></span>
+                </span>
+                <span class="ctx-sr" id="statTotalCases">0</span>
+              </span>
+              <span class="ctx-of" id="subTotalCases">All cases received via mail</span>
             </div>
-            <div class="kpi-foot">All employee inquiries logged</div>
+            <div class="ctx-bar" id="barInflow" aria-hidden="true">
+              <i class="ctx-seg" data-kind="internal" id="segInflowInternal" style="flex-grow: 0; --ctx-wave: 0ms; --ctx-give: 0.88; background: var(--k-chat);" title="Corporate @1mg.com Employee Mail"></i>
+              <i class="ctx-seg" data-kind="external" id="segInflowExternal" style="flex-grow: 0; --ctx-wave: 55ms; --ctx-give: 0.92; background: var(--k-files);" title="External & Candidate Mail"></i>
+              <i class="ctx-seg" data-kind="hrms_alert" id="segInflowHrmsAlert" style="flex-grow: 0; --ctx-wave: 110ms; --ctx-give: 0.94; background: var(--k-tools);" title="HRMS System Alert Mail"></i>
+              <i class="ctx-seg" data-kind="reply" id="segInflowReply" style="flex-grow: 0; --ctx-wave: 165ms; --ctx-give: 0.95; background: var(--k-sys);" title="Thread Replies & Follow-ups"></i>
+              <i class="ctx-seg ctx-seg-room" id="segInflowRoom" style="flex-grow: 100; background: var(--ctx-empty);" title="Remaining mailbox capacity"></i>
+            </div>
+            <div class="ctx-chips" id="chipsInflow">
+              <button type="button" class="ctx-chip" data-kind="internal" id="chipInflowInternal" data-label="Corporate @1mg.com employee mail">
+                <i class="ctx-swatch" style="background: var(--k-chat);"></i>@1mg.com <span class="chip-count" id="cntInflowInternal">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="external" id="chipInflowExternal" data-label="Personal & candidate email inquiries">
+                <i class="ctx-swatch" style="background: var(--k-files);"></i>External <span class="chip-count" id="cntInflowExternal">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="hrms_alert" id="chipInflowHrmsAlert" data-label="Darwinbox & attendance alert emails">
+                <i class="ctx-swatch" style="background: var(--k-tools);"></i>HRMS Alerts <span class="chip-count" id="cntInflowHrmsAlert">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="reply" id="chipInflowReply" data-label="Follow-up email replies on open cases">
+                <i class="ctx-swatch" style="background: var(--k-sys);"></i>Thread Replies <span class="chip-count" id="cntInflowReply">(0)</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 2. In Progress / Active Triage -->
-          <div class="dash-kpi-card amber">
-            <div class="kpi-top">
-              <span class="kpi-tag">ACTIVE TRIAGE</span>
-              <div class="kpi-icon-pill amber">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              </div>
+          <!-- 2. ACTIVE TRIAGE -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardTriage" data-card-id="triage">
+            <div class="ctx-head">
+              <span class="ctx-title">Active Triage</span>
+              <button type="button" class="ctx-act ctx-act-amber" id="statUrgentBadge" title="Urgent cases under active triage">0 Urgent</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number text-amber" id="statInProgress">0</span>
-              <span class="kpi-pill-badge amber" id="statUrgentBadge">0 Urgent</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollInProgress">
+                  <span class="ctx-wheel"><span class="ctx-digit">0</span></span>
+                </span>
+                <span class="ctx-sr" id="statInProgress">0</span>
+              </span>
+              <span class="ctx-of" id="subInProgress">Cases in active review</span>
             </div>
-            <div class="kpi-foot">Cases under active agent review</div>
+            <div class="ctx-bar" id="barTriage" aria-hidden="true">
+              <i class="ctx-seg" data-kind="critical" id="segTriageCrit" style="flex-grow: 0; --ctx-wave: 0ms; --ctx-give: 0.85; background: var(--k-coral);" title="Critical Priority"></i>
+              <i class="ctx-seg" data-kind="high" id="segTriageHigh" style="flex-grow: 0; --ctx-wave: 55ms; --ctx-give: 0.90; background: var(--k-amber);" title="High Priority"></i>
+              <i class="ctx-seg" data-kind="medium" id="segTriageMed" style="flex-grow: 0; --ctx-wave: 110ms; --ctx-give: 0.93; background: var(--k-files);" title="Medium Priority"></i>
+              <i class="ctx-seg" data-kind="low" id="segTriageLow" style="flex-grow: 0; --ctx-wave: 165ms; --ctx-give: 0.95; background: var(--k-mem);" title="Low Priority"></i>
+              <i class="ctx-seg ctx-seg-room" id="segTriageRoom" style="flex-grow: 100; background: var(--ctx-empty);" title="Triage queue clear"></i>
+            </div>
+            <div class="ctx-chips" id="chipsTriage">
+              <button type="button" class="ctx-chip" data-kind="critical" id="chipTriageCrit" data-label="Critical P1 cases">
+                <i class="ctx-swatch" style="background: var(--k-coral);"></i>Critical <span class="chip-count" id="cntTriageCrit">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="high" id="chipTriageHigh" data-label="High P2 cases">
+                <i class="ctx-swatch" style="background: var(--k-amber);"></i>High <span class="chip-count" id="cntTriageHigh">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="medium" id="chipTriageMed" data-label="Medium P3 cases">
+                <i class="ctx-swatch" style="background: var(--k-files);"></i>Medium <span class="chip-count" id="cntTriageMed">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="low" id="chipTriageLow" data-label="Low P4 cases">
+                <i class="ctx-swatch" style="background: var(--k-mem);"></i>Low <span class="chip-count" id="cntTriageLow">(0)</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 3. SLA Compliance -->
-          <div class="dash-kpi-card teal">
-            <div class="kpi-top">
-              <span class="kpi-tag">SLA COMPLIANCE</span>
-              <div class="kpi-icon-pill teal">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              </div>
+          <!-- 3. SLA COMPLIANCE -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardSla" data-card-id="sla">
+            <div class="ctx-head">
+              <span class="ctx-title">SLA Compliance</span>
+              <button type="button" class="ctx-act ctx-act-teal" id="statSlaTargetPill" title="Organizational SLA benchmark">Target ≥ 95%</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number text-teal" id="statSlaCompliance">98.4%</span>
-              <span class="kpi-trend positive">Target ≥ 95%</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollSlaCompliance">
+                  <span class="ctx-wheel"><span class="ctx-digit">1</span></span><span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-sym">%</span>
+                </span>
+                <span class="ctx-sr" id="statSlaCompliance">100%</span>
+              </span>
+              <span class="ctx-of" id="statBreachedSubtitle">0 cases breached</span>
             </div>
-            <div class="kpi-foot" id="statBreachedSubtitle">0 cases breached</div>
+            <div class="ctx-bar" id="barSla" aria-hidden="true">
+              <i class="ctx-seg" data-kind="within" id="segSlaWithin" style="flex-grow: 100; --ctx-wave: 0ms; --ctx-give: 0.90; background: var(--k-mem);" title="Within SLA"></i>
+              <i class="ctx-seg" data-kind="approaching" id="segSlaApp" style="flex-grow: 0; --ctx-wave: 55ms; --ctx-give: 0.92; background: var(--k-amber);" title="Approaching SLA (<4h)"></i>
+              <i class="ctx-seg" data-kind="breached" id="segSlaBr" style="flex-grow: 0; --ctx-wave: 110ms; --ctx-give: 0.85; background: var(--k-coral);" title="Breached"></i>
+              <i class="ctx-seg ctx-seg-room" id="segSlaRoom" style="flex-grow: 0; background: var(--ctx-empty);" title="Buffer"></i>
+            </div>
+            <div class="ctx-chips" id="chipsSla">
+              <button type="button" class="ctx-chip" data-kind="within" id="chipSlaWithin" data-label="Cases within SLA">
+                <i class="ctx-swatch" style="background: var(--k-mem);"></i>On-Track <span class="chip-count" id="cntSlaWithin">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="approaching" id="chipSlaApp" data-label="Approaching deadline (<4h)">
+                <i class="ctx-swatch" style="background: var(--k-amber);"></i>At Risk <span class="chip-count" id="cntSlaApp">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="breached" id="chipSlaBreached" data-label="Breached deadline">
+                <i class="ctx-swatch" style="background: var(--k-coral);"></i>Breached <span class="chip-count" id="cntSlaBreached">(0)</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 4. MTTR Resolution Velocity -->
-          <div class="dash-kpi-card blue">
-            <div class="kpi-top">
-              <span class="kpi-tag">AVG RESOLUTION (MTTR)</span>
-              <div class="kpi-icon-pill blue">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                </svg>
-              </div>
+          <!-- 4. AVG RESOLUTION (MTTR) -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardMttr" data-card-id="mttr">
+            <div class="ctx-head">
+              <span class="ctx-title">Avg Resolution</span>
+              <button type="button" class="ctx-act ctx-act-blue" id="statMttrFrp" title="First Response Time">⚡ FRT ~18m</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number text-blue" id="statAvgResolution">3.2h</span>
-              <span class="kpi-trend neutral">⚡ FRT ~18m</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollAvgResolution">
+                  <span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-sym">.</span><span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-sym">h</span>
+                </span>
+                <span class="ctx-sr" id="statAvgResolution">0.0h</span>
+              </span>
+              <span class="ctx-of" id="subAvgResolution">First response to close</span>
             </div>
-            <div class="kpi-foot">First response to closed closure</div>
+            <div class="ctx-bar" id="barMttr" aria-hidden="true">
+              <i class="ctx-seg" data-kind="fast" id="segMttrFast" style="flex-grow: 0; --ctx-wave: 0ms; --ctx-give: 0.90; background: var(--k-mem);" title="Fast Resolution (<2h)"></i>
+              <i class="ctx-seg" data-kind="standard" id="segMttrStd" style="flex-grow: 0; --ctx-wave: 55ms; --ctx-give: 0.92; background: var(--k-files);" title="Standard Resolution (2-6h)"></i>
+              <i class="ctx-seg" data-kind="extended" id="segMttrExt" style="flex-grow: 0; --ctx-wave: 110ms; --ctx-give: 0.94; background: var(--k-tools);" title="Extended Resolution (>6h)"></i>
+              <i class="ctx-seg" data-kind="open" id="segMttrOpen" style="flex-grow: 0; --ctx-wave: 165ms; --ctx-give: 0.95; background: var(--k-chat);" title="In Progress"></i>
+              <i class="ctx-seg ctx-seg-room" id="segMttrRoom" style="flex-grow: 100; background: var(--ctx-empty);" title="Resolution velocity headroom"></i>
+            </div>
+            <div class="ctx-chips" id="chipsMttr">
+              <button type="button" class="ctx-chip" data-kind="fast" id="chipMttrFast" data-label="Resolved in < 2 hours">
+                <i class="ctx-swatch" style="background: var(--k-mem);"></i>< 2h Fast <span class="chip-count" id="cntMttrFast">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="standard" id="chipMttrStd" data-label="Resolved in 2 to 6 hours">
+                <i class="ctx-swatch" style="background: var(--k-files);"></i>2-6h Standard <span class="chip-count" id="cntMttrStd">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="extended" id="chipMttrExt" data-label="Resolved in > 6 hours">
+                <i class="ctx-swatch" style="background: var(--k-tools);"></i>> 6h Extended <span class="chip-count" id="cntMttrExt">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="open" id="chipMttrOpen" data-label="Cases currently in-progress">
+                <i class="ctx-swatch" style="background: var(--k-chat);"></i>In-Progress <span class="chip-count" id="cntMttrOpen">(0)</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 5. Active Specialists -->
-          <div class="dash-kpi-card purple">
-            <div class="kpi-top">
-              <span class="kpi-tag">SPECIALISTS ONLINE</span>
-              <div class="kpi-icon-pill purple">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </div>
+          <!-- 5. SPECIALISTS ONLINE -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardAgents" data-card-id="agents">
+            <div class="ctx-head">
+              <span class="ctx-title">Specialists Online</span>
+              <button type="button" class="ctx-act ctx-act-purple" id="statDeptsCount" title="Assigned department queues">0 Queues</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number text-purple" id="statActiveAgents">5</span>
-              <span class="kpi-pill-badge purple" id="statDeptsCount">6 Queues</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollActiveAgents">
+                  <span class="ctx-wheel"><span class="ctx-digit">0</span></span>
+                </span>
+                <span class="ctx-sr" id="statActiveAgents">0</span>
+              </span>
+              <span class="ctx-of" id="subActiveAgents">Assigned across HR teams</span>
             </div>
-            <div class="kpi-foot">Assigned across HR departments</div>
+            <div class="ctx-bar" id="barAgents" aria-hidden="true">
+              <i class="ctx-seg" data-kind="dept1" id="segDept1" style="flex-grow: 0; --ctx-wave: 0ms; --ctx-give: 0.90; background: var(--k-tools);" title="Queue 1"></i>
+              <i class="ctx-seg" data-kind="dept2" id="segDept2" style="flex-grow: 0; --ctx-wave: 55ms; --ctx-give: 0.92; background: var(--k-files);" title="Queue 2"></i>
+              <i class="ctx-seg" data-kind="dept3" id="segDept3" style="flex-grow: 0; --ctx-wave: 110ms; --ctx-give: 0.94; background: var(--k-chat);" title="Queue 3"></i>
+              <i class="ctx-seg" data-kind="dept4" id="segDept4" style="flex-grow: 0; --ctx-wave: 165ms; --ctx-give: 0.95; background: var(--k-mem);" title="Queue 4"></i>
+              <i class="ctx-seg ctx-seg-room" id="segAgentsRoom" style="flex-grow: 100; background: var(--ctx-empty);" title="Standby Queue"></i>
+            </div>
+            <div class="ctx-chips" id="chipsAgents">
+              <button type="button" class="ctx-chip" data-kind="dept1" id="chipDept1" data-label="Primary department queue">
+                <i class="ctx-swatch" style="background: var(--k-tools);"></i><span id="nameDept1">Payroll</span> <span class="chip-count" id="cntDept1">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept2" id="chipDept2" data-label="Secondary department queue">
+                <i class="ctx-swatch" style="background: var(--k-files);"></i><span id="nameDept2">Benefits</span> <span class="chip-count" id="cntDept2">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept3" id="chipDept3" data-label="Tertiary department queue">
+                <i class="ctx-swatch" style="background: var(--k-chat);"></i><span id="nameDept3">Leaves</span> <span class="chip-count" id="cntDept3">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept4" id="chipDept4" data-label="General department queue">
+                <i class="ctx-swatch" style="background: var(--k-mem);"></i><span id="nameDept4">Relations</span> <span class="chip-count" id="cntDept4">(0)</span>
+              </button>
+            </div>
           </div>
 
-          <!-- 6. AI Routing Accuracy -->
-          <div class="dash-kpi-card emerald">
-            <div class="kpi-top">
-              <span class="kpi-tag">AI TRIAGE ACCURACY</span>
-              <div class="kpi-icon-pill emerald">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-              </div>
+          <!-- 6. AI TRIAGE ACCURACY & REAL MODEL HEALTH -->
+          <div class="dash-kpi-card ctx-card" id="kpiCardAi" data-card-id="ai">
+            <div class="ctx-head">
+              <span class="ctx-title">AI Triage Accuracy</span>
+              <button type="button" class="ctx-act ctx-act-teal" id="statAiBadge" title="Automated Zero-shot classification model">Zero-shot NLP</button>
             </div>
-            <div class="kpi-value-row">
-              <span class="kpi-number text-emerald" id="statAiAccuracy">96.8%</span>
-              <span class="kpi-trend positive">Zero-shot NLP</span>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollAiAccuracy">
+                  <span class="ctx-wheel"><span class="ctx-digit">9</span></span><span class="ctx-wheel"><span class="ctx-digit">6</span></span><span class="ctx-sym">.</span><span class="ctx-wheel"><span class="ctx-digit">8</span></span><span class="ctx-sym">%</span>
+                </span>
+                <span class="ctx-sr" id="statAiAccuracy">96.8%</span>
+              </span>
+              <span class="ctx-of" id="subAiAccuracy">Zero-shot NLP router</span>
             </div>
-            <div class="kpi-foot">Automated department classification</div>
+            <div class="ctx-bar" id="barAi" aria-hidden="true">
+              <i class="ctx-seg" data-kind="high_conf" id="segAiHigh" style="flex-grow: 78; --ctx-wave: 0ms; --ctx-give: 0.90; background: var(--k-mem);" title="High Confidence Classification (>90%)"></i>
+              <i class="ctx-seg" data-kind="mod_conf" id="segAiMod" style="flex-grow: 18; --ctx-wave: 55ms; --ctx-give: 0.92; background: var(--k-files);" title="Moderate Confidence Classification (70-90%)"></i>
+              <i class="ctx-seg" data-kind="low_conf" id="segAiLow" style="flex-grow: 4; --ctx-wave: 110ms; --ctx-give: 0.85; background: var(--k-amber);" title="Supervisor Review Needed (<70%)"></i>
+              <i class="ctx-seg ctx-seg-room" id="segAiRoom" style="flex-grow: 0; background: var(--ctx-empty);" title="Buffer"></i>
+            </div>
+            <div class="ctx-chips" id="chipsAi">
+              <button type="button" class="ctx-chip" data-kind="high_conf" id="chipAiHigh" data-label="High confidence AI classification">
+                <i class="ctx-swatch" style="background: var(--k-mem);"></i>High >90% <span class="chip-count" id="cntAiHigh">(78%)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="mod_conf" id="chipAiMod" data-label="Moderate confidence classification">
+                <i class="ctx-swatch" style="background: var(--k-files);"></i>Moderate 70-90% <span class="chip-count" id="cntAiMod">(18%)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="low_conf" id="chipAiLow" data-label="Requires supervisor review">
+                <i class="ctx-swatch" style="background: var(--k-amber);"></i>Review Needed <span class="chip-count" id="cntAiLow">(4%)</span>
+              </button>
+            </div>
           </div>
+
         </div>
 
-        <!-- BENTO CHARTS ROW 1: PRIMARY WORKLOAD & INFLOW -->
+        <!-- BENTO ROW 1: VELOCITY & WORKLOAD COMMAND SLABS (100% CONTEXT-METER DESIGN SYSTEM) -->
         <div class="dash-charts-grid-row1">
-          <!-- Left: Inflow vs Resolution Trend -->
-          <div class="chart-card chart-card-large">
-            <div class="chart-card-header">
-              <div class="chart-header-left">
-                <h3 class="chart-title">Query Inflow vs. Resolution Velocity</h3>
-                <p class="chart-subtitle">Daily inbound queries compared against successfully resolved inquiries</p>
-              </div>
-              <div class="chart-legend-custom">
-                <span class="legend-badge incoming"><span class="dot coral"></span> Inflow</span>
-                <span class="legend-badge resolved"><span class="dot teal"></span> Resolved</span>
+          <!-- Left: Inflow vs Resolution Velocity -->
+          <div class="chart-card ctx-card ctx-slab-card" id="cardInflowVelocity" data-card-id="velocity">
+            <div class="ctx-head">
+              <span class="ctx-title">Email Inflow &amp; Resolution Velocity</span>
+              <button type="button" class="ctx-act ctx-act-teal" id="statVelocityBadge" title="7-day operational clearance velocity">⚡ 37.5% Resolved</button>
+            </div>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollVelocityIntake">
+                  <span class="ctx-wheel"><span class="ctx-digit">8</span></span>
+                </span>
+                <span class="ctx-sr" id="statVelocityIntake">8</span>
+              </span>
+              <span class="ctx-of" id="subVelocity">8 Inbound emails vs 3 resolved</span>
+            </div>
+
+            <!-- TACTILE 7-DAY VELOCITY PILLARS -->
+            <div class="ctx-pillars-wrap">
+              <div class="ctx-pillars-grid" id="velocityPillarsGrid" aria-hidden="true">
+                <div class="ctx-pillar-col" data-day-idx="0" data-day-name="31 Oct" data-in="0" data-res="0" title="31 Oct: 0 Inflow, 0 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 0%;"></div></div>
+                  <span class="ctx-pillar-label">31</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="1" data-day-name="01 Nov" data-in="0" data-res="0" title="01 Nov: 0 Inflow, 0 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 0%;"></div></div>
+                  <span class="ctx-pillar-label">01</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="2" data-day-name="02 Nov" data-in="0" data-res="0" title="02 Nov: 0 Inflow, 0 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 0%;"></div></div>
+                  <span class="ctx-pillar-label">02</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="3" data-day-name="03 Nov" data-in="1" data-res="1" title="03 Nov: 1 Inflow, 1 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 18%;"><div class="ctx-pillar-seg resolved" style="height: 100%;"></div></div></div>
+                  <span class="ctx-pillar-label">03</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="4" data-day-name="04 Nov" data-in="1" data-res="1" title="04 Nov: 1 Inflow, 1 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 18%;"><div class="ctx-pillar-seg resolved" style="height: 100%;"></div></div></div>
+                  <span class="ctx-pillar-label">04</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="5" data-day-name="05 Nov" data-in="1" data-res="1" title="05 Nov: 1 Inflow, 1 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 18%;"><div class="ctx-pillar-seg resolved" style="height: 100%;"></div></div></div>
+                  <span class="ctx-pillar-label">05</span>
+                </div>
+                <div class="ctx-pillar-col" data-day-idx="6" data-day-name="06 Nov" data-in="5" data-res="0" title="06 Nov: 5 Inflow, 0 Resolved">
+                  <div class="ctx-pillar-track"><div class="ctx-pillar-seg incoming" style="height: 88%;"></div></div>
+                  <span class="ctx-pillar-label">Today</span>
+                </div>
               </div>
             </div>
-            <div class="chart-canvas-container" style="position: relative; height: 280px; width: 100%;">
-              <canvas id="chartInflowVelocity"></canvas>
+
+            <!-- PRIMARY CONTEXT STACKED BAR -->
+            <div class="ctx-bar" id="barVelocity" aria-hidden="true">
+              <i class="ctx-seg" data-kind="incoming" id="segVelIncoming" style="flex-grow: 8; background: var(--1mg-orange); border-radius: 6px 2px 2px 6px;" title="Total Inbound Mails"></i>
+              <i class="ctx-seg" data-kind="resolved" id="segVelResolved" style="flex-grow: 3; background: var(--healthcare-teal); border-radius: 2px;" title="Resolved Inquiries"></i>
+              <i class="ctx-seg ctx-seg-room" id="segVelRoom" style="flex-grow: 2; background: var(--ctx-empty); border-radius: 2px 6px 6px 2px;" title="Backlog headroom"></i>
+            </div>
+
+            <!-- INTERACTIVE CHIPS -->
+            <div class="ctx-chips" id="chipsVelocity">
+              <button type="button" class="ctx-chip" data-kind="incoming" id="chipVelIncoming" data-label="Total inbound emails received">
+                <i class="ctx-swatch" style="background: var(--1mg-orange);"></i>Inbound Mail <span class="chip-count" id="cntVelIncoming">(8)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="resolved" id="chipVelResolved" data-label="Successfully resolved inquiries">
+                <i class="ctx-swatch" style="background: var(--healthcare-teal);"></i>Resolved <span class="chip-count" id="cntVelResolved">(3)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="backlog" id="chipVelBacklog" data-label="Inquiries currently open in active review">
+                <i class="ctx-swatch" style="background: #F59E0B;"></i>Open Queue <span class="chip-count" id="cntVelBacklog">(5)</span>
+              </button>
             </div>
           </div>
 
-          <!-- Right: Department Distribution -->
-          <div class="chart-card chart-card-small">
-            <div class="chart-card-header">
-              <div class="chart-header-left">
-                <h3 class="chart-title">Department Workload</h3>
-                <p class="chart-subtitle">Query volume split across 6 configured queues</p>
+          <!-- Right: Department Workload Distribution -->
+          <div class="chart-card ctx-card ctx-slab-card" id="cardDepartmentWorkload" data-card-id="departments">
+            <div class="ctx-head">
+              <span class="ctx-title">Department Workload</span>
+              <button type="button" class="ctx-act ctx-act-purple" id="badgeDeptActiveQueues" title="Active specialized HR queues">4 Active Queues</button>
+            </div>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollDeptTotal">
+                  <span class="ctx-wheel"><span class="ctx-digit">8</span></span>
+                </span>
+                <span class="ctx-sr" id="statDeptTotal">8</span>
+              </span>
+              <span class="ctx-of" id="subDeptWorkload">Across specialized HR queues</span>
+            </div>
+
+            <!-- PRIMARY CONTEXT STACKED BAR -->
+            <div class="ctx-bar" id="barDeptWorkload" aria-hidden="true">
+              <i class="ctx-seg" data-kind="dept-0" style="flex-grow: 3; background: #3d7ef5; border-radius: 6px 2px 2px 6px;" title="Benefits & Insurance: 3 cases"></i>
+              <i class="ctx-seg" data-kind="dept-1" style="flex-grow: 2; background: #1db4cc; border-radius: 2px;" title="Leave & Attendance: 2 cases"></i>
+              <i class="ctx-seg" data-kind="dept-2" style="flex-grow: 2; background: #9a5cf6; border-radius: 2px;" title="Payroll & Compensation: 2 cases"></i>
+              <i class="ctx-seg" data-kind="dept-3" style="flex-grow: 1; background: #2ccb7e; border-radius: 2px 6px 6px 2px;" title="Employee Relations & HR Ops: 1 case"></i>
+            </div>
+
+            <!-- DEPARTMENT WORKLOAD PROGRESS BANDS -->
+            <div class="dept-workload-bands" id="deptWorkloadBands">
+              <div class="dept-band-row" data-dept-idx="0" data-name="Benefits & Insurance" data-count="3" data-pct="38%">
+                <span class="dept-band-dot" style="background: #3d7ef5;"></span>
+                <span class="dept-band-name">Benefits & Insurance</span>
+                <div class="dept-band-track"><div class="dept-band-fill" style="width: 100%; background: #3d7ef5;"></div></div>
+                <span class="dept-band-stats">3 <span>(38%)</span></span>
+              </div>
+              <div class="dept-band-row" data-dept-idx="1" data-name="Leave & Attendance" data-count="2" data-pct="25%">
+                <span class="dept-band-dot" style="background: #1db4cc;"></span>
+                <span class="dept-band-name">Leave & Attendance</span>
+                <div class="dept-band-track"><div class="dept-band-fill" style="width: 67%; background: #1db4cc;"></div></div>
+                <span class="dept-band-stats">2 <span>(25%)</span></span>
+              </div>
+              <div class="dept-band-row" data-dept-idx="2" data-name="Payroll & Compensation" data-count="2" data-pct="25%">
+                <span class="dept-band-dot" style="background: #9a5cf6;"></span>
+                <span class="dept-band-name">Payroll & Compensation</span>
+                <div class="dept-band-track"><div class="dept-band-fill" style="width: 67%; background: #9a5cf6;"></div></div>
+                <span class="dept-band-stats">2 <span>(25%)</span></span>
+              </div>
+              <div class="dept-band-row" data-dept-idx="3" data-name="Employee Relations" data-count="1" data-pct="12%">
+                <span class="dept-band-dot" style="background: #2ccb7e;"></span>
+                <span class="dept-band-name">Employee Relations</span>
+                <div class="dept-band-track"><div class="dept-band-fill" style="width: 33%; background: #2ccb7e;"></div></div>
+                <span class="dept-band-stats">1 <span>(12%)</span></span>
               </div>
             </div>
-            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%; display: flex; align-items: center; justify-content: center;">
-              <canvas id="chartDepartmentDist"></canvas>
-            </div>
-            <div class="chart-dept-legend-list" id="deptLegendList">
-              <!-- Dynamically populated -->
+
+            <!-- INTERACTIVE CHIPS -->
+            <div class="ctx-chips" id="chipsDeptWorkload">
+              <button type="button" class="ctx-chip" data-kind="dept-0" data-val="3" data-label="Benefits & Insurance queue (3 cases)">
+                <i class="ctx-swatch" style="background: #3d7ef5;"></i>Benefits <span class="chip-count">(3)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept-1" data-val="2" data-label="Leave & Attendance queue (2 cases)">
+                <i class="ctx-swatch" style="background: #1db4cc;"></i>Leaves <span class="chip-count">(2)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept-2" data-val="2" data-label="Payroll & Compensation queue (2 cases)">
+                <i class="ctx-swatch" style="background: #9a5cf6;"></i>Payroll <span class="chip-count">(2)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="dept-3" data-val="1" data-label="Employee Relations queue (1 case)">
+                <i class="ctx-swatch" style="background: #2ccb7e;"></i>Relations <span class="chip-count">(1)</span>
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- BENTO CHARTS ROW 2: SLA ADHERENCE & PRIORITY BREAKDOWN -->
+        <!-- BENTO CHARTS ROW 2: SLA ADHERENCE & PRIORITY BREAKDOWN (100% CONTEXT-METER DESIGN SYSTEM) -->
         <div class="dash-charts-grid-row2">
-          <!-- Left: SLA Health & Risk Gauge -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <div class="chart-header-left">
-                <h3 class="chart-title">SLA Compliance Health</h3>
-                <p class="chart-subtitle">On-track inquiries vs. urgent &amp; breached tickets</p>
-              </div>
-              <div class="sla-status-pill on-track" id="slaOverallBadge">● 98.4% On-Track</div>
+          <!-- Left: SLA Compliance Health -->
+          <div class="chart-card ctx-card ctx-slab-card" id="cardSlaHealth" data-card-id="sla-health">
+            <div class="ctx-head">
+              <span class="ctx-title">SLA Compliance Health</span>
+              <button type="button" class="ctx-act ctx-act-teal" id="statSlaOverallBadge" title="Organizational SLA Adherence Benchmark">● 100% On-Track</button>
             </div>
-            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%; display: flex; align-items: center; justify-content: center;">
-              <canvas id="chartSlaHealth"></canvas>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollSlaHealthPct">
+                  <span class="ctx-wheel"><span class="ctx-digit">1</span></span><span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-wheel"><span class="ctx-digit">0</span></span><span class="ctx-sym">%</span>
+                </span>
+                <span class="ctx-sr" id="statSlaHealthPct">100%</span>
+              </span>
+              <span class="ctx-of" id="subSlaHealth">0 Breached cases · 8 active within deadline</span>
             </div>
-            <div class="sla-metrics-summary-strip">
-              <div class="sla-summary-item safe">
-                <span class="sla-val" id="statWithinSla">86</span>
-                <span class="sla-lbl">Within SLA</span>
+
+            <!-- PRIMARY CONTEXT STACKED BAR -->
+            <div class="ctx-bar" id="barSlaHealth" aria-hidden="true">
+              <i class="ctx-seg" data-kind="on_track" id="segSlaHealthWithin" style="flex-grow: 5; background: var(--healthcare-teal); border-radius: 6px 2px 2px 6px;" title="Within SLA: 5 cases"></i>
+              <i class="ctx-seg" data-kind="at_risk" id="segSlaHealthRisk" style="flex-grow: 0; background: var(--warning-amber); border-radius: 2px;" title="Approaching SLA (<4h): 0 cases"></i>
+              <i class="ctx-seg" data-kind="breached" id="segSlaHealthBreach" style="flex-grow: 0; background: var(--danger-coral); border-radius: 2px;" title="Breached SLA: 0 cases"></i>
+              <i class="ctx-seg ctx-seg-room" id="segSlaHealthRoom" style="flex-grow: 3; background: var(--ctx-empty); border-radius: 2px 6px 6px 2px;" title="Resolution buffer"></i>
+            </div>
+
+            <!-- TACTILE SLA RESOLUTION PERFORMANCE TIERS -->
+            <div class="sla-health-bands" id="slaHealthBands">
+              <div class="sla-band-row" data-sla-tier="critical" data-name="Critical P1 (2h SLA)" data-status="safe" data-count="0 Breached">
+                <span class="sla-band-dot" style="background: var(--healthcare-teal);"></span>
+                <span class="sla-band-name">Critical P1 (2h SLA)</span>
+                <div class="sla-band-track"><div class="sla-band-fill" style="width: 100%; background: var(--healthcare-teal);"></div></div>
+                <span class="sla-band-stats">100% <span>(Safe)</span></span>
               </div>
-              <div class="sla-summary-item warning">
-                <span class="sla-val" id="statApproachingSla">10</span>
-                <span class="sla-lbl">Approaching (&lt;2h)</span>
+              <div class="sla-band-row" data-sla-tier="high" data-name="High P2 (12h SLA)" data-status="safe" data-count="0 Breached">
+                <span class="sla-band-dot" style="background: var(--healthcare-teal);"></span>
+                <span class="sla-band-name">High P2 (12h SLA)</span>
+                <div class="sla-band-track"><div class="sla-band-fill" style="width: 100%; background: var(--healthcare-teal);"></div></div>
+                <span class="sla-band-stats">100% <span>(Safe)</span></span>
               </div>
-              <div class="sla-summary-item breached">
-                <span class="sla-val" id="statBreachedCount">0</span>
-                <span class="sla-lbl">Breached</span>
+              <div class="sla-band-row" data-sla-tier="standard" data-name="Standard P3/P4 (24-48h)" data-status="safe" data-count="0 Breached">
+                <span class="sla-band-dot" style="background: var(--healthcare-teal);"></span>
+                <span class="sla-band-name">Standard P3/P4 (24-48h)</span>
+                <div class="sla-band-track"><div class="sla-band-fill" style="width: 100%; background: var(--healthcare-teal);"></div></div>
+                <span class="sla-band-stats">100% <span>(Safe)</span></span>
               </div>
+            </div>
+
+            <!-- INTERACTIVE CHIPS -->
+            <div class="ctx-chips" id="chipsSlaHealth">
+              <button type="button" class="ctx-chip" data-kind="on_track" id="chipSlaHealthWithin" data-val="5" data-label="Cases safely within SLA deadline">
+                <i class="ctx-swatch" style="background: var(--healthcare-teal);"></i>On-Track <span class="chip-count" id="cntSlaHealthWithin">(5)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="at_risk" id="chipSlaHealthRisk" data-val="0" data-label="Cases approaching deadline (<4h)">
+                <i class="ctx-swatch" style="background: var(--warning-amber);"></i>At Risk &lt;4h <span class="chip-count" id="cntSlaHealthRisk">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="breached" id="chipSlaHealthBreach" data-val="0" data-label="Cases breached SLA deadline">
+                <i class="ctx-swatch" style="background: var(--danger-coral);"></i>Breached <span class="chip-count" id="cntSlaHealthBreach">(0)</span>
+              </button>
             </div>
           </div>
 
           <!-- Right: Priority Breakdown -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <div class="chart-header-left">
-                <h3 class="chart-title">Inquiries by Priority &amp; Urgency</h3>
-                <p class="chart-subtitle">Critical (2h SLA), High (12h), Medium (24h), Low (48h)</p>
+          <div class="chart-card ctx-card ctx-slab-card" id="cardPriorityInquiries" data-card-id="priority-matrix">
+            <div class="ctx-head">
+              <span class="ctx-title">Inquiries by Priority &amp; Urgency</span>
+              <button type="button" class="ctx-act ctx-act-blue" id="badgePriorityTriage" title="Active inquiry priorities">⚡ 4 Active Tiers</button>
+            </div>
+            <div class="ctx-figure" aria-live="polite">
+              <span class="ctx-num">
+                <span class="ctx-roll" id="rollPriorityInquiries">
+                  <span class="ctx-wheel"><span class="ctx-digit">8</span></span>
+                </span>
+                <span class="ctx-sr" id="statPriorityInquiries">8</span>
+              </span>
+              <span class="ctx-of" id="subPriorityInquiries">Stratified by urgency &amp; resolution SLA</span>
+            </div>
+
+            <!-- PRIMARY CONTEXT STACKED BAR -->
+            <div class="ctx-bar" id="barPriorityInquiries" aria-hidden="true">
+              <i class="ctx-seg" data-kind="critical" id="segPriCrit" style="flex-grow: 0; background: #EF4444; border-radius: 6px 2px 2px 6px;" title="Critical Priority (2h SLA): 0 cases"></i>
+              <i class="ctx-seg" data-kind="high" id="segPriHigh" style="flex-grow: 4; background: #F59E0B; border-radius: 2px;" title="High Priority (12h SLA): 4 cases"></i>
+              <i class="ctx-seg" data-kind="medium" id="segPriMed" style="flex-grow: 1; background: #3B82F6; border-radius: 2px;" title="Medium Priority (24h SLA): 1 case"></i>
+              <i class="ctx-seg" data-kind="low" id="segPriLow" style="flex-grow: 3; background: #10B981; border-radius: 2px 6px 6px 2px;" title="Low Priority (48h SLA): 3 cases"></i>
+            </div>
+
+            <!-- TACTILE PRIORITY QUEUE PROGRESS BANDS -->
+            <div class="priority-queue-bands" id="priorityQueueBands">
+              <div class="priority-band-row" data-pri-kind="critical" data-name="Critical Priority" data-count="0" data-pct="0%">
+                <span class="priority-band-dot" style="background: #EF4444;"></span>
+                <span class="priority-band-name">Critical P1 (2h SLA)</span>
+                <div class="priority-band-track"><div class="priority-band-fill" style="width: 0%; background: #EF4444;"></div></div>
+                <span class="priority-band-stats">0 <span>(0%)</span></span>
+              </div>
+              <div class="priority-band-row" data-pri-kind="high" data-name="High Priority" data-count="4" data-pct="50%">
+                <span class="priority-band-dot" style="background: #F59E0B;"></span>
+                <span class="priority-band-name">High P2 (12h SLA)</span>
+                <div class="priority-band-track"><div class="priority-band-fill" style="width: 100%; background: #F59E0B;"></div></div>
+                <span class="priority-band-stats">4 <span>(50%)</span></span>
+              </div>
+              <div class="priority-band-row" data-pri-kind="medium" data-name="Medium Priority" data-count="1" data-pct="13%">
+                <span class="priority-band-dot" style="background: #3B82F6;"></span>
+                <span class="priority-band-name">Medium P3 (24h SLA)</span>
+                <div class="priority-band-track"><div class="priority-band-fill" style="width: 25%; background: #3B82F6;"></div></div>
+                <span class="priority-band-stats">1 <span>(13%)</span></span>
+              </div>
+              <div class="priority-band-row" data-pri-kind="low" data-name="Low Priority" data-count="3" data-pct="37%">
+                <span class="priority-band-dot" style="background: #10B981;"></span>
+                <span class="priority-band-name">Low P4 (48h SLA)</span>
+                <div class="priority-band-track"><div class="priority-band-fill" style="width: 75%; background: #10B981;"></div></div>
+                <span class="priority-band-stats">3 <span>(37%)</span></span>
               </div>
             </div>
-            <div class="chart-canvas-container" style="position: relative; height: 210px; width: 100%;">
-              <canvas id="chartPriorityDist"></canvas>
-            </div>
-            <div class="priority-legend-strip">
-              <div class="pri-pill crit"><span class="dot"></span> Critical (2h)</div>
-              <div class="pri-pill high"><span class="dot"></span> High (12h)</div>
-              <div class="pri-pill med"><span class="dot"></span> Medium (24h)</div>
-              <div class="pri-pill low"><span class="dot"></span> Low (48h)</div>
+
+            <!-- INTERACTIVE CHIPS -->
+            <div class="ctx-chips" id="chipsPriorityInquiries">
+              <button type="button" class="ctx-chip" data-kind="critical" id="chipPriCrit" data-val="0" data-label="Critical P1 inquiries (2h SLA)">
+                <i class="ctx-swatch" style="background: #EF4444;"></i>Critical (2h) <span class="chip-count" id="cntPriCrit">(0)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="high" id="chipPriHigh" data-val="4" data-label="High P2 inquiries (12h SLA)">
+                <i class="ctx-swatch" style="background: #F59E0B;"></i>High (12h) <span class="chip-count" id="cntPriHigh">(4)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="medium" id="chipPriMed" data-val="1" data-label="Medium P3 inquiries (24h SLA)">
+                <i class="ctx-swatch" style="background: #3B82F6;"></i>Medium (24h) <span class="chip-count" id="cntPriMed">(1)</span>
+              </button>
+              <button type="button" class="ctx-chip" data-kind="low" id="chipPriLow" data-val="3" data-label="Low P4 inquiries (48h SLA)">
+                <i class="ctx-swatch" style="background: #10B981;"></i>Low (48h) <span class="chip-count" id="cntPriLow">(3)</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1022,81 +1325,111 @@
       <!-- 4. USER MANAGEMENT VIEW (DYNAMIC SCALE FOR 100-1000s OF DEPTS) -->
       <section id="usersView" class="view-section">
         
-        <!-- Quick Stats Strip -->
-        <div class="stats-grid" style="margin-bottom: 24px;">
-          <!-- Total Users -->
-          <div class="stat-card card-coral">
-            <div class="stat-content">
-              <div class="stat-label">TOTAL USERS</div>
-              <div class="stat-value" id="userStatTotal">0</div>
-              <div class="stat-subtext">Across all departments</div>
+        <!-- Quick Stats Strip (Next-Gen Big-Tech Bento Stat Cards) -->
+        <div class="users-stats-grid">
+          <!-- Total Staff -->
+          <div class="user-stat-card coral">
+            <div class="user-kpi-info">
+              <div class="user-kpi-tag-row">
+                <span class="user-kpi-tag-dot coral"></span>
+                <span class="user-kpi-tag">Total Staff</span>
+              </div>
+              <div class="user-kpi-val" id="userStatTotal">0</div>
+              <div class="user-kpi-sub">Across all enterprise desks</div>
             </div>
-            <div class="stat-icon-badge coral">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            <div class="user-kpi-icon-box coral">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
             </div>
           </div>
 
-          <!-- Support Agents -->
-          <div class="stat-card card-teal">
-            <div class="stat-content">
-              <div class="stat-label">SUPPORT AGENTS</div>
-              <div class="stat-value" id="userStatAgents" style="color: var(--1mg-teal);">0</div>
-              <div class="stat-subtext">Active desk specialists</div>
+          <!-- Support Specialists -->
+          <div class="user-stat-card teal">
+            <div class="user-kpi-info">
+              <div class="user-kpi-tag-row">
+                <span class="user-kpi-tag-dot teal"></span>
+                <span class="user-kpi-tag">Support Specialists</span>
+              </div>
+              <div class="user-kpi-val" id="userStatAgents" style="color: #059669;">0</div>
+              <div class="user-kpi-sub">Active desk responders</div>
             </div>
-            <div class="stat-icon-badge teal">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
-                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+            <div class="user-kpi-icon-box teal">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
               </svg>
             </div>
           </div>
 
           <!-- Department Heads -->
-          <div class="stat-card card-indigo">
-            <div class="stat-content">
-              <div class="stat-label">DEPARTMENT HEADS</div>
-              <div class="stat-value" id="userStatHeads" style="color: #6366F1;">0</div>
-              <div class="stat-subtext">Triage & routing authority</div>
+          <div class="user-stat-card indigo">
+            <div class="user-kpi-info">
+              <div class="user-kpi-tag-row">
+                <span class="user-kpi-tag-dot indigo"></span>
+                <span class="user-kpi-tag">Department Heads</span>
+              </div>
+              <div class="user-kpi-val" id="userStatHeads" style="color: #4F46E5;">0</div>
+              <div class="user-kpi-sub">Triage &amp; routing authority</div>
             </div>
-            <div class="stat-icon-badge indigo">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            <div class="user-kpi-icon-box indigo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <polyline points="17 11 19 13 23 9"/>
               </svg>
             </div>
           </div>
 
           <!-- Pending Activation -->
-          <div class="stat-card card-amber">
-            <div class="stat-content">
-              <div class="stat-label">PENDING ACTIVATION</div>
-              <div class="stat-value" id="userStatPending" style="color: #D97706;">0</div>
-              <div class="stat-subtext">Invited · Awaiting setup</div>
+          <div class="user-stat-card amber">
+            <div class="user-kpi-info">
+              <div class="user-kpi-tag-row">
+                <span class="user-kpi-tag-dot amber"></span>
+                <span class="user-kpi-tag">Pending Activation</span>
+              </div>
+              <div class="user-kpi-val" id="userStatPending" style="color: #D97706;">0</div>
+              <div class="user-kpi-sub">Invited · Awaiting setup</div>
             </div>
-            <div class="stat-icon-badge amber">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
+            <div class="user-kpi-icon-box amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
               </svg>
             </div>
           </div>
         </div>
 
         <!-- Main User Table Card -->
-        <div class="data-card">
-          <div class="card-header-flex" style="flex-wrap: wrap; gap: 14px;">
-            <div>
-              <div class="card-header-title">Staff & Agent Directory</div>
-              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 3px;">
-                Add agents, assign to departments, designate Department Heads, and dispatch welcome invites
-              </p>
+        <div class="data-card" style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05); padding: 0;">
+          <div class="user-dir-header">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div class="user-dir-icon-pill">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <h3 style="font-size: 17px; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -0.02em;">Staff &amp; Agent Directory</h3>
+                  <span class="user-count-badge">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; margin-right: 5px; display: inline-block;"></span>
+                    Active Rosters
+                  </span>
+                </div>
+                <p style="font-size: 12.5px; color: #64748B; margin-top: 3px; margin-bottom: 0;">
+                  Add agents, assign to departments, designate Department Heads, and dispatch welcome invites
+                </p>
+              </div>
             </div>
-            <button class="btn-primary" style="width: auto; padding: 9px 18px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 7px;" onclick="openAddAgentModal()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <button class="user-add-agent-btn" onclick="openAddAgentModal()">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                 <circle cx="8.5" cy="7" r="4"/>
                 <line x1="20" y1="8" x2="20" y2="14"/>
@@ -1107,10 +1440,10 @@
           </div>
 
           <!-- Dynamic Search & Filter Toolbar -->
-          <div class="filter-toolbar">
-            <div style="flex: 1; min-width: 260px; position: relative;">
-              <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94A3B8; pointer-events: none; display: flex; align-items: center;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <div class="users-filter-toolbar">
+            <div class="user-search-wrap">
+              <span class="user-search-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
@@ -1118,20 +1451,19 @@
               <input 
                 type="text" 
                 id="userSearchInput" 
-                class="form-input" 
+                class="user-search-input" 
                 placeholder="Search staff by name, email, or designation..." 
-                style="width: 100%; height: 38px; padding-left: 38px; font-size: 13px;"
                 oninput="debounceUserSearch()"
               >
             </div>
             
             <!-- Dynamic Department Filter (Populated from DB) -->
-            <select id="userDeptFilter" class="form-input" style="height: 38px; width: 220px; font-size: 13px;" onchange="loadUsers()">
+            <select id="userDeptFilter" class="user-filter-select" style="min-width: 210px;" onchange="loadUsers()">
               <option value="">All Departments (Loading...)</option>
             </select>
 
             <!-- Status Filter -->
-            <select id="userStatusFilter" class="form-input" style="height: 38px; width: 160px; font-size: 13px;" onchange="loadUsers()">
+            <select id="userStatusFilter" class="user-filter-select" style="min-width: 160px;" onchange="loadUsers()">
               <option value="ALL">All Statuses</option>
               <option value="ACTIVE">Active</option>
               <option value="PENDING_SETUP">Pending Activation</option>
@@ -1139,7 +1471,7 @@
             </select>
 
             <!-- Role Filter -->
-            <select id="userRoleFilter" class="form-input" style="height: 38px; width: 160px; font-size: 13px;" onchange="loadUsers()">
+            <select id="userRoleFilter" class="user-filter-select" style="min-width: 170px;" onchange="loadUsers()">
               <option value="ALL">All Roles</option>
               <option value="DEPT_HEAD">Department Heads</option>
               <option value="HR_AGENT">Support Agents</option>
@@ -1147,57 +1479,58 @@
             </select>
           </div>
 
-          <!-- Directory Table -->
+          <!-- Directory Table with Next-Level High-DPI Duotone Icons -->
           <div style="overflow-x: auto;">
-            <table class="admin-table">
+            <table class="users-table-custom">
               <thead>
                 <tr>
-                  <th>
+                  <th style="min-width: 250px;">
                     <span class="th-content">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #FF6F61;">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                       </svg>
                       <span>Agent &amp; Email</span>
                     </span>
                   </th>
-                  <th>
+                  <th style="min-width: 190px;">
                     <span class="th-content">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #059669;">
+                        <rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/>
                       </svg>
                       <span>Department</span>
                     </span>
                   </th>
-                  <th>
+                  <th style="min-width: 180px;">
                     <span class="th-content">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 7h-9M14 17H5M19 12H9"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
                       </svg>
                       <span>Designation</span>
                     </span>
                   </th>
-                  <th>
+                  <th style="min-width: 160px;">
                     <span class="th-content">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366F1;">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                       </svg>
                       <span>Role Scope</span>
                     </span>
                   </th>
-                  <th>
+                  <th style="min-width: 150px;">
                     <span class="th-content">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #0284C7;">
                         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                       </svg>
                       <span>Account Status</span>
                     </span>
                   </th>
-                  <th style="text-align: right;">
+                  <th style="text-align: right; min-width: 220px;">
                     <span class="th-content" style="justify-content: flex-end;">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
                         <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                       </svg>
-                      <span>Actions</span>
+                      <span>Actions Hub</span>
                     </span>
                   </th>
                 </tr>
@@ -1213,13 +1546,13 @@
           </div>
 
           <!-- Pagination Bar -->
-          <div id="userPaginationBar" style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-light); font-size: 13px; color: var(--text-muted);">
-            <span id="userPaginationInfo">Showing 0 of 0 agents</span>
+          <div id="userPaginationBar" style="padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-light); font-size: 13px; color: var(--text-muted); background: #FAFBFD;">
+            <span id="userPaginationInfo" style="font-weight: 500; color: #64748B;">Showing 0 of 0 staff members</span>
             <div style="display: flex; gap: 8px;">
-              <button id="userPrevBtn" class="btn-primary" style="width: auto; height: 32px; padding: 0 12px; font-size: 12px; background: #E2E8F0; color: #334155;" onclick="changeUserPage(-1)" disabled>
+              <button id="userPrevBtn" class="btn-primary" style="width: auto; height: 32px; padding: 0 14px; font-size: 12px; font-weight: 600; background: #E2E8F0; color: #334155; border-radius: 8px;" onclick="changeUserPage(-1)" disabled>
                 Previous
               </button>
-              <button id="userNextBtn" class="btn-primary" style="width: auto; height: 32px; padding: 0 12px; font-size: 12px; background: #E2E8F0; color: #334155;" onclick="changeUserPage(1)" disabled>
+              <button id="userNextBtn" class="btn-primary" style="width: auto; height: 32px; padding: 0 14px; font-size: 12px; font-weight: 600; background: #E2E8F0; color: #334155; border-radius: 8px;" onclick="changeUserPage(1)" disabled>
                 Next
               </button>
             </div>
@@ -3677,6 +4010,6 @@
   <!-- DYNAMIC TATA 1MG TOAST CONTAINER -->
   <div id="toastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
-  <script src="/admin-static/js/admin.js?v=5.0"></script>
+  <script src="/admin-static/js/admin.js?v=7.3"></script>
 </body>
 </html>
