@@ -3276,7 +3276,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
     """
     Returns current mailbox connection status and configuration details for a department or user.
     """
-    from backend.app.services.imap_service import detect_imap_host, has_system_mailbox_config
+    from backend.app.services.imap_service import detect_imap_host, get_imap_sync_start_datetime, has_system_mailbox_config
 
     dept = None
     if department_id:
@@ -3330,6 +3330,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
     elif not account_email:
         account_email = sys_user or "peopledesk@1mg.com"
 
+    sync_start_dt = get_imap_sync_start_datetime()
     return {
         "success": True,
         "configured": has_creds,
@@ -3338,6 +3339,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
         "department_name": dept_name,
         "sync_status": sync_status,
         "last_synced_at": last_synced,
+        "sync_start_date": sync_start_dt.isoformat() if sync_start_dt else None,
         "imap_host": (dept.get("imap_host") if dept and dept.get("imap_host") else None) or sys_host or detect_imap_host(account_email)
     }
 

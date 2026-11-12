@@ -35,4 +35,6 @@ services:
         sync: false
       - key: SMTP_FROM
         value: "Tata 1mg People Desk <peopledesk@1mg.com>"
+      - key: IMAP_SYNC_START_DATE
+        value: "2026-11-12"
 

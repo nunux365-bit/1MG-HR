@@ -14,16 +14,68 @@ import email.message
 import threading
 from email.header import decode_header
 from email.utils import parseaddr, parsedate_to_datetime
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger("backend.imap_service")
 _imap_sync_lock = threading.Lock()
 
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
+DEFAULT_IMAP_SYNC_START_DATE = "2026-11-12"
+_IMAP_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
 PLACEHOLDER_PASSWORDS = {"", "your_16_digit_app_password", "your_16_digit_google_app_password"}
 
 def is_placeholder_password(password: Optional[str]) -> bool:
     return (password or "").strip().lower() in PLACEHOLDER_PASSWORDS
+
+
+def get_imap_sync_start_datetime() -> Optional[datetime]:
+    """
+    Returns the timezone-aware start cutoff timestamp for inbound IMAP sync.
+    Reads IMAP_SYNC_START_DATE (default '2026-11-12' -> midnight IST).
+    Set IMAP_SYNC_START_DATE='OFF' (or 'ALL'/'NONE') to disable date filtering.
+    """
+    raw = (os.getenv("IMAP_SYNC_START_DATE") or "").strip()
+    if not raw:
+        raw = DEFAULT_IMAP_SYNC_START_DATE
+    lower = raw.lower()
+    if lower in ("off", "none", "all", "disabled", "false"):
+        return None
+    if lower == "today":
+        now_ist = datetime.now(IST_TZ)
+        return now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        if len(raw) == 10:
+            return datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=IST_TZ)
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=IST_TZ)
+    except Exception:
+        logger.warning(f"Invalid IMAP_SYNC_START_DATE='{raw}', falling back to {DEFAULT_IMAP_SYNC_START_DATE}")
+        return datetime.strptime(DEFAULT_IMAP_SYNC_START_DATE, "%Y-%m-%d").replace(tzinfo=IST_TZ)
+
+
+def format_imap_since_date(start_dt: datetime) -> str:
+    """
+    Formats an RFC-3501 IMAP SINCE date string (dd-Mon-YYYY) using 1 day prior to the IST cutoff date
+    so UTC/PST mail server date boundaries never exclude valid messages right after midnight IST.
+    """
+    since_day = start_dt.astimezone(IST_TZ).date() - timedelta(days=1)
+    return f"{since_day.day:02d}-{_IMAP_MONTHS[since_day.month - 1]}-{since_day.year}"
+
+
+def _parse_imap_internaldate(meta_text: str) -> Optional[datetime]:
+    match = re.search(r"(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+([+-]\d{4})", meta_text or "")
+    if not match:
+        return None
+    day_s, mon_s, year_s, hh, mm, ss, tz_s = match.groups()
+    mon_map = {m.lower(): idx + 1 for idx, m in enumerate(_IMAP_MONTHS)}
+    month_num = mon_map.get(mon_s.lower())
+    if not month_num:
+        return None
+    sign = 1 if tz_s[0] == "+" else -1
+    tz_off = timezone(sign * timedelta(hours=int(tz_s[1:3]), minutes=int(tz_s[3:5])))
+    return datetime(int(year_s), month_num, int(day_s), int(hh), int(mm), int(ss), tzinfo=tz_off)
 
 def has_system_mailbox_config() -> tuple[bool, str, str]:
     """
@@ -358,30 +410,60 @@ def sync_inbound_emails_from_mailbox(
                 "message": "Failed to login to mailbox with provided App Password."
             }
 
+        sync_start_dt = get_imap_sync_start_datetime()
+        skipped_before_start = 0
+
         mail.select("INBOX")
 
-        # Search for UNSEEN first
-        status, search_data = mail.search(None, "UNSEEN")
-        msg_ids = search_data[0].split() if status == "OK" and search_data[0] else []
+        # Search for UNSEEN first (scoped by SINCE when IMAP_SYNC_START_DATE is active)
+        if sync_start_dt:
+            since_str = format_imap_since_date(sync_start_dt)
+            status, search_data = mail.search(None, f"UNSEEN SINCE {since_str}")
+            if status != "OK":
+                status, search_data = mail.search(None, f"SINCE {since_str}")
+            msg_ids = search_data[0].split() if status == "OK" and search_data[0] else []
 
-        # Fallback to latest messages to ensure nothing was missed
-        if not msg_ids:
-            status, all_data = mail.search(None, "ALL")
-            if status == "OK" and all_data[0]:
-                all_ids = all_data[0].split()
-                msg_ids = all_ids[-min(10, len(all_ids)):]
+            # Fallback to messages since cutoff (never bare ALL) so already-read emails from today aren't missed
+            if not msg_ids:
+                status, all_data = mail.search(None, f"SINCE {since_str}")
+                if status == "OK" and all_data[0]:
+                    all_ids = all_data[0].split()
+                    msg_ids = all_ids[-min(max_fetch, len(all_ids)):]
+        else:
+            status, search_data = mail.search(None, "UNSEEN")
+            msg_ids = search_data[0].split() if status == "OK" and search_data[0] else []
+
+            # Fallback to latest messages to ensure nothing was missed
+            if not msg_ids:
+                status, all_data = mail.search(None, "ALL")
+                if status == "OK" and all_data[0]:
+                    all_ids = all_data[0].split()
+                    msg_ids = all_ids[-min(10, len(all_ids)):]
 
         target_ids = msg_ids[-max_fetch:]
-        logger.info(f"Found {len(target_ids)} candidate messages in mailbox for {user}.")
+        logger.info(
+            f"Found {len(target_ids)} candidate messages in mailbox for {user} "
+            f"(sync_start_date={sync_start_dt.isoformat() if sync_start_dt else 'NONE'})."
+        )
 
         # Process chronologically (oldest first) so root inquiries always precede replies in the same batch
         for mid in target_ids:
             try:
-                fetch_status, data = mail.fetch(mid, "(RFC822)")
-                if fetch_status != "OK" or not data or not data[0]:
+                # Peek first so pre-cutoff emails stay unread in Gmail if skipped
+                fetch_status, data = mail.fetch(mid, "(BODY.PEEK[])")
+                raw_email = None
+                if fetch_status == "OK" and data:
+                    for part in data:
+                        if isinstance(part, tuple) and len(part) > 1 and isinstance(part[1], (bytes, bytearray)):
+                            raw_email = bytes(part[1])
+                            break
+                if raw_email is None:
+                    fetch_status, data = mail.fetch(mid, "(RFC822)")
+                    if fetch_status == "OK" and data and isinstance(data[0], (tuple, list)) and len(data[0]) > 1:
+                        raw_email = data[0][1]
+                if not raw_email:
                     continue
 
-                raw_email = data[0][1]
                 msg = email.message_from_bytes(raw_email)
 
                 raw_from = msg.get("From", "")
@@ -392,17 +474,42 @@ def sync_inbound_emails_from_mailbox(
                 references = (msg.get("References") or "").strip()
                 auto_submitted = (msg.get("Auto-Submitted") or "").strip()
 
+                received_dt = None
+                if raw_date:
+                    try:
+                        parsed_dt = parsedate_to_datetime(raw_date)
+                        if parsed_dt is not None:
+                            received_dt = parsed_dt if parsed_dt.tzinfo is not None else parsed_dt.replace(tzinfo=timezone.utc)
+                    except Exception:
+                        received_dt = None
+                if received_dt is None:
+                    try:
+                        int_status, int_data = mail.fetch(mid, "(INTERNALDATE)")
+                        if int_status == "OK" and int_data and int_data[0]:
+                            raw_int = int_data[0] if isinstance(int_data[0], bytes) else int_data[0][0]
+                            received_dt = _parse_imap_internaldate(
+                                raw_int.decode("utf-8", errors="ignore") if isinstance(raw_int, (bytes, bytearray)) else str(raw_int)
+                            )
+                    except Exception:
+                        pass
+                if received_dt is None:
+                    received_dt = datetime.now(timezone.utc)
+
+                if sync_start_dt and received_dt.astimezone(timezone.utc) < sync_start_dt.astimezone(timezone.utc):
+                    skipped_before_start += 1
+                    continue
+
+                # Mark accepted post-cutoff message as Seen to match prior RFC822 fetch behavior
+                try:
+                    mail.store(mid, "+FLAGS", "\\Seen")
+                except Exception:
+                    pass
+
                 real_name, sender_email = parseaddr(raw_from)
                 sender_name = decode_mime_string(real_name) or real_name or "Employee"
                 subject = decode_mime_string(raw_subject) or "(No Subject)"
                 body = extract_message_body(msg)
 
-                received_dt = datetime.now(timezone.utc)
-                if raw_date:
-                    try:
-                        received_dt = parsedate_to_datetime(raw_date)
-                    except Exception:
-                        pass
                 received_str = received_dt.strftime("%Y-%m-%d %H:%M:%S%z")
 
                 if not sender_email or "@" not in sender_email:
@@ -677,6 +784,8 @@ def sync_inbound_emails_from_mailbox(
             "synced_count": new_synced,
             "cases_created": cases_created,
             "replies_linked": replies_linked,
+            "skipped_before_start": skipped_before_start,
+            "sync_start_date": sync_start_dt.isoformat() if sync_start_dt else None,
             "items": synced_items,
             "message": " · ".join(summary_parts) + ".",
         }
