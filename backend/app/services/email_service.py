@@ -57,7 +57,7 @@ def send_via_http_api(to_email: str, subject: str, html: str, text: str, to_name
                     "https://api.brevo.com/v3/smtp/email",
                     headers={"api-key": brevo_key, "Content-Type": "application/json"},
                     json={
-                        "sender": {"name": "Tata 1mg People Desk", "email": os.getenv("SMTP_USER", "vaibhav.v1@1mg.com")},
+                        "sender": {"name": "Tata 1mg People Desk", "email": os.getenv("SMTP_USER", "peopledesk@1mg.com")},
                         "to": [{"email": to_email, "name": to_name or to_email}],
                         "subject": subject,
                         "htmlContent": html,
@@ -80,7 +80,7 @@ def send_via_http_api(to_email: str, subject: str, html: str, text: str, to_name
                     headers={"Authorization": f"Bearer {sendgrid_key}", "Content-Type": "application/json"},
                     json={
                         "personalizations": [{"to": [{"email": to_email}]}],
-                        "from": {"email": os.getenv("SMTP_USER", "vaibhav.v1@1mg.com"), "name": "Tata 1mg People Desk"},
+                        "from": {"email": os.getenv("SMTP_USER", "peopledesk@1mg.com"), "name": "Tata 1mg People Desk"},
                         "subject": subject,
                         "content": [
                             {"type": "text/plain", "value": text},
@@ -97,16 +97,36 @@ def send_via_http_api(to_email: str, subject: str, html: str, text: str, to_name
 
     return {"sent": False, "error": "No HTTP Email API configured or all attempts failed."}
 
+PLACEHOLDER_PASSWORDS = {"", "your_16_digit_app_password", "your_16_digit_google_app_password"}
+
 def get_smtp_config():
-    """Dynamically resolves latest SMTP credentials from environment or defaults."""
+    """Dynamically resolves latest People Desk SMTP credentials from environment or DB fallback."""
     host = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
     try:
         port = int(os.getenv("SMTP_PORT", 587))
     except (ValueError, TypeError):
         port = 587
-    user = os.getenv("SMTP_USER", "").strip()
+    user = (os.getenv("SMTP_USER") or "peopledesk@1mg.com").strip()
     password = (os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "").strip()
-    from_header = os.getenv("SMTP_FROM", f"Tata 1mg People Desk <{user}>" if user else "Tata 1mg People Desk").strip()
+    if password.lower() in PLACEHOLDER_PASSWORDS:
+        password = ""
+
+    # Fallback to Central People Desk DB mailbox credentials if configured via UI modal
+    if not password:
+        try:
+            from backend.app.database import execute_query
+            dept = execute_query(
+                "SELECT dept_gmail, dept_app_password FROM hr_departments WHERE dept_code = 'DEPT-PEOPLEDESK' LIMIT 1;",
+                fetch_one=True
+            )
+            if dept and dept.get("dept_app_password") and dept["dept_app_password"].strip().lower() not in PLACEHOLDER_PASSWORDS:
+                password = dept["dept_app_password"].strip()
+                if dept.get("dept_gmail"):
+                    user = dept["dept_gmail"].strip()
+        except Exception:
+            pass
+
+    from_header = os.getenv("SMTP_FROM", f"Tata 1mg People Desk <{user}>" if user else "Tata 1mg People Desk <peopledesk@1mg.com>").strip()
     return host, port, user, password, from_header
 
 def generate_welcome_email_content(
@@ -465,7 +485,7 @@ def send_welcome_email(
     msg["Subject"] = subject
     msg["From"] = from_header
     msg["To"] = agent_email
-    msg["Reply-To"] = admin_sender
+    msg["Reply-To"] = user or admin_sender
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="1mg.com")
     msg["MIME-Version"] = "1.0"
@@ -500,7 +520,7 @@ def send_welcome_email(
                 "method": sent_method,
                 "subject": subject,
                 "recipient": agent_email,
-                "sender": admin_sender,
+                "sender": user or admin_sender,
                 "activation_link": activation_link,
                 "html": html,
                 "error": None
@@ -531,7 +551,7 @@ def send_welcome_email(
                     "method": sent_method,
                     "subject": subject,
                     "recipient": agent_email,
-                    "sender": admin_sender,
+                    "sender": user or admin_sender,
                     "activation_link": activation_link,
                     "html": html,
                     "error": None
@@ -557,7 +577,7 @@ def send_welcome_email(
             "method": http_res.get("method"),
             "subject": subject,
             "recipient": agent_email,
-            "sender": admin_sender,
+            "sender": user or admin_sender,
             "activation_link": activation_link,
             "html": html,
             "error": None
@@ -570,7 +590,7 @@ def send_welcome_email(
         "error": dispatch_error,
         "subject": subject,
         "recipient": agent_email,
-        "sender": admin_sender,
+        "sender": user or admin_sender,
         "activation_link": activation_link,
         "html": html
     }
@@ -584,27 +604,47 @@ def send_raw_smtp_email(
     custom_password: str = None,
     custom_host: str = None,
     custom_port: int = None,
-    from_name: str = "Tata 1mg People Desk"
+    from_name: str = "Tata 1mg People Desk",
+    reply_to: str = None,
+    in_reply_to: str = None,
+    references: str = None
 ) -> dict:
     """
-    General-purpose resilient SMTP dispatcher. Uses provided custom credentials (e.g. Dept Head Gmail),
-    falling back to system SMTP configuration.
+    General-purpose resilient SMTP dispatcher.
+    All outbound correspondence is sent from the centralized Tata 1mg People Desk mailbox.
     """
-    sys_host, sys_port, sys_user, sys_password, _ = get_smtp_config()
+    sys_host, sys_port, sys_user, sys_password, sys_from = get_smtp_config()
     host = (custom_host or sys_host).strip()
     port = int(custom_port or sys_port or 587)
-    user = (custom_user or sys_user).strip()
-    password = (custom_password or sys_password).strip()
 
-    from_header = f"{from_name} <{user}>"
+    # Always prefer centralized People Desk SMTP credentials; only use custom credentials if BOTH are valid and system password is missing
+    clean_custom_pw = (custom_password or "").strip()
+    if clean_custom_pw.lower() in PLACEHOLDER_PASSWORDS:
+        clean_custom_pw = ""
+
+    if sys_user and sys_password:
+        user = sys_user
+        password = sys_password
+    elif custom_user and clean_custom_pw:
+        user = custom_user.strip()
+        password = clean_custom_pw
+    else:
+        user = sys_user
+        password = sys_password
+
+    from_header = sys_from if (user == sys_user and sys_from) else f"{from_name} <{user}>"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = from_header
     msg["To"] = recipient_email
-    msg["Reply-To"] = user
+    msg["Reply-To"] = reply_to or user
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid(domain="1mg.com")
+    if in_reply_to:
+        msg["In-Reply-To"] = in_reply_to
+    if references:
+        msg["References"] = references
     msg["MIME-Version"] = "1.0"
     msg["X-Mailer"] = "Tata 1mg People Desk Dispatcher"
 
@@ -835,4 +875,138 @@ Tata 1mg People Desk"""
         plain_text=plain,
         custom_user=custom_user,
         custom_password=custom_password
+    )
+
+def send_case_reply_email(
+    recipient_email: str,
+    employee_name: str,
+    case_number: str,
+    case_title: str,
+    message_text: str,
+    specialist_name: str = "People Desk Specialist",
+    case_status: str = "IN_PROGRESS",
+    department_name: str = "People Desk"
+) -> dict:
+    """
+    Dispatches an official Tata 1mg People Desk reply email when an agent posts a PUBLIC_REPLY on a case.
+    Always sent from the centralized People Desk mailbox.
+    """
+    import html as html_lib
+
+    safe_name = html_lib.escape(employee_name or "Colleague")
+    safe_case_num = html_lib.escape(case_number or "")
+    safe_title = html_lib.escape(case_title or "Support Case")
+    safe_spec = html_lib.escape(specialist_name or "People Desk Specialist")
+    safe_dept = html_lib.escape(department_name or "People Desk")
+    safe_status = html_lib.escape((case_status or "IN_PROGRESS").replace("_", " "))
+    safe_msg_html = html_lib.escape(message_text or "").replace("\n", "<br>")
+
+    subject = f"Re: [{case_number}] {case_title[:65]}"
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px; color: #1E293B;">
+  <div style="max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background: #0F172A; padding: 20px 28px; color: #FFFFFF; border-bottom: 3px solid #FF6F61;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: #FF8A80;">Tata 1mg People Desk · Case Update</div>
+      <h2 style="margin: 4px 0 0; font-size: 18px; font-weight: 700;">[{safe_case_num}] {safe_title}</h2>
+    </div>
+    <div style="padding: 28px;">
+      <p style="font-size: 14.5px; margin: 0 0 14px;">Hello <strong>{safe_name}</strong>,</p>
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #10847E; border-radius: 6px; padding: 16px 18px; font-size: 14px; line-height: 1.65; color: #1E293B; margin-bottom: 20px;">
+        {safe_msg_html}
+      </div>
+      <div style="font-size: 12.5px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 14px;">
+        <div><strong>Handled By:</strong> {safe_spec} ({safe_dept})</div>
+        <div style="margin-top: 4px;"><strong>Current Status:</strong> {safe_status}</div>
+        <div style="margin-top: 8px;">You may reply directly to this email if you need any further assistance.</div>
+      </div>
+    </div>
+    <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 14px 28px; text-align: center; font-size: 11.5px; color: #94A3B8;">
+      Tata 1mg People Desk · Centralized Employee Support
+    </div>
+  </div>
+</body>
+</html>"""
+
+    plain = f"""Hello {employee_name or 'Colleague'},
+
+{message_text}
+
+---
+Case: [{case_number}] {case_title}
+Handled By: {specialist_name} ({department_name})
+Current Status: {(case_status or 'IN_PROGRESS').replace('_', ' ')}
+
+You may reply directly to this email if you need any further assistance.
+
+Best regards,
+Tata 1mg People Desk"""
+
+    return send_raw_smtp_email(
+        recipient_email=recipient_email,
+        subject=subject,
+        html_content=html_body,
+        plain_text=plain
+    )
+
+def send_inbox_reply_email(
+    recipient_email: str,
+    recipient_name: str,
+    original_subject: str,
+    message_text: str,
+    specialist_name: str = "People Desk Specialist",
+    in_reply_to: str = None
+) -> dict:
+    """
+    Dispatches a direct reply from the Inbox Workbench via the centralized People Desk mailbox.
+    """
+    import html as html_lib
+
+    clean_subj = (original_subject or "Your Inquiry").strip()
+    subject = clean_subj if clean_subj.lower().startswith("re:") else f"Re: {clean_subj}"
+
+    safe_name = html_lib.escape(recipient_name or "Colleague")
+    safe_spec = html_lib.escape(specialist_name or "People Desk Specialist")
+    safe_msg_html = html_lib.escape(message_text or "").replace("\n", "<br>")
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px; color: #1E293B;">
+  <div style="max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background: #0F172A; padding: 18px 28px; color: #FFFFFF; border-bottom: 3px solid #FF6F61;">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 700;">Tata 1mg People Desk</h2>
+      <p style="margin: 3px 0 0; font-size: 12.5px; color: #CBD5E1;">Employee Support Response</p>
+    </div>
+    <div style="padding: 28px;">
+      <p style="font-size: 14.5px; margin: 0 0 14px;">Hello <strong>{safe_name}</strong>,</p>
+      <div style="font-size: 14px; line-height: 1.65; color: #1E293B; margin-bottom: 20px;">
+        {safe_msg_html}
+      </div>
+      <div style="font-size: 12.5px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 14px;">
+        Regards,<br>
+        <strong>{safe_spec}</strong><br>
+        Tata 1mg People Desk
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    plain = f"""Hello {recipient_name or 'Colleague'},
+
+{message_text}
+
+Regards,
+{specialist_name}
+Tata 1mg People Desk"""
+
+    return send_raw_smtp_email(
+        recipient_email=recipient_email,
+        subject=subject,
+        html_content=html_body,
+        plain_text=plain,
+        in_reply_to=in_reply_to,
+        references=in_reply_to
     )

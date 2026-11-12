@@ -30,9 +30,9 @@ services:
       - key: SMTP_PORT
         value: 587
       - key: SMTP_USER
-        value: vaibhav.v1@1mg.com
+        value: peopledesk@1mg.com
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        value: "Tata 1mg People Desk <vaibhav.v1@1mg.com>"
+        value: "Tata 1mg People Desk <peopledesk@1mg.com>"
 

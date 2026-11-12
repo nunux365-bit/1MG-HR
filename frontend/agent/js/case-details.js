@@ -55,7 +55,7 @@ function initAgentSession() {
   const avatarEl = document.getElementById('navAgentAvatar');
 
   if (nameEl) nameEl.innerText = currentUser.name || 'Agent Specialist';
-  if (emailEl) emailEl.innerText = currentUser.email || 'people.ops@1mg.com';
+  if (emailEl) emailEl.innerText = currentUser.email || 'peopledesk@1mg.com';
   if (avatarEl) avatarEl.innerText = (currentUser.name || 'A')[0].toUpperCase();
 }
 
@@ -960,7 +960,7 @@ function renderInboundInquiry(c) {
   if (avatarEl) avatarEl.innerText = (senderName[0] || 'V').toUpperCase();
   if (nameEl) nameEl.innerText = senderName;
   if (emailEl) emailEl.innerText = senderEmail;
-  if (toAddrEl) toAddrEl.innerText = `${c.assigned_team || 'People Desk'} <people.ops@1mg.com>`;
+  if (toAddrEl) toAddrEl.innerText = `${c.assigned_team || 'People Desk'} <peopledesk@1mg.com>`;
   
   const createdDate = c.created_at ? new Date(c.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'Recent Ingest';
   if (recDateEl) recDateEl.innerText = createdDate;
@@ -985,7 +985,7 @@ function renderInboundInquiry(c) {
   }
 
   if (fromEl) fromEl.innerText = `${senderName} <${senderEmail}>`;
-  if (toEl) toEl.innerText = `${c.assigned_team || 'People Desk'} <people.ops@1mg.com>`;
+  if (toEl) toEl.innerText = `${c.assigned_team || 'People Desk'} <peopledesk@1mg.com>`;
   if (subjEl) subjEl.innerText = c.title || 'Inbound Inquiry';
   if (bodyEl) bodyEl.innerText = c.description || 'No description provided in message.';
 }
@@ -1021,7 +1021,7 @@ function renderConversationThread(c, logs) {
       threadItems.push({
         type: 'REPLY',
         actor: log.actor_name || 'Desk Specialist',
-        email: log.actor_email || 'people.ops@1mg.com',
+        email: log.actor_email || 'peopledesk@1mg.com',
         time: log.created_at,
         message: details.message || ''
       });

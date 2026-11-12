@@ -1211,9 +1211,7 @@ def create_inbound_case(req: CaseCreateRequest):
             department_name=dept_display,
             target_sla=f"{sla_hours}h SLA",
             priority=req.priority or "MEDIUM",
-            assigned_specialist=assigned_user,
-            custom_user=dept_info.get("dept_gmail"),
-            custom_password=dept_info.get("dept_app_password")
+            assigned_specialist=assigned_user
         )
     except Exception as notify_err:
         logger.warning(f"Failed to send case confirmation email for {case_num}: {notify_err}")
@@ -1277,10 +1275,11 @@ def update_case_status(case_id: int, req: CaseStatusUpdateRequest):
 def post_case_reply(case_id: int, req: CaseReplyRequest):
     """
     Submits an agent public reply or private internal note for a case,
-    records it in the immutable audit trail, and optionally transitions the case status.
+    records it in the immutable audit trail, dispatches an email via People Desk SMTP for PUBLIC_REPLY,
+    and optionally transitions the case status.
     """
     case = execute_query(
-        "SELECT id, case_number, status, employee_email, title FROM cases WHERE id = %s;",
+        "SELECT id, case_number, status, employee_email, employee_name, title, assigned_team FROM cases WHERE id = %s;",
         (case_id,),
         fetch_one=True
     )
@@ -1308,7 +1307,9 @@ def post_case_reply(case_id: int, req: CaseReplyRequest):
 
     # 2. Update status if transition requested
     updated_case = None
+    effective_status = case["status"]
     if req.new_status and req.new_status in ["OPEN", "IN_PROGRESS", "WAITING_ON_EMPLOYEE", "RESOLVED", "CLOSED"]:
+        effective_status = req.new_status
         is_resolved = req.new_status in ["RESOLVED", "CLOSED"]
         update_sql = """
             UPDATE cases
@@ -1340,12 +1341,33 @@ def post_case_reply(case_id: int, req: CaseReplyRequest):
             commit=True
         )
 
+    # 3. Dispatch real SMTP email from People Desk for PUBLIC_REPLY
+    email_res = None
+    if reply_type == "PUBLIC_REPLY" and case.get("employee_email") and "@" in case.get("employee_email", ""):
+        try:
+            from backend.app.services.email_service import send_case_reply_email
+            email_res = send_case_reply_email(
+                recipient_email=case["employee_email"],
+                employee_name=case.get("employee_name") or "Colleague",
+                case_number=case["case_number"],
+                case_title=case.get("title") or "Support Case",
+                message_text=req.message,
+                specialist_name=req.actor_name or "People Desk Specialist",
+                case_status=effective_status,
+                department_name=case.get("assigned_team") or "People Desk"
+            )
+        except Exception as mail_err:
+            logger.warning(f"Failed to send public reply email for case {case['case_number']}: {mail_err}")
+            email_res = {"sent": False, "error": str(mail_err)}
+
     return {
         "success": True,
         "message": "Reply dispatched to employee successfully" if reply_type == "PUBLIC_REPLY" else "Internal note saved successfully",
         "case_id": case_id,
         "reply_type": reply_type,
         "action": action_name,
+        "email_sent": bool(email_res and email_res.get("sent")),
+        "email_details": email_res,
         "case": updated_case or {"id": case["id"], "case_number": case["case_number"], "status": case["status"]}
     }
 
@@ -3013,7 +3035,7 @@ def get_inbox_emails(
                 "id": f"bot-{em['id']}",
                 "type": "SYSTEM_BOT",
                 "sender_name": "Tata 1mg Desk System",
-                "sender_email": em.get("account_email") or "people.ops@1mg.com",
+                "sender_email": em.get("account_email") or "peopledesk@1mg.com",
                 "subject": f"Action Required: Confirm Your Tata 1mg Employee ID — Re: {em.get('subject')}",
                 "body": "Because this inquiry was sent from an external domain, an automated verification request was dispatched asking for their official Tata 1mg Employee ID.",
                 "received_at": _safe_iso(em.get("received_at"))
@@ -3246,9 +3268,7 @@ def convert_email_to_case(email_id: int, req: ConvertEmailRequest):
             department_name=dept_name,
             target_sla=ai_data.get("target_sla", f"{sla_hours}h SLA"),
             priority=priority,
-            assigned_specialist=assigned,
-            custom_user=dept_info.get("dept_gmail"),
-            custom_password=dept_info.get("dept_app_password")
+            assigned_specialist=assigned
         )
     except Exception as notify_err:
         logger.warning(f"Failed to send case confirmation email for {case_num}: {notify_err}")
@@ -3413,20 +3433,38 @@ def transfer_inbox_email(email_id: int, req: EmailTransferRequest):
 
 @router.post("/inbox/emails/{email_id}/reply")
 def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
-    """Send direct reply via corporate mail dispatch to employee inquiry."""
+    """Send direct reply via People Desk corporate mail dispatch to employee inquiry."""
     email_row = execute_query("SELECT * FROM emails WHERE id = %s;", (email_id,), fetch_all=False)
     if not email_row:
         raise HTTPException(status_code=404, detail="Email record not found")
 
     # Always touch updated_at
-    execute_query("UPDATE emails SET updated_at = NOW() WHERE id = %s;", (email_id,))
+    execute_query("UPDATE emails SET updated_at = NOW() WHERE id = %s;", (email_id,), commit=True)
+
+    # Dispatch real SMTP reply from People Desk
+    email_res = None
+    sender_email = email_row.get("sender_email")
+    if sender_email and "@" in sender_email:
+        try:
+            from backend.app.services.email_service import send_inbox_reply_email
+            email_res = send_inbox_reply_email(
+                recipient_email=sender_email,
+                recipient_name=email_row.get("sender_name") or "Colleague",
+                original_subject=email_row.get("subject") or "Your Inquiry",
+                message_text=req.message,
+                specialist_name=req.actor_name or "HR Specialist",
+                in_reply_to=email_row.get("provider_message_id")
+            )
+        except Exception as mail_err:
+            logger.warning(f"Failed to send direct inbox reply email #{email_id}: {mail_err}")
+            email_res = {"sent": False, "error": str(mail_err)}
 
     # If linked to a case, log communication to audit trail
     if email_row.get("case_id"):
         audit_note = json.dumps({
-            "message": f"Direct response dispatched to {email_row.get('sender_email')} (Email #{email_id}): {req.message[:120]}...",
+            "message": f"Direct response dispatched to {sender_email} (Email #{email_id}): {req.message[:120]}...",
             "email_id": email_id,
-            "recipient": email_row.get('sender_email')
+            "recipient": sender_email
         })
         execute_query(
             """
@@ -3435,14 +3473,17 @@ def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
             """,
             (
                 email_row["case_id"], email_row.get("case_number", ""),
-                req.actor_email or "people.ops@1mg.com", req.actor_name or "HR Specialist",
+                req.actor_email or "peopledesk@1mg.com", req.actor_name or "HR Specialist",
                 audit_note
-            )
+            ),
+            commit=True
         )
 
     return {
         "success": True,
-        "message": f"Reply successfully dispatched to {email_row.get('sender_email')}"
+        "message": f"Reply successfully dispatched to {sender_email}",
+        "email_sent": bool(email_res and email_res.get("sent")),
+        "email_details": email_res
     }
 
 class EmailIngestRequest(BaseModel):
@@ -3519,7 +3560,7 @@ def ingest_inbound_email(payload: EmailIngestRequest):
             received_at, category, department_id, employee_id, is_actionable, is_converted,
             classification_status, processing_status, created_at, updated_at
         ) VALUES (
-            'INBOUND_API', 'people.ops@1mg.com', %s, %s, %s, %s,
+            'INBOUND_API', 'peopledesk@1mg.com', %s, %s, %s, %s,
             COALESCE(%s::timestamptz, NOW()), %s, %s, %s, %s, 0,
             'CLASSIFIED', 'COMPLETED', NOW(), NOW()
         )
@@ -3551,14 +3592,12 @@ def ingest_inbound_email(payload: EmailIngestRequest):
         if not is_internal and not detected_code and resolved_category != "SYSTEM_ALERT":
             try:
                 from backend.app.services.email_service import send_employee_id_request_email
-                dept_row = execute_query("SELECT team_name, dept_gmail, dept_app_password FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True) or {}
+                dept_row = execute_query("SELECT team_name FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True) or {}
                 send_employee_id_request_email(
                     recipient_email=sender_email,
                     original_subject=subject,
                     recipient_name=ai_insights.get("detected_name") or payload.sender_name or "Colleague",
-                    department_name=dept_row.get("team_name") or "People Desk",
-                    custom_user=dept_row.get("dept_gmail"),
-                    custom_password=dept_row.get("dept_app_password")
+                    department_name=dept_row.get("team_name") or "People Desk"
                 )
                 execute_query(
                     "UPDATE emails SET actionable_reason = 'AWAITING_EMP_ID' WHERE id = %s;",
@@ -3590,15 +3629,13 @@ def request_email_employee_id(email_id: int):
         raise HTTPException(status_code=400, detail="Sender email missing")
 
     dept_id = email_row.get("department_id") or 11
-    dept_info = execute_query("SELECT team_name, dept_gmail, dept_app_password FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True) or {}
+    dept_info = execute_query("SELECT team_name FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True) or {}
 
     dispatch_res = send_employee_id_request_email(
         recipient_email=sender_email,
         original_subject=email_row.get("subject") or "Inquiry",
         recipient_name=email_row.get("sender_name") or "Colleague",
-        department_name=dept_info.get("team_name") or "People Desk",
-        custom_user=dept_info.get("dept_gmail"),
-        custom_password=dept_info.get("dept_app_password")
+        department_name=dept_info.get("team_name") or "People Desk"
     )
 
     execute_query("UPDATE emails SET actionable_reason = 'AWAITING_EMP_ID', updated_at = NOW() WHERE id = %s;", (email_id,))
@@ -3702,7 +3739,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
     """
     Returns current mailbox connection status and configuration details for a department or user.
     """
-    from backend.app.services.imap_service import detect_imap_host
+    from backend.app.services.imap_service import detect_imap_host, has_system_mailbox_config
 
     dept = None
     if department_id:
@@ -3747,6 +3784,15 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
         if not last_synced:
             last_synced = user.get("mail_last_synced_at")
 
+    # Fallback to centralized .env People Desk mailbox configuration
+    sys_ok, sys_user, sys_host = has_system_mailbox_config()
+    if not has_creds and sys_ok:
+        has_creds = True
+        account_email = sys_user or account_email
+        sync_status = "CONNECTED"
+    elif not account_email:
+        account_email = sys_user or "peopledesk@1mg.com"
+
     return {
         "success": True,
         "configured": has_creds,
@@ -3755,7 +3801,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
         "department_name": dept_name,
         "sync_status": sync_status,
         "last_synced_at": last_synced,
-        "imap_host": dept.get("imap_host") if dept else detect_imap_host(account_email)
+        "imap_host": (dept.get("imap_host") if dept and dept.get("imap_host") else None) or sys_host or detect_imap_host(account_email)
     }
 
 class SyncInboxRequest(BaseModel):

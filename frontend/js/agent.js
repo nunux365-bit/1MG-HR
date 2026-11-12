@@ -1978,7 +1978,7 @@ async function sendInboxReply() {
       body: JSON.stringify({
         message: replyInput.value.trim(),
         actor_name: currentUser.name || 'HR Specialist',
-        actor_email: currentUser.email || 'people.ops@1mg.com'
+        actor_email: currentUser.email || 'peopledesk@1mg.com'
       })
     });
     const data = await res.json();
@@ -2686,7 +2686,7 @@ async function selectInboxCase(caseId) {
     }
     if (sName) sName.innerText = c.employee_name || 'Tata 1mg Employee';
     if (sEmail) sEmail.innerText = c.employee_email;
-    if (sDesk) sDesk.innerText = `To: people.ops@1mg.com (Tata 1mg ${c.department_name || 'Operations'} Desk)`;
+    if (sDesk) sDesk.innerText = `To: peopledesk@1mg.com (Tata 1mg ${c.department_name || 'Operations'} Desk)`;
     if (sTime) sTime.innerText = formatDate(c.created_at);
     if (sSubj) sSubj.innerText = c.title;
     if (sCat) sCat.innerText = (c.category || c.department_name || 'UNKNOWN').toUpperCase();
@@ -4148,7 +4148,7 @@ function renderDossierInbound(c) {
 
   if (catEl) catEl.innerText = `Category: ${c.category || c.department_name || "General Inquiry"}`;
   if (fromEl) fromEl.innerText = `${c.employee_name || "Employee"} <${c.employee_email}>`;
-  if (toEl) toEl.innerText = "people.ops@1mg.com (Tata 1mg People Desk)";
+  if (toEl) toEl.innerText = "peopledesk@1mg.com (Tata 1mg People Desk)";
   if (recEl) recEl.innerText = c.created_at ? new Date(c.created_at).toLocaleString("en-IN") : "Recent";
   if (bodyEl) bodyEl.innerText = c.description || "No inquiry message body supplied.";
 }

@@ -18,6 +18,21 @@ from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger("backend.imap_service")
 
+PLACEHOLDER_PASSWORDS = {"", "your_16_digit_app_password", "your_16_digit_google_app_password"}
+
+def is_placeholder_password(password: Optional[str]) -> bool:
+    return (password or "").strip().lower() in PLACEHOLDER_PASSWORDS
+
+def has_system_mailbox_config() -> tuple[bool, str, str]:
+    """
+    Checks if a real, non-placeholder system mailbox (SMTP/IMAP) is configured in environment variables.
+    Returns (is_configured, email_user, imap_host).
+    """
+    host, _, user, password = get_imap_config()
+    if user and password and not is_placeholder_password(password):
+        return True, user, host
+    return False, user or "", host
+
 def detect_imap_host(email_or_host: str) -> str:
     """
     Infers IMAP hostname from email domain or host string.
@@ -53,8 +68,10 @@ def get_imap_config() -> tuple[str, int, str, str]:
     except (ValueError, TypeError):
         imap_port = 993
         
-    imap_user = (os.getenv("IMAP_USER") or os.getenv("SMTP_USER") or "").strip()
+    imap_user = (os.getenv("IMAP_USER") or os.getenv("SMTP_USER") or "peopledesk@1mg.com").strip()
     imap_pass = (os.getenv("IMAP_PASS") or os.getenv("SMTP_PASS") or os.getenv("SMTP_PASSWORD") or "").strip()
+    if is_placeholder_password(imap_pass):
+        imap_pass = ""
     
     return imap_host, imap_port, imap_user, imap_pass
 
@@ -506,9 +523,7 @@ def sync_inbound_emails_from_mailbox(
                                     recipient_email=sender_email,
                                     original_subject=subject,
                                     recipient_name=ai_insights.get("detected_name") or sender_name or "Colleague",
-                                    department_name=dept_name,
-                                    custom_user=user,
-                                    custom_password=password
+                                    department_name=dept_name
                                 )
                                 execute_query(
                                     "UPDATE emails SET actionable_reason = 'AWAITING_EMP_ID' WHERE id = %s;",

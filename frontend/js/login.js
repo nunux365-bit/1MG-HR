@@ -81,14 +81,27 @@ async function handleCheckEmail(e) {
 
     // Transition based on detected role & password status
     if (data.role === 'ADMIN') {
-      // Branch A: Admin App Password
-      document.getElementById('pageTitle').innerText = 'Admin Authentication';
-      document.getElementById('pageSubtitle').innerText = 'Enter your secure app password to continue';
-      document.getElementById('adminNameDisplay').innerText = data.name || 'Administrator';
-      document.getElementById('adminEmailDisplay').innerText = data.email;
-      showPane('stepAdminPassword');
-      document.getElementById('adminAppPasswordInput').value = '';
-      document.getElementById('adminAppPasswordInput').focus();
+      if (data.has_password) {
+        // Branch A: Admin App Password
+        document.getElementById('pageTitle').innerText = 'Admin Authentication';
+        document.getElementById('pageSubtitle').innerText = 'Enter your secure app password to continue';
+        document.getElementById('adminNameDisplay').innerText = data.name || 'Administrator';
+        document.getElementById('adminEmailDisplay').innerText = data.email;
+        showPane('stepAdminPassword');
+        document.getElementById('adminAppPasswordInput').value = '';
+        document.getElementById('adminAppPasswordInput').focus();
+      } else {
+        // First-time Admin onboarding: let new Admin set & confirm password
+        document.getElementById('pageTitle').innerText = 'Activate Admin Account';
+        document.getElementById('pageSubtitle').innerText = 'Set a password to complete your administrator onboarding';
+        document.getElementById('onboardAgentName').innerText = data.name || 'Administrator';
+        document.getElementById('onboardDeptName').innerText = 'All Departments (Admin Console)';
+
+        showPane('stepSetPassword');
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmPasswordInput').value = '';
+        document.getElementById('newPasswordInput').focus();
+      }
 
     } else if (data.role === 'HR_AGENT') {
       if (data.has_password) {

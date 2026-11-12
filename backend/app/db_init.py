@@ -209,14 +209,16 @@ INSERT INTO hr_departments (dept_code, team_name, dept_gmail, sla_hours, default
 VALUES 
     ('DEPT-ATTENDANCE', 'Attendance HR', 'attendance.desk@1mg.com', 24, 'HIGH', 'Handles biometric punches, shift attendance, timesheets, and regularization queries.'),
     ('DEPT-PAYROLL', 'Payroll HR', 'payroll.desk@1mg.com', 24, 'HIGH', 'Handles salary slips, tax TDS declarations, Form 16, and bank account changes.'),
-    ('DEPT-PEOPLEDESK', 'Central People Desk', 'vaibhav.v1@1mg.com', 48, 'MEDIUM', 'Central employee helpdesk and general query triage for all departments.'),
+    ('DEPT-PEOPLEDESK', 'Central People Desk', 'peopledesk@1mg.com', 48, 'MEDIUM', 'Central employee helpdesk and general query triage for all departments.'),
     ('DEPT-IT-ASSET', 'IT Asset & Hardware', 'it.support@1mg.com', 48, 'MEDIUM', 'Handles laptops, VPN access, hardware repairs, and peripheral requests.'),
     ('DEPT-BGV', 'Background Verification', 'bgv.verify@1mg.com', 72, 'MEDIUM', 'Handles employee background verification, document checks, and experience verification.')
 ON CONFLICT (dept_code) DO NOTHING;
 
--- SEED: Admin User
+-- SEED: Admin Users
 INSERT INTO users (email, name, role, is_dept_head, designation, status)
-VALUES ('vaibhav.v1@1mg.com', 'Vaibhav Yadav', 'ADMIN', TRUE, 'System Administrator & Head of People Desk', 'ACTIVE')
+VALUES 
+    ('vaibhav.v1@1mg.com', 'Vaibhav Yadav', 'ADMIN', TRUE, 'System Administrator & Head of People Desk', 'ACTIVE'),
+    ('neeraj.singh@1mg.com', 'Neeraj Singh', 'ADMIN', TRUE, 'Administrator', 'ACTIVE')
 ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', status = 'ACTIVE';
 """
 

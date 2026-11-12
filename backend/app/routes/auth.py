@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 from backend.app.database import execute_query
 from backend.app.config import ADMIN_EMAIL, ADMIN_APP_PASSWORD
+from backend.app.services.imap_service import has_system_mailbox_config
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
@@ -112,8 +113,9 @@ def check_email(payload: CheckEmailRequest):
     is_admin = (user["role"] == "ADMIN")
     has_password = bool(user["password_hash"])
     is_dept_head = bool(user.get("is_dept_head"))
+    sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
-    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
     needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
@@ -127,7 +129,7 @@ def check_email(payload: CheckEmailRequest):
         "is_dept_head": is_dept_head,
         "mail_configured": mail_configured,
         "needs_mail_setup": needs_mail_setup,
-        "dept_gmail": user.get("dept_gmail") or "",
+        "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
         "department_id": user.get("department_id"),
         "department_ids": dept_info["department_ids"],
         "departments": dept_info["departments"],
@@ -195,8 +197,9 @@ def login(payload: LoginRequest):
     # Generate simple session token
     session_token = secrets.token_urlsafe(32)
     is_dept_head = bool(user.get("is_dept_head"))
+    sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
-    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
     needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
@@ -211,7 +214,7 @@ def login(payload: LoginRequest):
             "is_dept_head": is_dept_head,
             "mail_configured": mail_configured,
             "needs_mail_setup": needs_mail_setup,
-            "dept_gmail": user.get("dept_gmail") or "",
+            "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
             "departments": dept_info["departments"],
@@ -263,8 +266,9 @@ def set_password(payload: SetPasswordRequest):
     session_token = secrets.token_urlsafe(32)
     is_admin = (user["role"] == "ADMIN")
     is_dept_head = bool(user.get("is_dept_head"))
+    sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
-    mail_configured = bool(user.get("mail_configured") or dept_has_pw)
+    mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
     needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
@@ -280,7 +284,7 @@ def set_password(payload: SetPasswordRequest):
             "is_dept_head": is_dept_head,
             "mail_configured": mail_configured,
             "needs_mail_setup": needs_mail_setup,
-            "dept_gmail": user.get("dept_gmail") or "",
+            "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
             "departments": dept_info["departments"],

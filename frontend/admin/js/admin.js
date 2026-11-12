@@ -737,7 +737,7 @@ function openEmailPreviewModal(emailDetails) {
   }
 
   const senderEl = document.getElementById('previewModalSender');
-  if (senderEl) senderEl.innerText = emailDetails.sender || 'vaibhav.v1@1mg.com';
+  if (senderEl) senderEl.innerText = emailDetails.sender || 'peopledesk@1mg.com';
 
   const linkEl = document.getElementById('previewModalLink');
   if (linkEl) linkEl.innerText = emailDetails.activation_link || '';
@@ -5951,7 +5951,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user.email) {
     document.getElementById('adminHeaderEmail').innerText = user.email;
     const senderDisplay = document.getElementById('modalSenderEmailDisplay');
-    if (senderDisplay) senderDisplay.innerText = user.email;
+    if (senderDisplay) senderDisplay.innerText = 'peopledesk@1mg.com';
   }
 
   // Load dynamic data from Neon DB
