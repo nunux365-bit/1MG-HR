@@ -1,0 +1,17 @@
+{
+  "category_code": "RELATIONS",
+  "sample_count": 18,
+  "intents": [
+    "ER01",
+    "ER02",
+    "ER03",
+    "ER04",
+    "ER05",
+    "ER06",
+    "ER07",
+    "ER08"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

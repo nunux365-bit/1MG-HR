@@ -1,15 +1,15 @@
 {
   "category_code": "PAYROLL",
-  "sample_count": 19,
+  "sample_count": 22,
   "intents": [
-    "PR07",
-    "PR03",
     "PR01",
-    "PR04",
     "PR02",
-    "PR08",
+    "PR03",
+    "PR04",
     "PR05",
-    "PR06"
+    "PR06",
+    "PR07",
+    "PR08"
   ],
   "intent_count": 8,
   "accuracy": 100.0,

@@ -1,0 +1,17 @@
+{
+  "category_code": "LEAVES",
+  "sample_count": 20,
+  "intents": [
+    "LV01",
+    "LV02",
+    "LV03",
+    "LV04",
+    "LV05",
+    "LV06",
+    "LV07",
+    "LV08"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

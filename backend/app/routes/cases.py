@@ -1,12 +1,26 @@
 import csv
 import io
 import json
+import logging
 import re
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
+
+logger = logging.getLogger("backend.cases")
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, EmailStr
+from backend.app.config import ADMIN_EMAIL
 from backend.app.database import execute_query
+from backend.app.services.classifier_service import classify_inbound_email_ai
+from backend.app.services.case_routing_service import (
+    attach_reply_to_existing_case,
+    build_email_ai_insights,
+    create_case_from_email_record,
+    find_department_assignee,
+    generate_case_number,
+    is_automated_newsletter_or_noise,
+    lookup_hrms_employee,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["Cases & Operations"])
 
@@ -49,29 +63,6 @@ class CaseReplyRequest(BaseModel):
     new_status: Optional[str] = None  # e.g. "RESOLVED", "IN_PROGRESS", "WAITING_ON_EMPLOYEE"
     actor_email: Optional[str] = "agent@1mg.com"
     actor_name: Optional[str] = "HR Agent"
-
-def generate_case_number() -> str:
-    """
-    Collision-free atomic sequence generator.
-    Produces 1MG00001 -> 1MG99999 (5 digits) and expands to 6 digits (1MG100000+) automatically.
-    """
-    query = """
-        UPDATE case_sequences
-        SET last_number = last_number + 1, updated_at = NOW()
-        WHERE prefix = '1MG'
-        RETURNING last_number;
-    """
-    row = execute_query(query, fetch_all=False)
-    if not row or row.get("last_number") is None:
-        # Fallback if seed row missing
-        execute_query("INSERT INTO case_sequences (prefix, last_number) VALUES ('1MG', 1) ON CONFLICT DO NOTHING;")
-        seq = 1
-    else:
-        seq = int(row["last_number"])
-        
-    if seq <= 99999:
-        return f"1MG{seq:05d}"
-    return f"1MG{seq}"
 
 class CaseReassignRequest(BaseModel):
     user_id: Optional[int] = None
@@ -214,30 +205,7 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
         dept = "Onboarding & BGV Desk"
 
     # 6. Real HRMS Employee Lookup in Neon Database
-    db_emp = None
-    try:
-        emp_clauses = []
-        emp_params = []
-        if emp_code:
-            emp_clauses.append("employee_id = %s")
-            emp_params.append(emp_code)
-        if employee_email:
-            emp_clauses.append("LOWER(email) = LOWER(%s)")
-            emp_params.append(employee_email.strip())
-        if extracted_name and extracted_name.lower() not in ["employee", "tata 1mg employee", "associate"]:
-            emp_clauses.append("LOWER(name) = LOWER(%s)")
-            emp_params.append(extracted_name.strip())
-
-        if emp_clauses:
-            emp_sql = f"""
-                SELECT id, employee_id, name, email, department, designation, manager_name, location
-                FROM employees
-                WHERE {' OR '.join(emp_clauses)}
-                LIMIT 1;
-            """
-            db_emp = execute_query(emp_sql, tuple(emp_params), fetch_one=True)
-    except Exception:
-        db_emp = None
+    db_emp = lookup_hrms_employee(emp_code, employee_email, extracted_name)
 
     if db_emp:
         return {
@@ -316,99 +284,43 @@ def analyze_case_ai(c: dict) -> dict:
 
     emp_name = entities["extracted_name"]
 
-    # 1. Linguistic Detection (Hinglish vs English)
-    hinglish_markers = ["nahi", "karni", "karo", "gaya", "gayi", "mera", "meri", "aayi", "bhi", "tha", "thi", "chahiye", "chutti", "sir", "kripya", "dekho", "batao", "de do", "karna", "ho gaya", "paise"]
-    is_hinglish = any(re.search(rf"\b{w}\b", full_text) for w in hinglish_markers)
-    language = "Hindi / Hinglish" if is_hinglish else "Corporate English"
-
-    # 2. Urgency Detection
-    urgency_markers = ["urgent", "emergency", "hospital", "admission", "tpa", "salary stuck", "immediately", "critical", "asap", "timeout", "drains", "erratically", "breached", "penalty", "medical", "swipe missing"]
-    has_urgency = any(re.search(rf"\b{w}\b", full_text) for w in urgency_markers)
+    # 1-3. Unified 3-Stage AI Language, Urgency & Department/Intent Classification
+    cls_res = classify_inbound_email_ai(
+        subject=title,
+        body=desc,
+        explicit_category=c.get("category"),
+        forced_dept_id=c.get("department_id"),
+    )
+    language = cls_res.get("language", "Corporate English")
+    has_urgency = bool(cls_res.get("is_urgent"))
     urgency = "HIGH (Immediate Action Recommended)" if has_urgency else "NORMAL (Standard SLA)"
-
-    # 3. Intent & Category Classification
-    if any(k in full_text for k in ["biometric", "punch", "swipe", "attendance", "roaster", "shift", "timesheet"]):
-        if any(k in full_text for k in ["biometric", "punch", "swipe", "regularize", "regularisation", "timeout"]):
-            intent_code = "AT01"
-            intent_name = "Biometric & Missed Punch Regularization"
-            summary_issue = f"Biometric swipe was unrecorded at {entities['location']} turnstile due to scanner timeout."
-            summary_request = f"Regularize in-punch for {entities['shift']} and waive half-day deduction."
-            recommended_action = f"Cross-reference {entities['location']} gate turnstile log for shift entry and regularize punch in HRMS."
-        elif any(k in full_text for k in ["shift timing", "roster", "roaster", "timing swap", "schedule change"]):
-            intent_code = "AT02"
-            intent_name = "Shift Schedule & Roster Adjustment"
-            summary_issue = f"Employee requested a shift roster or schedule timing adjustment for {entities['shift']}."
-            summary_request = "Approve and update shift timings in the attendance system."
-            recommended_action = "Review manager roster authorization and update shift timing in schedule master."
-        else:
-            intent_code = "AT01"
-            intent_name = "Attendance Regularization & Timesheet"
-            summary_issue = "Employee submitted an attendance or timesheet verification query."
-            summary_request = "Verify timesheet hours and approve attendance status."
-            recommended_action = "Check supervisor timesheet approval and credit valid hours."
-        confidence = 98.6
-
-    elif any(k in full_text for k in ["salary", "tds", "form 16", "payslip", "tax", "26as", "pf", "epfo", "deduction", "bonus"]):
-        if any(k in full_text for k in ["tds", "form 16", "26as", "tax", "computation"]):
-            intent_code = "PR03"
-            intent_name = "Income Tax, TDS & Form 16 Mismatch"
-            summary_issue = "Discrepancy observed between monthly payslip TDS deduction and TRACES 26AS reflection."
-            summary_request = "Audit tax computation and issue reconciliation worksheet."
-            recommended_action = "Audit 26AS quarterly TDS return vs monthly payroll register and provide computation sheet."
-        else:
-            intent_code = "PR01"
-            intent_name = "Monthly Salary Credit & Payslip Generation"
-            summary_issue = "Employee inquiry regarding salary credit, payslip download, or bank account deposit."
-            summary_request = "Verify payment UTR and provide monthly payslip breakdown."
-            recommended_action = "Verify bank disbursement UTR and regenerate password-protected payslip."
-        confidence = 99.2
-
-    elif any(k in full_text for k in ["insurance", "mediclaim", "tpa", "health card", "hospital", "e-card"]):
-        intent_code = "PD01"
-        intent_name = "Group Health Insurance & TPA E-Card"
-        summary_issue = f"Employee {emp_name} requires digital TPA health e-card or policy verification for hospital admission."
-        summary_request = "Issue digital Mediclaim card and verify corporate policy coverage."
-        recommended_action = "Verify active employee enrollment in GMC master and provide MediBuddy TPA policy number."
-        confidence = 97.8
-
-    elif any(k in full_text for k in ["laptop", "battery", "macbook", "hardware", "vpn", "trackpad", "it"]):
-        intent_code = "IT01"
-        intent_name = "Hardware Diagnostic & Battery Service"
-        summary_issue = f"Device hardware failure or battery degradation reported at {entities['location']}."
-        summary_request = "Diagnostic inspection and hardware repair or loaner issuance."
-        recommended_action = "Schedule IT bench diagnostic and verify asset warranty status."
-        confidence = 96.5
-
-    else:
-        intent_code = "GN01"
-        intent_name = "General HR & Workplace Inquiry"
-        summary_issue = f"Employee submitted an inquiry regarding: {title}."
-        summary_request = "Review inquiry and provide resolution or policy guidance."
-        recommended_action = "Evaluate policy handbook and respond with appropriate guidance."
-        confidence = 94.0
+    intent_code = cls_res.get("intent_code") or "PD06"
+    intent_name = cls_res.get("intent_label") or "General HR & Workplace Inquiry"
+    confidence = float(cls_res.get("confidence") or 94.0)
+    sla_target_hours = 4 if has_urgency else int(cls_res.get("sla_hours") or c.get("sla_hours") or 24)
+    summary_issue = f"Employee inquiry routed to {cls_res.get('team_name') or dept_name} regarding: {title}."
+    summary_request = f"Process '{intent_name}' ({intent_code}) for {emp_name} within {sla_target_hours}h SLA."
+    recommended_action = f"Review query in {cls_res.get('team_name') or dept_name} desk ({intent_code}), verify HRMS details, and respond within target SLA."
 
     # 4. Multi-Tone Response Studio (Empathetic / Professional, Concise, Verify Docs)
     tones = {
         "empathetic": (
             f"Dear {emp_name},\n\n"
             f"Thank you for contacting the Tata 1mg People Desk regarding case #{case_num}.\n\n"
-            f"We have thoroughly investigated your inquiry regarding \"{title}\". Our department specialists have validated the turnstile/system logs at {entities['location']} and processed the requested regularization in our HRMS master.\n\n"
-            f"Your attendance status for {entities['shift']} now reflects as approved and 'Present - Regularized'. Please allow 15 minutes for the employee self-service portal to sync. Should you experience any further difficulty, please reply directly to this thread.\n\n"
+            f"Our {dept_name} specialist has received your inquiry regarding \"{title}\" and is reviewing your records in our HRMS portal.\n\n"
+            f"Please allow up to {sla_target_hours} hours for full verification and update. Should you have any additional details, simply reply to this email thread.\n\n"
             f"Warm regards,\n{dept_name}\nTata 1mg"
         ),
         "concise": (
             f"Hi {emp_name},\n\n"
-            f"Your request for case #{case_num} ({title}) has been verified and processed in HRMS for {entities['shift']} at {entities['location']}.\n\n"
-            f"Status: Resolved & Active.\nSync window: ~15 mins.\n\n"
+            f"Your request for case #{case_num} ({title}) is being processed by {dept_name} ({intent_code}).\n\n"
+            f"Target SLA: {sla_target_hours}h.\n\n"
             f"Best,\nTata 1mg People Desk"
         ),
         "verify_docs": (
             f"Dear {emp_name},\n\n"
             f"Thank you for reaching out to Tata 1mg People Desk regarding case #{case_num}.\n\n"
-            f"To complete the verification for your inquiry at {entities['location']}, please provide:\n"
-            f"1. Shift in-charge / Reporting Manager ({entities['manager']}) confirmation email\n"
-            f"2. Approximate turnstile in-out timestamp\n\n"
-            f"You may reply directly with these details so we can expedite your resolution.\n\n"
+            f"To expedite processing with {dept_name}, please reply with any supporting screenshots, dates, or Reporting Manager ({entities.get('manager', 'People Ops')}) confirmation if applicable.\n\n"
             f"Warm regards,\n{dept_name}\nTata 1mg"
         )
     }
@@ -427,13 +339,14 @@ def analyze_case_ai(c: dict) -> dict:
         "ai_draft_reply": tones["empathetic"],
         "tones": tones,
         "hrms_profile": entities,
-        "sla_target_hours": 12 if "HIGH" in urgency else 24
+        "sla_target_hours": sla_target_hours
     }
 
 @router.get("/cases")
 def list_cases(
     department_id: Optional[int] = None,
     department_ids: Optional[str] = None,
+    include_universal: bool = False,
     status: Optional[str] = None,
     priority: Optional[str] = None,
     assigned_user: Optional[str] = None,
@@ -454,8 +367,22 @@ def list_cases(
             target_dept_ids = []
     if department_id and department_id not in target_dept_ids:
         target_dept_ids.append(department_id)
+
+    skip_dept_filter = False
+    if include_universal and target_dept_ids:
+        placeholders = ", ".join(["%s"] * len(target_dept_ids))
+        depts = execute_query(
+            f"SELECT id, team_name, dept_code, category_code FROM hr_departments WHERE id IN ({placeholders});",
+            tuple(target_dept_ids),
+            fetch_all=True,
+        ) or []
+        for dept in depts:
+            scope_str = f"{dept.get('category_code') or ''} {dept.get('dept_code') or ''} {dept.get('team_name') or ''}".upper()
+            if "ALL_HR" in scope_str or "PEOPLEDESK" in scope_str or int(dept.get("id") or 0) == 11:
+                skip_dept_filter = True
+                break
         
-    if target_dept_ids:
+    if target_dept_ids and not skip_dept_filter:
         placeholders = ", ".join(["%s"] * len(target_dept_ids))
         where_clauses.append(f"c.department_id IN ({placeholders})")
         params.extend(target_dept_ids)
@@ -471,7 +398,7 @@ def list_cases(
     if assigned_user:
         clean_user = assigned_user.strip()
         if clean_user == "UNASSIGNED":
-            where_clauses.append("(c.assigned_user IS NULL OR c.assigned_user = '' OR c.assigned_user = 'Central Triage')")
+            where_clauses.append("(c.assigned_user IS NULL OR c.assigned_user = '' OR LOWER(c.assigned_user) IN ('central triage', 'unassigned'))")
         elif clean_user != "ALL":
             where_clauses.append("(LOWER(c.assigned_user) = LOWER(%s) OR LOWER(COALESCE(c.assigned_user_email, '')) = LOWER(%s))")
             params.extend([clean_user, clean_user])
@@ -1101,70 +1028,47 @@ def seed_dashboard_demo():
 @router.post("/cases/inbound")
 def create_inbound_case(req: CaseCreateRequest):
     """
-    Simulates inbound employee email ingest or query intake.
-    Generates sequenced 1MG ticket ID, sets SLA timer, assigns to Department Head, and records audit trail.
+    Creates an inbound employee case via unified 3-Stage AI routing.
+    Generates sequenced 1MG ticket ID, sets SLA timer, assigns dedicated Dept Head (or leaves unassigned), and records audit trail.
     """
-    # 1. Resolve department (or use 3-Stage AI routing)
     dept = None
     category_detected = None
+    cls_res = classify_inbound_email_ai(req.title, req.description)
     if req.department_id:
-        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code FROM hr_departments WHERE id = %s;", (req.department_id,), fetch_all=False)
+        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code, default_priority FROM hr_departments WHERE id = %s;", (req.department_id,), fetch_one=True)
     elif req.dept_code:
-        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code FROM hr_departments WHERE dept_code = %s;", (req.dept_code,), fetch_all=False)
-    else:
-        # Automated AI Routing Pipeline (Stage 1 Keyword Router)
-        try:
-            from backend.app.services.classifier_service import route_stage1_department, predict_intent
-            routed = route_stage1_department(req.title, req.description)
-            if routed.get("matched") and routed.get("department_id"):
-                dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code FROM hr_departments WHERE id = %s;", (routed["department_id"],), fetch_all=False)
-                category_detected = routed.get("category_code")
-        except Exception as e:
-            dept = None
-        
-    if not dept:
-        # Fallback to Central People Desk
-        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code FROM hr_departments WHERE dept_code = 'DEPT-PEOPLEDESK' LIMIT 1;", fetch_all=False)
-        if not dept:
-            dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code FROM hr_departments LIMIT 1;", fetch_all=False)
-            
-    dept_id = dept["id"] if dept else None
-    dept_name = dept["team_name"] if dept else "Central People Desk"
-    sla_hours = int(dept["sla_hours"]) if dept and dept.get("sla_hours") else 24
-    due_at = datetime.utcnow() + timedelta(hours=sla_hours)
-    
-    # 2. Find assigned user (Dept Head first, or any active agent)
-    assigned_user = "Central Triage"
-    assigned_email = None
-    if dept_id:
-        head = execute_query(
-            "SELECT name, email FROM users WHERE department_id = %s AND is_dept_head = TRUE AND status = 'ACTIVE' LIMIT 1;",
-            (dept_id,), fetch_all=False
-        )
-        if head:
-            assigned_user = head["name"]
-            assigned_email = head["email"]
-        else:
-            agent = execute_query(
-                "SELECT name, email FROM users WHERE department_id = %s AND status = 'ACTIVE' LIMIT 1;",
-                (dept_id,), fetch_all=False
-            )
-            if agent:
-                assigned_user = agent["name"]
-                assigned_email = agent["email"]
+        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code, default_priority FROM hr_departments WHERE dept_code = %s;", (req.dept_code,), fetch_one=True)
+    elif cls_res.get("department_id"):
+        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code, default_priority FROM hr_departments WHERE id = %s;", (cls_res["department_id"],), fetch_one=True)
+        category_detected = cls_res.get("category_code")
 
-    # 3. Generate collision-free case number
+    if not dept:
+        dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code, default_priority FROM hr_departments WHERE dept_code = 'DEPT-PEOPLEDESK' LIMIT 1;", fetch_one=True)
+        if not dept:
+            dept = execute_query("SELECT id, team_name, dept_code, sla_hours, category_code, default_priority FROM hr_departments ORDER BY id ASC LIMIT 1;", fetch_one=True)
+
+    dept_id = dept["id"] if dept else None
+    dept_name = dept["team_name"] if dept else "People Desk"
+    category_detected = category_detected or (dept.get("category_code") if dept else None) or "PEOPLEDESK"
+    sla_hours = int((dept.get("sla_hours") if dept else None) or cls_res.get("sla_hours") or 24)
+    due_at = datetime.utcnow() + timedelta(hours=sla_hours)
+
+    # Assign dedicated non-Admin Dept Head if available, otherwise Unassigned in Department Pool
+    head = find_department_assignee(dept_id)
+    assigned_user = head["name"] if head else None
+    assigned_email = head["email"] if head else None
+    assigned_user_id = head["id"] if head else None
+
     case_num = generate_case_number()
-    
-    # 4. Insert case record
+
     insert_sql = """
         INSERT INTO cases (
             case_number, employee_email, employee_name, title, description,
-            department_id, assigned_team, assigned_user, assigned_user_email,
+            category, department_id, assigned_team, assigned_user, assigned_user_email, assigned_user_id,
             status, priority, sla_hours, due_at, created_at, updated_at
         ) VALUES (
             %s, %s, %s, %s, %s,
-            %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s,
             'OPEN', %s, %s, %s, NOW(), NOW()
         ) RETURNING id, case_number, created_at;
     """
@@ -1172,18 +1076,18 @@ def create_inbound_case(req: CaseCreateRequest):
         insert_sql,
         (
             case_num, req.employee_email, req.employee_name, req.title, req.description,
-            dept_id, dept_name, assigned_user, assigned_email,
-            req.priority or "MEDIUM", sla_hours, due_at
+            category_detected, dept_id, dept_name, assigned_user, assigned_email, assigned_user_id,
+            req.priority or cls_res.get("default_priority") or "MEDIUM", sla_hours, due_at
         ),
         fetch_one=True,
         commit=True
     )
-    
-    # 5. Record forensic audit log
+
     audit_details = json.dumps({
         "title": req.title,
+        "category": category_detected,
         "department": dept_name,
-        "assigned_to": assigned_user
+        "assigned_to": assigned_user or "Unassigned"
     })
     execute_query(
         """
@@ -1193,25 +1097,18 @@ def create_inbound_case(req: CaseCreateRequest):
         (new_case["id"], case_num, req.employee_email, req.employee_name, audit_details),
         commit=True
     )
-    
-    # Dispatch official Case Confirmation Email to employee
+
     try:
         from backend.app.services.email_service import send_case_confirmation_email
-        dept_info = execute_query(
-            "SELECT team_name, dept_gmail, dept_app_password FROM hr_departments WHERE id = %s;",
-            (dept_id,),
-            fetch_one=True
-        ) or {}
-        dept_display = dept_info.get("team_name") or dept_name or "People Desk"
         send_case_confirmation_email(
             recipient_email=req.employee_email,
             employee_name=req.employee_name or "Colleague",
             case_number=case_num,
             case_subject=req.title,
-            department_name=dept_display,
+            department_name=dept_name,
             target_sla=f"{sla_hours}h SLA",
             priority=req.priority or "MEDIUM",
-            assigned_specialist=assigned_user
+            assigned_specialist=assigned_user or f"{dept_name} Queue"
         )
     except Exception as notify_err:
         logger.warning(f"Failed to send case confirmation email for {case_num}: {notify_err}")
@@ -1223,7 +1120,7 @@ def create_inbound_case(req: CaseCreateRequest):
             "id": new_case["id"],
             "case_number": case_num,
             "department": dept_name,
-            "assigned_to": assigned_user,
+            "assigned_to": assigned_user or "Unassigned",
             "due_at": due_at.isoformat()
         }
     }
@@ -1406,7 +1303,7 @@ def get_dashboard_stats(timeframe: Optional[str] = "7d"):
     in_progress = int((execute_query("SELECT COUNT(*) as count FROM cases WHERE status IN ('OPEN', 'IN_PROGRESS', 'WAITING_ON_EMPLOYEE');", fetch_one=True) or {}).get("count", 0))
     resolved_cases = int((execute_query(f"SELECT COUNT(*) as count FROM cases WHERE status IN ('RESOLVED', 'CLOSED') AND (resolved_at >= NOW() - INTERVAL '{interval_str}' OR created_at >= NOW() - INTERVAL '{interval_str}');", fetch_one=True) or {}).get("count", 0))
     breached_cases = int((execute_query("SELECT COUNT(*) as count FROM cases WHERE status NOT IN ('RESOLVED', 'CLOSED') AND due_at < NOW();", fetch_one=True) or {}).get("count", 0))
-    urgent_cases_count = int((execute_query("SELECT COUNT(*) as count FROM cases WHERE priority = 'HIGH' AND status NOT IN ('RESOLVED', 'CLOSED');", fetch_one=True) or {}).get("count", 0))
+    urgent_cases_count = int((execute_query("SELECT COUNT(*) as count FROM cases WHERE priority IN ('HIGH', 'CRITICAL') AND status NOT IN ('RESOLVED', 'CLOSED');", fetch_one=True) or {}).get("count", 0))
     active_agents = int((execute_query("SELECT COUNT(*) as count FROM users WHERE status = 'ACTIVE';", fetch_one=True) or {}).get("count", 0))
     departments_count = int((execute_query("SELECT COUNT(*) as count FROM hr_departments;", fetch_one=True) or {}).get("count", 0))
 
@@ -2491,319 +2388,12 @@ class ConvertEmailRequest(BaseModel):
     actor_email: Optional[str] = "agent@1mg.com"
     actor_name: Optional[str] = "HR Specialist"
 
-def is_automated_newsletter_or_noise(sender_name: str, sender_email: str, subject: str, body: str) -> bool:
-    """
-    Accurately identifies automated newsletters, promotional vendor blasts, and system notifications.
-    """
-    s_email = (sender_email or "").strip().lower()
-    s_name = (sender_name or "").strip().lower()
-    combined = f"{subject} {body}".lower()
-
-    # 1. Known Vendor & Marketing Domains
-    noise_domains = [
-        "adobe.com", "cerebralvalley.ai", "artha.link", "render.com", "neon.tech",
-        "oreilly.com", "geeksforgeeks.org", "coderabbit.ai", "google.com",
-        "github.com", "linkedin.com", "twitter.com", "x.com", "facebook.com",
-        "instagram.com", "medium.com", "substack.com", "mailchimp.com",
-        "sendgrid.net", "intercom-mail.com", "hubspot.com", "salesforce.com",
-        "canva.com", "figma.com", "notion.so", "slack.com", "atlassian.net",
-        "zoom.us", "spotify.com", "netflix.com", "swiggy.in", "zomato.com"
-    ]
-    for dom in noise_domains:
-        if s_email.endswith(f"@{dom}") or f".{dom}" in s_email or f"@{dom}" in s_email:
-            return True
-
-    # 2. Automated / Robot Sender Prefixes
-    noise_sender_patterns = [
-        "noreply", "no-reply", "do-not-reply", "donotreply", "newsletter",
-        "marketing", "promotions", "mailer", "digest", "updates", "offers",
-        "billing", "payments-noreply", "notifications", "support@coderabbit",
-        "security-alert", "hello@", "team@", "info@", "news@", "editor@", "changelog"
-    ]
-    if any(pat in s_email for pat in noise_sender_patterns):
-        return True
-
-    # 3. Known Marketing/Alert Subject or Body Signatures
-    marketing_triggers = [
-        "view web version", "this is a marketing email",
-        "click on the following link to unsubscribe", "click here to unsubscribe",
-        "unsubscribe from this list", "manage your email preferences",
-        "manage preferences", "to unsubscribe", "privacy policy | unsubscribe",
-        "terms of service | privacy policy", "save on creative cloud",
-        "creative cloud", "introducing gemini", "save up to",
-        "diwali offers and greetings", "week of october", "week of november",
-        "weekly digest", "monthly newsletter", "special offers",
-        "save on pro", "save on plan", "product update", "changelog", "release notes"
-    ]
-    for trig in marketing_triggers:
-        if trig in combined:
-            return True
-
-    return False
-
 def extract_ai_email_entities(email_row: dict) -> dict:
     """
-    Intelligent AI entity extractor for incoming raw employee correspondence:
-    - Detects employee code (EMP1024, 1MG123, etc.)
-    - Extracts sender sign-off name ('Regards, Priya Singh') even if sent from personal Gmail
-    - Cross-references against HRMS directory
-    - Classifies category, intent code, SLA deadline, confidence score
-    - Pre-generates 3-tone contextual drafts (Empathetic, Concise, Verify Docs)
+    Delegates inbound email AI entity extraction, HRMS employee verification,
+    and 3-stage department/intent classification to the unified routing service.
     """
-    body = email_row.get("body") or ""
-    subject = email_row.get("subject") or ""
-    sender_name = email_row.get("sender_name") or ""
-    sender_email = email_row.get("sender_email") or ""
-    text_content = f"{subject}\n{body}"
-
-    # 0. Noise / Marketing / Vendor Alert Detection
-    if is_automated_newsletter_or_noise(sender_name, sender_email, subject, body):
-        vendor_label = sender_name if (sender_name and sender_name != "Employee") else "External Vendor / Newsletter"
-        return {
-            "detected_name": f"Vendor: {vendor_label}",
-            "detected_code": None,
-            "category": "SYSTEM_ALERT",
-            "intent_code": "SYS01",
-            "intent_label": "Automated Marketing / Vendor Newsletter (Noise)",
-            "target_sla": "No SLA (Noise / Non-Actionable)",
-            "is_urgent": False,
-            "confidence": 99.8,
-            "is_noise": True,
-            "is_actionable": 0,
-            "matched_employee": {
-                "employee_id": None,
-                "name": vendor_label,
-                "email": sender_email,
-                "department": "External Inbound (Non-Employee)",
-                "designation": "Automated Inbound / Vendor",
-                "manager_name": "—",
-                "location": "External",
-                "is_verified": False,
-                "is_noise": True
-            },
-            "drafts": {
-                "empathetic": "This email has been identified as an automated marketing newsletter or vendor alert. No employee response is required.",
-                "concise": "Automated external mailer. No action required.",
-                "verify_docs": "Automated external mailer. No action required."
-            }
-        }
-
-    # 1. Detect Employee Code / Token
-    emp_code_match = re.search(r'\b(EMP\d+|1MG\d+|NUNUX\d+)\b', text_content, re.IGNORECASE)
-    detected_code = emp_code_match.group(0).upper() if emp_code_match else None
-
-    # 2. Detect Employee Name from body (structured notification, sign-off, or salutation)
-    struct_name_match = re.search(r'(?:Employee\s*(?:/\s*Client)?|Employee\s*Name)\s*:\s*([A-Za-z]+(?:\s+[A-Za-z]+)+)', body, re.IGNORECASE)
-    signoff_name_match = re.search(r'(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you)[\s,]*\r?\n\s*([A-Za-z]+(?:\s+[A-Za-z]+)+)', body, re.IGNORECASE)
-    salutation_match = re.search(r'(?:Hello|Dear|Hi)\s+([A-Za-z]+(?:\s+[A-Za-z]+)+)[\s,]', body, re.IGNORECASE)
-
-    detected_name = None
-    if struct_name_match:
-        detected_name = struct_name_match.group(1).strip()
-    elif signoff_name_match:
-        detected_name = signoff_name_match.group(1).strip()
-    elif salutation_match and (not sender_name or any(k in sender_name.lower() for k in ["operations", "flow", "portal", "system", "desk", "support", "admin", "hr", "notification"])):
-        detected_name = salutation_match.group(1).strip()
-
-    # Fallback to sender display name if not a system/vendor alert
-    if not detected_name:
-        if sender_name and not any(k in sender_name.lower() for k in ["gitguardian", "lottiefiles", "security", "noreply", "alert", "system", "newsletter", "flow operations", "hr flow"]):
-            detected_name = sender_name.strip()
-        else:
-            detected_name = "Employee"
-
-    # 3. Match against HRMS employees table
-    matched_employee = None
-    conditions = []
-    emp_params = []
-    if detected_code:
-        conditions.append("employee_id = %s")
-        emp_params.append(detected_code)
-    if sender_email:
-        conditions.append("LOWER(email) = LOWER(%s)")
-        emp_params.append(sender_email.strip())
-    if detected_name and detected_name != "Employee":
-        conditions.append("LOWER(name) = LOWER(%s)")
-        emp_params.append(detected_name.strip())
-
-    if conditions:
-        try:
-            match_query = f"""
-                SELECT id, employee_id, name, email, department, designation, manager_name, location
-                FROM employees
-                WHERE {' OR '.join(conditions)}
-                LIMIT 1;
-            """
-            emp_record = execute_query(
-                match_query,
-                tuple(emp_params),
-                fetch_all=False
-            )
-            if emp_record:
-                matched_employee = {
-                    "id": emp_record.get("id"),
-                    "employee_id": emp_record.get("employee_id"),
-                    "name": emp_record.get("name"),
-                    "email": emp_record.get("email"),
-                    "department": emp_record.get("department") or "Operations",
-                    "designation": emp_record.get("designation") or "Associate",
-                    "manager_name": emp_record.get("manager_name") or "Vikram Malhotra",
-                    "location": emp_record.get("location") or "Gurugram DC Hub",
-                    "is_verified": True
-                }
-                if not detected_code:
-                    detected_code = emp_record.get("employee_id")
-                if not detected_name or detected_name == "Employee":
-                    detected_name = emp_record.get("name")
-        except Exception as e:
-            logger.warning(f"Error looking up employee: {e}")
-
-    is_domain_verified = (sender_email or "").strip().lower().endswith("@1mg.com")
-    requires_emp_id = (not is_domain_verified and not detected_code)
-    emp_id_status = "AWAITING_EMP_ID" if requires_emp_id else ("VERIFIED_1MG" if is_domain_verified else "VERIFIED_EXT_CODE")
-
-    if not matched_employee:
-        matched_employee = {
-            "employee_id": detected_code or None,
-            "name": detected_name or "Employee",
-            "email": sender_email,
-            "department": "Attendance Management" if "attendance" in text_content.lower() else "General People Desk",
-            "designation": "Tata 1mg Staff" if is_domain_verified else "External Inbound",
-            "manager_name": "People Operations",
-            "location": "—",
-            "is_verified": is_domain_verified or bool(detected_code),
-            "requires_emp_id": requires_emp_id
-        }
-
-    # 4. Intent & Category Classification
-    cat = (email_row.get("category") or "").upper()
-    lower_text = text_content.lower()
-    if not cat or cat == "UNKNOWN":
-        if any(w in lower_text for w in ["background verification", "bgv", "employment verification", "previous employer", "onboarding", "apex solutions"]):
-            cat = "ONBOARDING"
-        elif any(w in lower_text for w in ["attendance", "punch", "biometric", "swipe", "absent", "shift", "turnstile"]):
-            cat = "ATTENDANCE"
-        elif any(w in lower_text for w in ["leave", "sick leave", "casual leave", "maternity", "paternity", "privilege leave"]):
-            cat = "LEAVE"
-        elif any(w in lower_text for w in ["salary", "payslip", "tds", "form 16", "payroll", "deduction", "tax"]):
-            cat = "PAYROLL"
-        elif any(w in lower_text for w in ["insurance", "mediclaim", "tpa", "policy", "card", "hospital"]):
-            cat = "BENEFITS"
-        elif any(w in lower_text for w in ["resignation", "formal resignation", "relieving", "notice period", "exit clearance", "fnf settlement"]):
-            cat = "RESIGNATION"
-        elif any(w in lower_text for w in ["gitguardian", "lottiefiles", "github", "password", "newsletter", "webflow"]):
-            cat = "SYSTEM_ALERT"
-        else:
-            cat = "GENERAL_HR"
-
-    # Intent Code, Intent Label, Target SLA, Confidence Score
-    intent_map = {
-        "ONBOARDING": ("BG01", "Background & Employment Verification", "12h Target SLA", 98.7),
-        "ATTENDANCE": ("AT01", "Biometric Punch Regularization", "12h Target SLA", 98.4),
-        "LEAVE": ("LV02", "Privilege & Sick Leave Reconciliation", "24h Target SLA", 97.2),
-        "PAYROLL": ("PY01", "TDS Computation & Salary Discrepancy", "24h Target SLA", 96.8),
-        "BENEFITS": ("BN03", "Group Medical E-Card & TPA Ingest", "4h Urgent SLA", 99.1),
-        "RESIGNATION": ("RS01", "Formal Resignation & Exit Clearance", "24h Target SLA", 99.4),
-        "GENERAL_HR": ("GH01", "General People Operations Query", "48h Target SLA", 92.5),
-        "SYSTEM_ALERT": ("SYS01", "Automated External Alert / Newsletter", "No SLA (Noise)", 99.9)
-    }
-    intent_code, intent_label, target_sla, confidence = intent_map.get(cat, ("GH01", "HR Inquiry", "24h SLA", 95.0))
-
-    # Dynamic Urgency calculation
-    is_urgent = any(w in lower_text for w in ["urgent", "immediate", "hospital", "admission", "scanner failure", "salary hold", "breach", "pending verification"])
-    if is_urgent:
-        target_sla = "4h Urgent SLA"
-
-    # 5. Pre-generate 3-Tone Contextual Response Drafts
-    if "background verification" in lower_text or "bgv" in lower_text or "apex solutions" in lower_text:
-        drafts = {
-            "empathetic": (
-                f"Dear {detected_name},\n\n"
-                f"Thank you for reaching out regarding your background verification status (Employee ID: {detected_code or 'EMP1023'}). "
-                f"We completely understand the importance of having your employment records verified smoothly and on time.\n\n"
-                f"Our onboarding desk has checked your verification ticket and has re-escalated the verification dispatch with your previous employer (Apex Solutions) today. "
-                f"We are monitoring this actively and will provide confirmation within {target_sla}.\n\n"
-                f"Please let us know if any additional assistance is needed in the interim.\n\n"
-                f"Warm regards,\nTata 1mg People Operations"
-            ),
-            "concise": (
-                f"Hi {detected_name},\n\n"
-                f"Your background verification query for Employee ID {detected_code or 'EMP1023'} has been received. "
-                f"We have checked with our verification portal and re-shared the employment verification request with Apex Solutions today. "
-                f"Expected turnaround is within {target_sla}.\n\n"
-                f"Best regards,\nTata 1mg Onboarding Team"
-            ),
-            "verify_docs": (
-                f"Dear {detected_name},\n\n"
-                f"We have reviewed your pending background verification record for Apex Solutions. To expedite manual sign-off in case their HR desk has processing queues, "
-                f"please reply with your relieving letter or former HR coordinator contact email if readily available.\n\n"
-                f"Employee ID: {detected_code or 'EMP1023'}\n\n"
-                f"Regards,\nTata 1mg Verification Desk"
-            )
-        }
-    elif cat == "RESIGNATION":
-        drafts = {
-            "empathetic": (
-                f"Dear {detected_name},\n\n"
-                f"We have acknowledged receipt of your resignation notice (Employee ID: {detected_code or 'EMP'}). "
-                f"We value your contributions to Tata 1mg and our People Desk team will assist you throughout your notice period and exit clearance.\n\n"
-                f"Your dedicated HR specialist will connect with you within {target_sla} regarding transition milestones, handover steps, and final settlement details.\n\n"
-                f"Warm regards,\nTata 1mg People Desk"
-            ),
-            "concise": (
-                f"Hi {detected_name},\n\n"
-                f"Your resignation notice (Employee ID: {detected_code or 'EMP'}) has been received and logged. "
-                f"Exit documentation and transition procedures are being initiated within {target_sla}.\n\n"
-                f"Best regards,\nTata 1mg People Desk"
-            ),
-            "verify_docs": (
-                f"Dear {detected_name},\n\n"
-                f"Your resignation request is registered under case tracking. "
-                f"Please ensure your reporting manager is informed to confirm last working day and project handover.\n\n"
-                f"Employee ID: {detected_code or 'EMP'}\nLocation: {matched_employee.get('location')}\n\n"
-                f"Regards,\nTata 1mg People Operations"
-            )
-        }
-    else:
-        drafts = {
-            "empathetic": (
-                f"Dear {detected_name},\n\n"
-                f"Thank you for contacting Tata 1mg People Operations regarding: \"{subject}\". "
-                f"We understand how important this is to your work and peace of mind. We have cross-checked your records "
-                f"(Employee ID: {detected_code or 'EMP'}) and our desk specialist is reviewing this with the operations team right now.\n\n"
-                f"We will update you with confirmation within {target_sla}. Please let us know if you need anything else in the meantime.\n\n"
-                f"Warm regards,\nTata 1mg People Desk"
-            ),
-            "concise": (
-                f"Hi {detected_name},\n\n"
-                f"Your request regarding \"{subject}\" has been received and verified for Employee ID {detected_code or 'EMP'}. "
-                f"Our desk is processing this inquiry under ticket SLA ({target_sla}). You will receive confirmation shortly.\n\n"
-                f"Best regards,\nTata 1mg Operations Team"
-            ),
-            "verify_docs": (
-                f"Dear {detected_name},\n\n"
-                f"We have initiated processing for: \"{subject}\". To help us expedite approval with the site coordinator, "
-                f"please reply with your shift details or supervisor sign-off if available.\n\n"
-                f"Employee Code: {detected_code or 'EMP'}\nLocation: {matched_employee.get('location')}\n\n"
-                f"Regards,\nTata 1mg Verification Desk"
-            )
-        }
-
-    return {
-        "detected_name": detected_name,
-        "detected_code": detected_code,
-        "category": cat,
-        "intent_code": intent_code,
-        "intent_label": intent_label,
-        "target_sla": target_sla,
-        "is_urgent": is_urgent,
-        "confidence": confidence,
-        "is_domain_verified": is_domain_verified,
-        "requires_emp_id": requires_emp_id,
-        "emp_id_status": emp_id_status,
-        "matched_employee": matched_employee,
-        "drafts": drafts
-    }
+    return build_email_ai_insights(email_row)
 
 @router.get("/inbox/emails")
 def get_inbox_emails(
@@ -3138,152 +2728,55 @@ def get_inbox_email_detail(email_id: int):
 @router.post("/inbox/emails/{email_id}/convert-to-case")
 def convert_email_to_case(email_id: int, req: ConvertEmailRequest):
     """
-    One-click Conversion of an inbound email into an Active Tracked Case (1MG-XXXXX).
+    One-click Conversion of an inbound email into an Active Tracked Case (1MGXXXXX).
     Binds SLA clock, creates audit trail, updates emails table with case link.
     """
     email_row = execute_query(
         "SELECT * FROM emails WHERE id = %s;",
         (email_id,),
-        fetch_all=False
+        fetch_one=True
     )
     if not email_row:
         raise HTTPException(status_code=404, detail="Email record not found")
 
-    # If already converted, return existing case
-    if email_row.get("is_converted") and email_row.get("case_id"):
-        existing_case = execute_query("SELECT * FROM cases WHERE id = %s;", (email_row["case_id"],), fetch_all=False)
-        return {
-            "success": True,
-            "message": f"Already converted to Case {email_row.get('case_number')}",
-            "case": existing_case,
-            "case_number": email_row.get("case_number")
-        }
-
-    # Extract AI entity insights
-    ai_data = extract_ai_email_entities(email_row)
-    case_num = generate_case_number()
-    subject = email_row.get("subject") or "Employee Inbound Inquiry"
-    body = email_row.get("body") or ""
-    emp_name = ai_data["detected_name"] or email_row.get("sender_name") or "Tata 1mg Employee"
-    emp_email = email_row.get("sender_email") or "employee@1mg.com"
-    dept_id = req.department_id or email_row.get("department_id") or 11
-    priority = req.priority or ("HIGH" if ai_data["is_urgent"] else "MEDIUM")
-    assigned = email_row.get("assigned_user_name") or req.assigned_user or "Unassigned"
-    assigned_email = email_row.get("assigned_user_email") or req.actor_email or settings.ADMIN_EMAIL
-
-    # Fetch department metadata
-    dept_info = execute_query(
-        "SELECT id, team_name, sla_hours, dept_gmail, dept_app_password FROM hr_departments WHERE id = %s;",
-        (dept_id,),
-        fetch_one=True
-    ) or {}
-    dept_name = dept_info.get("team_name") or "People Desk"
-    sla_hours = int(dept_info.get("sla_hours") or 24)
-
-    # Resolve Employee profile & code
-    emp_db_id = email_row.get("employee_id")
-    emp_code = None
-    if emp_db_id:
-        emp_record = execute_query("SELECT id, employee_id, name, email FROM employees WHERE id = %s LIMIT 1;", (emp_db_id,), fetch_one=True)
-        if emp_record:
-            emp_name = emp_record.get("name") or emp_name
-            emp_code = emp_record.get("employee_id")
-    elif ai_data.get("detected_code"):
-        emp_code = ai_data.get("detected_code")
-
-    # Append thread history and employee replies into the case description
-    child_replies = execute_query(
-        "SELECT body, sender_name, received_at FROM emails WHERE parent_id = %s ORDER BY received_at ASC;",
-        (email_id,),
-        fetch_all=True
-    ) or []
-    combined_body = body
-    if child_replies:
-        combined_body += "\n\n--- Thread History & Employee Replies ---"
-        for cr in child_replies:
-            combined_body += f"\n\n[{cr.get('sender_name', 'Employee')}]:\n{cr.get('body', '')}"
-
-    # Insert into cases table
-    insert_case_query = """
-        INSERT INTO cases (
-            case_number, title, description, employee_name, employee_email, employee_id, employee_code,
-            category, department_id, assigned_team, assigned_user, assigned_user_email,
-            priority, status, sla_hours, due_at, created_at, updated_at
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s,
-            %s, 'OPEN', %s, NOW() + (%s || ' hours')::INTERVAL, NOW(), NOW()
-        ) RETURNING id, case_number, title, employee_name, priority, status;
-    """
-    new_case = execute_query(
-        insert_case_query,
-        (
-            case_num, subject, combined_body, emp_name, emp_email, emp_db_id, emp_code,
-            email_row.get("category") or ai_data.get("category") or "INQUIRY",
-            dept_id, dept_name, assigned, assigned_email,
-            priority, sla_hours, str(sla_hours)
-        ),
-        fetch_one=True
-    )
-
-    if not new_case:
-        raise HTTPException(status_code=500, detail="Failed to create case from email")
-
-    case_id = new_case["id"]
-
-    # Update emails table with conversion reference (both root and child replies)
-    execute_query(
-        """
-        UPDATE emails
-        SET is_converted = 1, case_id = %s, case_number = %s, updated_at = NOW()
-        WHERE id = %s OR parent_id = %s;
-        """,
-        (case_id, case_num, email_id, email_id)
-    )
-
-    # Forensic audit log entry with JSONB details
-    audit_data = json.dumps({
-        "message": f"Email #{email_id} ({subject[:60]}) converted to Active Case {case_num} for {emp_name} ({emp_email})",
-        "email_id": email_id,
-        "employee_code": emp_code,
-        "department": dept_name,
-        "assigned_user": assigned
-    })
-    execute_query(
-        """
-        INSERT INTO audit_logs (case_id, case_number, actor_email, actor_name, action, details, created_at)
-        VALUES (%s, %s, %s, %s, 'CONVERT_FROM_INBOX', %s::jsonb, NOW());
-        """,
-        (case_id, case_num, req.actor_email or "system@1mg.com", req.actor_name or "HR Specialist", audit_data)
-    )
-
-    # Dispatch official Case Confirmation Email to employee
-    try:
-        from backend.app.services.email_service import send_case_confirmation_email
-        send_case_confirmation_email(
-            recipient_email=emp_email,
-            employee_name=emp_name,
-            case_number=case_num,
-            case_subject=subject,
-            department_name=dept_name,
-            target_sla=ai_data.get("target_sla", f"{sla_hours}h SLA"),
-            priority=priority,
-            assigned_specialist=assigned
+    if email_row.get("is_actionable") == 0:
+        execute_query(
+            "UPDATE emails SET is_actionable = 1, updated_at = NOW() WHERE id = %s;",
+            (email_id,),
+            commit=True
         )
-    except Exception as notify_err:
-        logger.warning(f"Failed to send case confirmation email for {case_num}: {notify_err}")
+        email_row["is_actionable"] = 1
+
+    ai_data = extract_ai_email_entities(email_row)
+    res = create_case_from_email_record(
+        email_id=email_id,
+        email_row=email_row,
+        ai_insights=ai_data,
+        override_dept_id=req.department_id,
+        override_priority=req.priority,
+        override_assigned_user=req.assigned_user,
+        actor_email=req.actor_email or ADMIN_EMAIL,
+        actor_name=req.actor_name or "HR Specialist",
+        send_confirmation=True,
+        action_name="CONVERT_FROM_INBOX",
+    )
+    if not res.get("success"):
+        raise HTTPException(status_code=500, detail=res.get("message") or "Failed to create case from email")
 
     return {
         "success": True,
-        "message": f"Successfully converted to Case {case_num}",
-        "case": new_case,
-        "case_number": case_num
+        "message": res.get("message") or f"Successfully converted to Case {res.get('case_number')}",
+        "case": res.get("case"),
+        "case_id": res.get("case_id"),
+        "case_number": res.get("case_number"),
+        "department_id": res.get("department_id"),
+        "department_name": res.get("department_name"),
     }
 
 @router.post("/inbox/emails/{email_id}/toggle-actionable")
 def toggle_email_actionable(email_id: int):
-    """Toggle an email between Actionable (Useful) and Noise (System/Marketing)."""
-    email_row = execute_query("SELECT id, is_actionable FROM emails WHERE id = %s;", (email_id,), fetch_all=False)
+    """Toggle an email between Actionable (Useful -> Auto-Case) and Noise (System/Marketing)."""
+    email_row = execute_query("SELECT * FROM emails WHERE id = %s;", (email_id,), fetch_one=True)
     if not email_row:
         raise HTTPException(status_code=404, detail="Email record not found")
 
@@ -3292,10 +2785,50 @@ def toggle_email_actionable(email_id: int):
 
     execute_query(
         "UPDATE emails SET is_actionable = %s, updated_at = NOW() WHERE id = %s;",
-        (new_val, email_id)
+        (new_val, email_id),
+        commit=True
     )
+
+    case_id = email_row.get("case_id")
+    case_number = email_row.get("case_number")
+    dept_name = None
+
+    if new_val == 1 and not (email_row.get("is_converted") and case_id):
+        # Force real HR classification on previously suppressed email and auto-assign Case Number
+        reclass_row = dict(email_row)
+        reclass_row["category"] = None
+        ai_data = build_email_ai_insights(reclass_row)
+        if ai_data.get("is_noise"):
+            # Explicit agent override: bypass noise gate and run classifier directly
+            ai_data = classify_inbound_email_ai(email_row.get("subject") or "", email_row.get("body") or "")
+            ai_data["category"] = ai_data.get("category_code") or "PEOPLEDESK"
+        case_res = create_case_from_email_record(
+            email_id=email_id,
+            email_row=email_row,
+            ai_insights=ai_data,
+            override_dept_id=ai_data.get("department_id"),
+            send_confirmation=True,
+            action_name="AUTO_CASE_CREATED",
+        )
+        if case_res.get("success"):
+            case_id = case_res.get("case_id")
+            case_number = case_res.get("case_number")
+            dept_name = case_res.get("department_name")
+
     status_label = "Useful / Actionable" if new_val == 1 else "Noise / System Alert"
-    return {"success": True, "is_actionable": new_val, "message": f"Email marked as {status_label}"}
+    msg = (
+        f"Email marked as Useful and auto-assigned Case {case_number} ({dept_name})"
+        if (new_val == 1 and case_number)
+        else f"Email marked as {status_label}"
+    )
+    return {
+        "success": True,
+        "is_actionable": new_val,
+        "case_id": case_id,
+        "case_number": case_number,
+        "department_name": dept_name,
+        "message": msg,
+    }
 
 @router.post("/inbox/emails/{email_id}/mark-read")
 def mark_inbox_email_read(email_id: int, req: Optional[MarkEmailReadRequest] = None):
@@ -3374,7 +2907,8 @@ def transfer_inbox_email(email_id: int, req: EmailTransferRequest):
             updated_at = NOW()
         WHERE id = %s OR parent_id = %s;
         """,
-        (req.target_department_id, req.assigned_user_id, assigned_name, assigned_email, req.notes, email_id, email_id)
+        (req.target_department_id, req.assigned_user_id, assigned_name, assigned_email, req.notes, email_id, email_id),
+        commit=True
     )
 
     # If linked to a case, update the case too
@@ -3390,7 +2924,8 @@ def transfer_inbox_email(email_id: int, req: EmailTransferRequest):
                 updated_at = NOW()
             WHERE id = %s;
             """,
-            (req.target_department_id, dept_name, assigned_name, assigned_email, req.assigned_user_id, email_row["case_id"])
+            (req.target_department_id, dept_name, assigned_name, assigned_email, req.assigned_user_id, email_row["case_id"]),
+            commit=True
         )
 
     # Forensic audit log
@@ -3417,11 +2952,12 @@ def transfer_inbox_email(email_id: int, req: EmailTransferRequest):
         (
             email_row.get("case_id"),
             email_row.get("case_number"),
-            req.user_email or settings.ADMIN_EMAIL,
+            req.user_email or ADMIN_EMAIL,
             req.user_name or "Department Head",
             action_type,
             audit_data
-        )
+        ),
+        commit=True
     )
 
     return {
@@ -3499,72 +3035,59 @@ class EmailIngestRequest(BaseModel):
 @router.post("/inbox/ingest")
 def ingest_inbound_email(payload: EmailIngestRequest):
     """
-    Ingests an authentic inbound corporate email into Tata 1mg People Desk.
-    Performs AI extraction, entity recognition, HRMS directory verification,
-    intelligent category mapping, and routes to the proper desk queue.
+    Ingests an inbound corporate email into Tata 1mg People Desk.
+    Runs AI entity extraction, HRMS verification, Stage 1+2 department detection,
+    and automatically creates & assigns a tracked Case (1MGXXXXX) when actionable.
     """
     sender_email = (payload.sender_email or "").strip()
     if not sender_email or "@" not in sender_email:
         raise HTTPException(status_code=400, detail="A valid sender email address is required.")
-    
+
     subject = (payload.subject or "").strip()
     if not subject:
         raise HTTPException(status_code=400, detail="Email subject is required.")
-        
+
     body = (payload.body or "").strip()
     if not body:
         raise HTTPException(status_code=400, detail="Email body is required.")
 
-    # Preliminary row for AI extraction
+    is_noise_mail = is_automated_newsletter_or_noise(
+        payload.sender_name or "", sender_email, subject, body
+    )
     temp_row = {
         "sender_name": payload.sender_name,
         "sender_email": sender_email,
         "subject": subject,
         "body": body,
-        "category": payload.category
+        "category": payload.category or ("SYSTEM_ALERT" if is_noise_mail else None),
     }
-    
-    # Run full AI entity extraction & triage
-    ai_insights = extract_ai_email_entities(temp_row)
-    
-    # Resolve category
-    resolved_category = payload.category or ai_insights.get("category") or "INQUIRY"
-    
-    # Resolve department_id
-    dept_id = payload.department_id
-    if not dept_id:
-        dept_match = execute_query(
-            "SELECT id FROM hr_departments WHERE category_code = %s OR dept_code = %s LIMIT 1;",
-            (resolved_category, f"DEPT-{resolved_category}"),
-            fetch_all=False
-        )
-        if dept_match:
-            dept_id = dept_match.get("id")
-        else:
-            first_dept = execute_query("SELECT id FROM hr_departments ORDER BY id ASC LIMIT 1;", fetch_all=False)
-            dept_id = first_dept.get("id") if first_dept else 6
 
-    # Actionable vs noise
+    ai_insights = build_email_ai_insights(temp_row)
+    resolved_category = payload.category or ai_insights.get("category") or "PEOPLEDESK"
+    dept_id = payload.department_id or ai_insights.get("department_id") or 11
+
     is_act = payload.is_actionable
     if is_act is None:
-        is_act = 0 if resolved_category == "SYSTEM_ALERT" else 1
+        is_act = 0 if (is_noise_mail or ai_insights.get("is_noise") or resolved_category in ("SYSTEM_ALERT", "NEWSLETTER", "SPAM", "MARKETING")) else 1
 
-    # Employee ID if matched in employees table
-    matched_emp = ai_insights.get("employee_profile") or {}
-    emp_db_id = matched_emp.get("id")
+    matched_emp = ai_insights.get("matched_employee") or {}
+    emp_db_id = matched_emp.get("id") if isinstance(matched_emp, dict) else None
 
-    # Insert into emails table
     insert_query = """
         INSERT INTO emails (
             provider, account_email, sender_name, sender_email, subject, body,
-            received_at, category, department_id, employee_id, is_actionable, is_converted,
-            classification_status, processing_status, created_at, updated_at
+            received_at, category, category_confidence, intent, intent_score,
+            requires_review, category_reason, department_id, employee_id,
+            is_actionable, is_converted, classification_status, processing_status,
+            created_at, updated_at
         ) VALUES (
             'INBOUND_API', 'peopledesk@1mg.com', %s, %s, %s, %s,
-            COALESCE(%s::timestamptz, NOW()), %s, %s, %s, %s, 0,
-            'CLASSIFIED', 'COMPLETED', NOW(), NOW()
+            COALESCE(%s::timestamptz, NOW()), %s, %s, %s, %s,
+            %s, %s, %s, %s,
+            %s, 0, 'CLASSIFIED', 'COMPLETED',
+            NOW(), NOW()
         )
-        RETURNING id, sender_name, sender_email, subject, body, received_at, category, department_id, is_actionable, is_converted, created_at;
+        RETURNING id, sender_name, sender_email, subject, body, received_at, category, department_id, employee_id, is_actionable, is_converted, actionable_reason, created_at;
     """
     new_email = execute_query(
         insert_query,
@@ -3575,43 +3098,57 @@ def ingest_inbound_email(payload: EmailIngestRequest):
             body,
             payload.received_at,
             resolved_category,
+            ai_insights.get("confidence_ratio"),
+            ai_insights.get("intent_code"),
+            ai_insights.get("confidence"),
+            ai_insights.get("requires_review", 0),
+            ai_insights.get("routing_source", "STAGE1_KEYWORDS"),
             dept_id,
             emp_db_id,
-            is_act
+            is_act,
         ),
-        fetch_all=False
+        fetch_one=True,
+        commit=True,
     )
-    
+
     if not new_email:
         raise HTTPException(status_code=500, detail="Failed to store inbound email in database.")
 
-    # Check if external domain and missing employee ID
+    case_result = None
     if is_act == 1:
-        is_internal = sender_email.strip().lower().endswith("@1mg.com")
-        detected_code = ai_insights.get("detected_code")
-        if not is_internal and not detected_code and resolved_category != "SYSTEM_ALERT":
-            try:
-                from backend.app.services.email_service import send_employee_id_request_email
-                dept_row = execute_query("SELECT team_name FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True) or {}
-                send_employee_id_request_email(
-                    recipient_email=sender_email,
-                    original_subject=subject,
-                    recipient_name=ai_insights.get("detected_name") or payload.sender_name or "Colleague",
-                    department_name=dept_row.get("team_name") or "People Desk"
-                )
-                execute_query(
-                    "UPDATE emails SET actionable_reason = 'AWAITING_EMP_ID' WHERE id = %s;",
-                    (new_email.get("id"),)
-                )
-            except Exception as e_err:
-                logger.warning(f"Failed to dispatch Emp ID request: {e_err}")
+        case_result = create_case_from_email_record(
+            email_id=new_email["id"],
+            email_row=new_email,
+            ai_insights=ai_insights,
+            override_dept_id=dept_id,
+            send_confirmation=True,
+            action_name="AUTO_CASE_CREATED",
+        )
+        if case_result.get("case_number"):
+            new_email["is_converted"] = 1
+            new_email["case_id"] = case_result.get("case_id")
+            new_email["case_number"] = case_result.get("case_number")
+            new_email["department_id"] = case_result.get("department_id") or dept_id
+
+    case_num = case_result.get("case_number") if case_result else None
+    dept_label = (case_result.get("department_name") if case_result else None) or ai_insights.get("team_name") or "People Desk"
+    msg = (
+        f"Ingested email & auto-assigned Case {case_num} -> {dept_label}."
+        if case_num
+        else "Inbound email ingested and classified."
+    )
 
     return {
         "success": True,
-        "message": "Inbound email ingested and classified successfully.",
+        "message": msg,
         "email_id": new_email.get("id"),
         "email": new_email,
-        "ai_insights": ai_insights
+        "ai_insights": ai_insights,
+        "case_id": case_result.get("case_id") if case_result else None,
+        "case_number": case_num,
+        "department_id": dept_id,
+        "department_name": dept_label,
+        "case": case_result.get("case") if case_result else None,
     }
 
 @router.post("/inbox/emails/{email_id}/request-emp-id")
@@ -3822,8 +3359,15 @@ def sync_inbox_queue(req: Optional[SyncInboxRequest] = None, department_id: Opti
     actionable = execute_query("SELECT COUNT(*) as c FROM emails WHERE is_actionable = 1 AND is_converted = 0;", fetch_all=False).get("c", 0)
     
     synced_count = imap_result.get("synced_count", 0)
+    cases_created = imap_result.get("cases_created", 0)
+    replies_linked = imap_result.get("replies_linked", 0)
     if synced_count > 0:
-        msg = f"Fetched {synced_count} new incoming {'email' if synced_count == 1 else 'emails'} from mailbox."
+        parts = [f"Fetched {synced_count} new incoming {'email' if synced_count == 1 else 'emails'}"]
+        if cases_created:
+            parts.append(f"auto-assigned {cases_created} {'case' if cases_created == 1 else 'cases'}")
+        if replies_linked:
+            parts.append(f"linked {replies_linked} {'reply' if replies_linked == 1 else 'replies'}")
+        msg = " · ".join(parts) + "."
     elif imap_result.get("success"):
         msg = "Mailbox checked. All incoming messages are up to date."
     else:
@@ -3833,6 +3377,8 @@ def sync_inbox_queue(req: Optional[SyncInboxRequest] = None, department_id: Opti
         "success": True,
         "message": msg,
         "new_synced": synced_count,
+        "cases_created": cases_created,
+        "replies_linked": replies_linked,
         "imap_status": imap_result,
         "total_emails": total,
         "actionable_emails": actionable,

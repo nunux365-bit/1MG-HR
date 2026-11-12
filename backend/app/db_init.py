@@ -205,13 +205,13 @@ VALUES ('1MG', 0, NOW())
 ON CONFLICT (prefix) DO NOTHING;
 
 -- SEED: Initial Departments for Tata 1mg
-INSERT INTO hr_departments (dept_code, team_name, dept_gmail, sla_hours, default_priority, description)
+INSERT INTO hr_departments (dept_code, team_name, category_code, dept_gmail, sla_hours, default_priority, description)
 VALUES 
-    ('DEPT-ATTENDANCE', 'Attendance HR', 'attendance.desk@1mg.com', 24, 'HIGH', 'Handles biometric punches, shift attendance, timesheets, and regularization queries.'),
-    ('DEPT-PAYROLL', 'Payroll HR', 'payroll.desk@1mg.com', 24, 'HIGH', 'Handles salary slips, tax TDS declarations, Form 16, and bank account changes.'),
-    ('DEPT-PEOPLEDESK', 'Central People Desk', 'peopledesk@1mg.com', 48, 'MEDIUM', 'Central employee helpdesk and general query triage for all departments.'),
-    ('DEPT-IT-ASSET', 'IT Asset & Hardware', 'it.support@1mg.com', 48, 'MEDIUM', 'Handles laptops, VPN access, hardware repairs, and peripheral requests.'),
-    ('DEPT-BGV', 'Background Verification', 'bgv.verify@1mg.com', 72, 'MEDIUM', 'Handles employee background verification, document checks, and experience verification.')
+    ('DEPT-PEOPLEDESK', 'People Desk', 'PEOPLEDESK', 'peopledesk@1mg.com', 24, 'HIGH', 'Central employee front-door helpdesk handling HR policy handbook queries, holiday calendars, Darwinbox portal access, facility/IT triage, and general inquiries.'),
+    ('DEPT-PAYROLL', 'Payroll & Compensation', 'PAYROLL', 'payroll@1mg.com', 24, 'HIGH', 'Handles salary slips, monthly payouts, tax/TDS declarations, Form 16, PF/UAN, reimbursements, and bank updates.'),
+    ('DEPT-BENEFITS', 'Benefits & Insurance', 'BENEFITS', 'benefits@1mg.com', 48, 'MEDIUM', 'Handles group mediclaim insurance, TPA health e-cards, hospital pre-auth, claim tracking, and dependent enrollment.'),
+    ('DEPT-LEAVES', 'Leave & Attendance', 'LEAVES', 'leaves@1mg.com', 24, 'MEDIUM', 'Handles leave balances, approvals, biometric punches, attendance regularization, shift rosters, WFH logs, and comp-offs.'),
+    ('DEPT-RELATIONS', 'Employee Relations & HR Ops', 'RELATIONS', 'er@1mg.com', 48, 'LOW', 'Handles background verification (BGV), resignations, exit clearances, experience/visa letters, internal transfers, onboarding, and grievances.')
 ON CONFLICT (dept_code) DO NOTHING;
 
 -- SEED: Admin Users

@@ -1,0 +1,17 @@
+{
+  "category_code": "BENEFITS",
+  "sample_count": 20,
+  "intents": [
+    "BN01",
+    "BN02",
+    "BN03",
+    "BN04",
+    "BN05",
+    "BN06",
+    "BN07",
+    "BN08"
+  ],
+  "intent_count": 8,
+  "accuracy": 100.0,
+  "trained_at": "NOW()"
+}

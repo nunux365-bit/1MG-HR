@@ -1,14 +1,14 @@
 {
   "category_code": "PEOPLEDESK",
-  "sample_count": 12,
+  "sample_count": 16,
   "intents": [
-    "PD05",
-    "PD07",
     "PD01",
     "PD02",
-    "PD04",
     "PD03",
+    "PD04",
+    "PD05",
     "PD06",
+    "PD07",
     "PD08"
   ],
   "intent_count": 8,

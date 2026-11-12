@@ -148,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCaseComposerShortcuts();
   loadDepartments().then(() => {
     switchAgentView('inboxView');
+    fetchCasesData();
   });
 });
 
@@ -521,15 +522,28 @@ function populateDepartmentFilters() {
   });
 }
 
+function hasUniversalDeskAccess() {
+  if (currentUser?.role === 'ADMIN') return true;
+  const userDeptIds = (currentUser?.department_ids && currentUser.department_ids.length > 0)
+    ? currentUser.department_ids.map(Number)
+    : (currentUser?.department_id ? [Number(currentUser.department_id)] : []);
+  if (userDeptIds.includes(11)) return true;
+  return (allDepartments || []).some(d => {
+    if (!userDeptIds.includes(Number(d.id))) return false;
+    const scope = `${d.category_code || ''} ${d.dept_code || ''} ${d.team_name || ''}`.toUpperCase();
+    return scope.includes('PEOPLEDESK') || scope.includes('ALL_HR');
+  });
+}
+
 async function fetchCasesData() {
   const isAgent = currentUser.role !== 'ADMIN';
   let url = '/api/v1/cases?page=1&limit=100';
 
   if (isAgent) {
     if (currentUser.department_ids && currentUser.department_ids.length > 0) {
-      url += `&department_ids=${currentUser.department_ids.join(',')}`;
+      url += `&department_ids=${currentUser.department_ids.join(',')}&include_universal=true`;
     } else if (currentUser.department_id) {
-      url += `&department_id=${currentUser.department_id}`;
+      url += `&department_id=${currentUser.department_id}&include_universal=true`;
     }
   }
 
@@ -539,8 +553,8 @@ async function fetchCasesData() {
     if (data.success && data.cases) {
       let cases = data.cases;
 
-      // Client-side guarantee for department isolation
-      if (isAgent) {
+      // Client-side department isolation only for single/specialized desks (People Desk central agents see all routed queues)
+      if (isAgent && !hasUniversalDeskAccess()) {
         const allowedDeptIds = (currentUser.department_ids && currentUser.department_ids.length > 0)
           ? currentUser.department_ids.map(String)
           : (currentUser.department_id ? [String(currentUser.department_id)] : []);
@@ -693,18 +707,32 @@ async function performMailboxAutoSync() {
   }
 
   try {
-    // 1. Trigger backend mailbox sync with user/department scoping
+    // 1. Trigger backend mailbox sync (central People Desk mailbox relies on AI department detection)
     const syncBody = {};
-    if (currentUser.department_id) syncBody.department_id = currentUser.department_id;
+    if (!hasUniversalDeskAccess() && currentUser.department_id) {
+      syncBody.department_id = currentUser.department_id;
+    }
     if (currentUser.id) syncBody.user_id = currentUser.id;
 
-    await fetch('/api/v1/inbox/sync', {
+    const syncRes = await fetch('/api/v1/inbox/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(syncBody)
     });
-    // 2. Refresh inbound emails queue silently
-    await loadInboxEmails({ silent: true });
+    const syncData = await syncRes.json().catch(() => ({}));
+    // 2. Refresh inbound emails AND cases queue silently so auto-created 1MGXXXXX tickets appear immediately
+    await Promise.all([
+      loadInboxEmails({ silent: true }),
+      fetchCasesData()
+    ]);
+    if (syncData?.cases_created > 0) {
+      showToast(`✨ ${syncData.cases_created} new ${syncData.cases_created === 1 ? 'case' : 'cases'} auto-created & routed by AI!`, 'success');
+      if (document.getElementById('casesView')?.classList.contains('active')) {
+        loadAgentCasesKPIs();
+        renderAgentQueueTabs();
+        renderAgentCasesTable();
+      }
+    }
   } catch (err) {
     console.warn('[AutoSync] Notice:', err);
   } finally {
@@ -1057,7 +1085,9 @@ function formatCategoryTitle(raw) {
     'PAYROLL': 'Payroll',
     'BENEFITS': 'Benefits',
     'ONBOARDING': 'Onboarding',
-    'LEAVE': 'Leave',
+    'LEAVE': 'Leave & Attendance',
+    'LEAVES': 'Leave & Attendance',
+    'RELATIONS': 'Employee Relations',
     'IT_ASSET': 'IT Asset',
     'SYSTEM_ALERT': 'System',
     'NEWSLETTER': 'Newsletter',
@@ -1818,23 +1848,18 @@ function insertInboxPreset(key) {
 
 async function openConvertedCaseInWorkspace(caseNumber) {
   if (!caseNumber) return;
-  // 1. Switch to Cases Workspace view
-  switchAgentView('casesView');
-
-  // 2. Load cases and select the matching case
   try {
-    const res = await fetch(`/api/v1/cases?search=${encodeURIComponent(caseNumber)}`);
+    const res = await fetch(`/api/v1/cases?search=${encodeURIComponent(caseNumber)}&include_universal=true`);
     const data = await res.json();
     if (data.success && data.cases && data.cases.length > 0) {
       const target = data.cases.find(c => String(c.case_number).toLowerCase() === String(caseNumber).toLowerCase()) || data.cases[0];
-      selectInboxCase(target.id);
-      showToast(`Navigated to Case ${formatCaseNumber(caseNumber)} in Cases Workspace`, 'info');
-    } else {
-      showToast(`Case ${formatCaseNumber(caseNumber)} opened in workspace`, 'info');
+      openAgentCaseDossier(target.id);
+      return;
     }
   } catch (err) {
     console.error('Error opening case in workspace:', err);
   }
+  switchAgentView('casesView');
 }
 
 async function convertCurrentInboxEmail() {
@@ -1867,8 +1892,8 @@ async function convertCurrentInboxEmail() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        department_id: currentUser?.department_id || email?.department_id || 11,
-        assigned_user: currentUser?.name || 'Vaibhav Yadav',
+        department_id: email?.department_id || currentUser?.department_id || 11,
+        assigned_user: email?.assigned_user_name || null,
         actor_name: currentUser?.name || 'Vaibhav Yadav',
         actor_email: currentUser?.email || 'vaibhav.v1@1mg.com'
       })
@@ -1877,7 +1902,7 @@ async function convertCurrentInboxEmail() {
 
     if (data.success) {
       showToast(`Successfully Created Active Case ${formatCaseNumber(data.case_number)}!`, 'success');
-      await loadInboxEmails();
+      await Promise.all([loadInboxEmails(), fetchCasesData()]);
       selectInboxEmail(currentSelectedEmailId);
       setTimeout(() => {
         openConvertedCaseInWorkspace(data.case_number);
@@ -1939,8 +1964,8 @@ async function toggleCurrentInboxNoise() {
     const data = await res.json();
 
     if (data.success) {
-      showToast(data.message, 'info');
-      await loadInboxEmails();
+      showToast(data.message, data.case_number ? 'success' : 'info');
+      await Promise.all([loadInboxEmails(), fetchCasesData()]);
     }
   } catch (err) {
     console.error('Error toggling actionable:', err);
@@ -2016,10 +2041,12 @@ async function syncInboxMailbox(btn) {
     icon.style.transform = 'rotate(360deg)';
   }
 
-  showToast('Synchronizing department mailbox via IMAP...', 'info');
+  showToast('Synchronizing People Desk mailbox via IMAP & AI Router...', 'info');
   try {
     const syncPayload = {};
-    if (currentUser.department_id) syncPayload.department_id = currentUser.department_id;
+    if (!hasUniversalDeskAccess() && currentUser.department_id) {
+      syncPayload.department_id = currentUser.department_id;
+    }
     if (currentUser.id) syncPayload.user_id = currentUser.id;
 
     const res = await fetch('/api/v1/inbox/sync', {
@@ -2028,10 +2055,15 @@ async function syncInboxMailbox(btn) {
       body: JSON.stringify(syncPayload)
     });
     const data = await res.json();
-    await loadInboxEmails();
+    await Promise.all([loadInboxEmails(), fetchCasesData()]);
+    if (document.getElementById('casesView')?.classList.contains('active')) {
+      loadAgentCasesKPIs();
+      renderAgentQueueTabs();
+      renderAgentCasesTable();
+    }
     showToast(data.message || 'Mailbox queue up to date', 'success');
   } catch (err) {
-    await loadInboxEmails();
+    await Promise.all([loadInboxEmails(), fetchCasesData()]);
     showToast('Mailbox refreshed', 'success');
   } finally {
     if (icon) {
@@ -2279,9 +2311,9 @@ async function handleIngestEmailSubmit(e) {
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast('Real email ingested and AI triaged successfully!', 'success');
+      showToast(data.message || 'Email ingested, AI-routed, and case assigned!', 'success');
       closeIngestEmailModal();
-      await loadInboxEmails();
+      await Promise.all([loadInboxEmails(), fetchCasesData()]);
       if (data.email_id) {
         selectInboxEmail(data.email_id);
       }

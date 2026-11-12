@@ -11,7 +11,11 @@ from backend.app.services.classifier_service import (
     build_stage2_intent_prompt,
     route_stage1_department
 )
-from backend.app.classification.starter_datasets import STARTER_DATASETS
+from backend.app.classification.starter_datasets import (
+    CATEGORY_ALIASES,
+    CANONICAL_DEPARTMENT_CONFIGS,
+    STARTER_DATASETS,
+)
 
 logger = logging.getLogger("backend.routes.departments")
 
@@ -98,11 +102,13 @@ def get_all_departments():
         if isinstance(strong_kw, str):
             try: strong_kw = json.loads(strong_kw)
             except Exception: strong_kw = []
+        strong_kw = [str(k).strip().strip('"').strip("'").strip() for k in strong_kw if str(k).strip()]
             
         weak_kw = d.get("weak_keywords") or []
         if isinstance(weak_kw, str):
             try: weak_kw = json.loads(weak_kw)
             except Exception: weak_kw = []
+        weak_kw = [str(k).strip().strip('"').strip("'").strip() for k in weak_kw if str(k).strip()]
             
         intents = d.get("intents") or []
         if isinstance(intents, str):
@@ -358,7 +364,8 @@ def get_starter_dataset(dept_id: int):
         raise HTTPException(status_code=404, detail="Department not found.")
         
     cat_code = (dept.get("category_code") or dept["dept_code"].replace("DEPT-", "")).upper()
-    samples = STARTER_DATASETS.get(cat_code, [])
+    canonical_code = CATEGORY_ALIASES.get(cat_code, cat_code)
+    samples = STARTER_DATASETS.get(cat_code) or STARTER_DATASETS.get(canonical_code, [])
     return {
         "success": True,
         "category_code": cat_code,
@@ -377,10 +384,11 @@ def train_department_intent_model(dept_id: int, payload: TrainModelPayload):
         raise HTTPException(status_code=404, detail="Department not found.")
         
     cat_code = (dept.get("category_code") or dept["dept_code"].replace("DEPT-", "")).upper()
+    canonical_code = CATEGORY_ALIASES.get(cat_code, cat_code)
     dataset = payload.dataset or []
     
     if payload.use_starter or not dataset:
-        dataset = STARTER_DATASETS.get(cat_code, [])
+        dataset = STARTER_DATASETS.get(cat_code) or STARTER_DATASETS.get(canonical_code, [])
         if not dataset:
             raise HTTPException(status_code=400, detail=f"No starter dataset available for category '{cat_code}'. Please supply a custom dataset.")
             
@@ -415,141 +423,19 @@ def classify_test_query(payload: ClassifyTestPayload):
 @router.post("/bootstrap")
 def bootstrap_standard_departments():
     """
-    Restores the standard 5 Tata 1mg functional departments with pre-configured
-    bilingual keywords, operational intents, and trained AI models.
+    Synchronizes the 5 canonical Tata 1mg functional departments with clean
+    bilingual keywords, operational intents, and trained Stage 2 AI models.
     """
-    standard_depts = [
-        {
-            "dept_code": "DEPT-ATTENDANCE",
-            "team_name": "Attendance HR",
-            "category_code": "ATTENDANCE",
-            "dept_gmail": "attendance.desk@1mg.com",
-            "sla_hours": 24,
-            "default_priority": "HIGH",
-            "color_accent": "#2563EB",
-            "description": "Handles biometric punches, shift attendance, timesheets, and regularization queries.",
-            "strong_keywords": ["biometric punch", "attendance regularize", "shift timing", "swipe missing", "timesheet approval", "attendance regularize karni hai", "punch miss ho gaya", "biometric issue", "regularization request", "shift roaster", "missed swipe", "punch in error", "attendance discrepancy", "timesheet locked", "shift swap request"],
-            "weak_keywords": ["attendance", "punch", "swipe", "biometric", "shift", "timesheet", "roaster", "late mark", "half day", "regularize", "chutti", "in-out", "overtime", "ot hours", "biometrics"],
-            "intents": [
-                {"code": "AT01", "name": "Biometric & Missed Punch Regularization", "sla_hours": 12},
-                {"code": "AT02", "name": "Shift Schedule & Roster Change", "sla_hours": 24},
-                {"code": "AT03", "name": "Overtime & Extra Hours Claim", "sla_hours": 24},
-                {"code": "AT04", "name": "Timesheet Approval Delay", "sla_hours": 24},
-                {"code": "AT05", "name": "Work From Home (WFH) Logs", "sla_hours": 24},
-                {"code": "AT06", "name": "On-Duty (OD) Punch Request", "sla_hours": 12},
-                {"code": "AT07", "name": "Late Coming & Half-Day Deduction Waiver", "sla_hours": 24},
-                {"code": "AT08", "name": "Comp-Off Credit Verification", "sla_hours": 24}
-            ],
-            "ai_model_status": "TRAINED",
-            "model_accuracy": 98.6
-        },
-        {
-            "dept_code": "DEPT-PAYROLL",
-            "team_name": "Payroll HR",
-            "category_code": "PAYROLL",
-            "dept_gmail": "payroll.desk@1mg.com",
-            "sla_hours": 24,
-            "default_priority": "HIGH",
-            "color_accent": "#4F46E5",
-            "description": "Handles salary slips, tax TDS declarations, Form 16, and bank account changes.",
-            "strong_keywords": ["salary slip", "salary credit", "form 16", "pf deduction", "tds declaration", "tax computation", "bank account change", "salary nahi aayi", "payslip download", "tax deduction mismatch", "variable pay", "bonus payout", "full and final settlement", "gratuity calculation", "provident fund transfer"],
-            "weak_keywords": ["salary", "payslip", "payroll", "tax", "tds", "pf", "epfo", "form16", "bonus", "ctc", "incentive", "deduction", "reimbursement", "arrears", "paisa"],
-            "intents": [
-                {"code": "PR01", "name": "Monthly Salary Credit & Delayed Payout", "sla_hours": 12},
-                {"code": "PR02", "name": "Payslip Generation & Salary Slip Discrepancy", "sla_hours": 24},
-                {"code": "PR03", "name": "Income Tax, TDS & Form 16 Mismatch", "sla_hours": 24},
-                {"code": "PR04", "name": "Provident Fund (PF) & UAN Queries", "sla_hours": 48},
-                {"code": "PR05", "name": "Bank Account & Direct Deposit Update", "sla_hours": 24},
-                {"code": "PR06", "name": "Reimbursements & Expense Claims", "sla_hours": 48},
-                {"code": "PR07", "name": "Variable Pay & Annual Bonus Query", "sla_hours": 48},
-                {"code": "PR08", "name": "Full & Final Settlement (FnF) Clearance", "sla_hours": 72}
-            ],
-            "ai_model_status": "TRAINED",
-            "model_accuracy": 99.2
-        },
-        {
-            "dept_code": "DEPT-PEOPLEDESK",
-            "team_name": "Central People Desk",
-            "category_code": "PEOPLEDESK",
-            "dept_gmail": "peopledesk@1mg.com",
-            "sla_hours": 48,
-            "default_priority": "MEDIUM",
-            "color_accent": "#FF6F61",
-            "description": "Central employee helpdesk and general query triage for all departments.",
-            "strong_keywords": ["leave application", "sick leave", "earned leave", "maternity leave", "paternity leave", "leave balance", "hr policy", "holiday calendar", "chutti chahiye", "leave approve kardo", "casual leave", "bereavement leave", "posh complaint", "workplace harassment", "medical insurance card"],
-            "weak_keywords": ["leave", "leaves", "chutti", "holiday", "sick", "casual", "policy", "handbook", "posh", "mediclaim", "insurance", "grievance", "hr support", "peopledesk", "help"],
-            "intents": [
-                {"code": "PD01", "name": "Annual / Sick / Casual Leave Balance & Quota", "sla_hours": 24},
-                {"code": "PD02", "name": "Maternity, Paternity & Extended Medical Leave", "sla_hours": 24},
-                {"code": "PD03", "name": "Group Medical Health Insurance / Mediclaim E-Card", "sla_hours": 24},
-                {"code": "PD04", "name": "HR Policy & Tata 1mg Employee Handbook Clarification", "sla_hours": 48},
-                {"code": "PD05", "name": "Company Holiday Calendar & Off-day Inquiries", "sla_hours": 24},
-                {"code": "PD06", "name": "General Grievance & Employee Relations", "sla_hours": 48},
-                {"code": "PD07", "name": "POSH & Workplace Safety Escalation", "sla_hours": 12},
-                {"code": "PD08", "name": "Employment Certificate & Visa Verification Letters", "sla_hours": 48}
-            ],
-            "ai_model_status": "TRAINED",
-            "model_accuracy": 97.8
-        },
-        {
-            "dept_code": "DEPT-IT-ASSET",
-            "team_name": "IT Asset & Hardware",
-            "category_code": "IT_ASSET",
-            "dept_gmail": "it.support@1mg.com",
-            "sla_hours": 48,
-            "default_priority": "MEDIUM",
-            "color_accent": "#0D9488",
-            "description": "Handles laptops, VPN access, hardware repairs, and peripheral requests.",
-            "strong_keywords": ["laptop crash", "blue screen", "vpn not working", "vpn access", "macbook battery", "charger replacement", "laptop nahi chal raha", "keyboard broken", "monitor request", "software license", "google workspace access", "slack login issue", "wifi not connecting", "hard drive failure", "asset allocation"],
-            "weak_keywords": ["laptop", "macbook", "vpn", "wifi", "mouse", "keyboard", "monitor", "charger", "hardware", "software", "access", "crash", "it help", "asset", "system"],
-            "intents": [
-                {"code": "IT01", "name": "Laptop Hardware Failure & Screen/Battery Issue", "sla_hours": 12},
-                {"code": "IT02", "name": "VPN, Fortinet & Remote Network Access", "sla_hours": 12},
-                {"code": "IT03", "name": "Google Workspace, Email & Slack Credentials", "sla_hours": 12},
-                {"code": "IT04", "name": "Software License, IDE & Dev Tools Installation", "sla_hours": 24},
-                {"code": "IT05", "name": "Peripheral & Accessories Requisition (Mouse/Charger)", "sla_hours": 48},
-                {"code": "IT06", "name": "Security Certificate & Antivirus Update", "sla_hours": 24},
-                {"code": "IT07", "name": "New Joiner IT Asset Provisioning", "sla_hours": 48},
-                {"code": "IT08", "name": "Exit Clearance Asset Return & Handover", "sla_hours": 24}
-            ],
-            "ai_model_status": "TRAINED",
-            "model_accuracy": 98.4
-        },
-        {
-            "dept_code": "DEPT-BGV",
-            "team_name": "Background Verification",
-            "category_code": "BGV",
-            "dept_gmail": "bgv.verify@1mg.com",
-            "sla_hours": 72,
-            "default_priority": "MEDIUM",
-            "color_accent": "#D97706",
-            "description": "Handles employee background verification, document checks, and experience verification.",
-            "strong_keywords": ["background verification", "bgv check", "previous employer verification", "relieving letter missing", "degree certificate verification", "criminal background check", "address verification fail", "bgv portal link", "experience letter mismatch", "court record check", "bgv documents upload", "verification pending", "epfo service history"],
-            "weak_keywords": ["bgv", "verification", "background", "documents", "relieving", "experience", "education", "marksheet", "degree", "screening", "authbridge", "check", "clearance", "discrepancy", "vendor"],
-            "intents": [
-                {"code": "BG01", "name": "Educational Degree & Marksheet Verification", "sla_hours": 48},
-                {"code": "BG02", "name": "Previous Employment & Relieving Letter Discrepancy", "sla_hours": 48},
-                {"code": "BG03", "name": "Residential Address Physical Check Query", "sla_hours": 72},
-                {"code": "BG04", "name": "Criminal & Police Verification Status", "sla_hours": 72},
-                {"code": "BG05", "name": "Third-Party BGV Portal Upload Issue", "sla_hours": 24},
-                {"code": "BG06", "name": "Dual Employment & UAN Service Overlap", "sla_hours": 48},
-                {"code": "BG07", "name": "BGV Clearance Certificate Request", "sla_hours": 48},
-                {"code": "BG08", "name": "Red/Amber BGV Flag Justification Submission", "sla_hours": 24}
-            ],
-            "ai_model_status": "TRAINED",
-            "model_accuracy": 97.2
-        }
-    ]
-
     inserted = []
-    for d in standard_depts:
+    for d in CANONICAL_DEPARTMENT_CONFIGS:
+        cat_code = d["category_code"]
         sql = """
             INSERT INTO hr_departments (
                 dept_code, team_name, category_code, dept_gmail, sla_hours,
                 default_priority, color_accent, description, strong_keywords,
-                weak_keywords, intents, ai_model_status, model_accuracy
+                weak_keywords, intents, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, NOW()
             ) ON CONFLICT (dept_code) DO UPDATE SET
                 team_name = EXCLUDED.team_name,
                 category_code = EXCLUDED.category_code,
@@ -561,27 +447,31 @@ def bootstrap_standard_departments():
                 strong_keywords = EXCLUDED.strong_keywords,
                 weak_keywords = EXCLUDED.weak_keywords,
                 intents = EXCLUDED.intents,
-                ai_model_status = EXCLUDED.ai_model_status,
-                model_accuracy = EXCLUDED.model_accuracy
+                updated_at = NOW()
             RETURNING id, dept_code, team_name;
         """
         row = execute_query(
             sql,
             (
-                d["dept_code"], d["team_name"], d["category_code"], d["dept_gmail"],
+                d["dept_code"], d["team_name"], cat_code, d["dept_gmail"],
                 d["sla_hours"], d["default_priority"], d["color_accent"], d["description"],
                 json.dumps(d["strong_keywords"]), json.dumps(d["weak_keywords"]),
-                json.dumps(d["intents"]), d["ai_model_status"], d["model_accuracy"]
+                json.dumps(d["intents"])
             ),
             commit=True,
             fetch_one=True
         )
+        if cat_code in STARTER_DATASETS:
+            try:
+                train_department_model(cat_code, STARTER_DATASETS[cat_code])
+            except Exception as train_err:
+                logger.warning(f"Failed training starter model for {cat_code}: {train_err}")
         if row:
             inserted.append(row)
 
     return {
         "success": True,
-        "message": f"Successfully bootstrapped {len(inserted)} Tata 1mg functional departments.",
+        "message": f"Successfully synchronized and trained {len(inserted)} Tata 1mg functional departments.",
         "departments": inserted
     }
 

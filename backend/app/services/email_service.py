@@ -784,64 +784,105 @@ def send_case_confirmation_email(
     department_name: str = "People Desk",
     target_sla: str = "24h SLA",
     priority: str = "NORMAL",
-    assigned_specialist: str = "Assigned HR Specialist",
+    assigned_specialist: str = "Unassigned (Department Pool)",
     custom_user: str = None,
-    custom_password: str = None
+    custom_password: str = None,
+    requires_emp_id: bool = False,
+    case_status: str = "OPEN"
 ) -> dict:
     """
     Sends an official Tata 1mg Case Confirmation & Tracking ticket email to the employee.
+    When requires_emp_id is True (external sender without Employee ID), combines ticket
+    registration with an Employee ID verification prompt in a single email.
     """
-    subject = f"[{case_number}] Case Registered: {case_subject[:50]}"
+    import html as html_lib
+
+    safe_name = html_lib.escape(employee_name or "Colleague")
+    safe_case_num = html_lib.escape(case_number or "")
+    safe_subject = html_lib.escape(case_subject or "Support Request")
+    safe_dept = html_lib.escape(department_name or "People Desk")
+    safe_sla = html_lib.escape(target_sla or "24h SLA")
+    safe_spec = html_lib.escape(assigned_specialist or "Unassigned (Department Pool)")
+    safe_email = html_lib.escape(recipient_email or "")
+
+    status_badge_text = "WAITING ON EMPLOYEE (EMP ID)" if requires_emp_id else "ACTIVE / OPEN"
+    status_badge_bg = "#FEF3C7" if requires_emp_id else "#DCFCE7"
+    status_badge_fg = "#92400E" if requires_emp_id else "#166534"
+    header_gradient = (
+        "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)"
+        if requires_emp_id
+        else "linear-gradient(135deg, #10B190 0%, #059669 100%)"
+    )
+    subject = (
+        f"[{case_number}] Action Required: Confirm Employee ID — {(case_subject or '')[:42]}"
+        if requires_emp_id
+        else f"[{case_number}] Case Registered: {(case_subject or '')[:50]}"
+    )
+
+    verification_block_html = ""
+    verification_block_text = ""
+    if requires_emp_id:
+        verification_block_html = f"""
+      <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 14px 16px; border-radius: 6px; margin: 18px 0 22px;">
+        <p style="margin: 0; font-size: 13.5px; color: #92400E; font-weight: 700;">⚠️ Identity Verification Required to Start Processing</p>
+        <p style="margin: 6px 0 0; font-size: 13px; color: #78350F; line-height: 1.5;">
+          Because your inquiry was sent from an external address (<code>{safe_email}</code>), please <strong>reply directly to this email</strong> with your <strong>Official Tata 1mg Employee ID</strong> (e.g., <code>EMP1024</code> or <code>1MG10234</code>).
+          Your case number <strong>{safe_case_num}</strong> is already reserved and will move into active SLA review as soon as you reply.
+        </p>
+      </div>"""
+        verification_block_text = (
+            f"\nIDENTITY VERIFICATION REQUIRED:\n"
+            f"Because you wrote from an external address ({recipient_email}), please reply directly to this email "
+            f"with your Official Tata 1mg Employee ID (e.g. EMP1024 or 1MG10234) so our {department_name} team can link your HRMS profile and start processing.\n"
+        )
+
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px; color: #1E293B;">
   <div style="max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 12px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
-    <div style="background: linear-gradient(135deg, #10B190 0%, #059669 100%); padding: 22px 28px; color: #FFFFFF;">
-      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85;">Official Support Ticket</div>
-      <h2 style="margin: 4px 0 0; font-size: 20px; font-weight: 700;">Tata 1mg Case Registered</h2>
+    <div style="background: {header_gradient}; padding: 22px 28px; color: #FFFFFF;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">Official Support Ticket</div>
+      <h2 style="margin: 4px 0 0; font-size: 20px; font-weight: 700;">Tata 1mg Case Registered · {safe_case_num}</h2>
     </div>
     <div style="padding: 28px;">
-      <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px;">Hello <strong>{employee_name}</strong>,</p>
+      <p style="font-size: 15px; line-height: 1.5; margin: 0 0 16px;">Hello <strong>{safe_name}</strong>,</p>
       <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px;">
-        Your inquiry has been officially converted into a tracked support ticket in Tata 1mg People Desk.
+        Your inquiry has been automatically routed to the <strong>{safe_dept}</strong> desk and registered as tracked Case <strong>{safe_case_num}</strong>.
       </p>
-
+{verification_block_html}
       <!-- Case Summary Card -->
       <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px 20px; margin-bottom: 22px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
           <tr>
             <td style="padding: 6px 0; color: #64748B; width: 140px;">Case Number:</td>
-            <td style="padding: 6px 0; font-weight: 700; color: #0F172A; font-family: monospace; font-size: 14.5px;">{case_number}</td>
+            <td style="padding: 6px 0; font-weight: 700; color: #0F172A; font-family: monospace; font-size: 14.5px;">{safe_case_num}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748B;">Subject:</td>
-            <td style="padding: 6px 0; font-weight: 600; color: #1E293B;">{case_subject}</td>
+            <td style="padding: 6px 0; font-weight: 600; color: #1E293B;">{safe_subject}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748B;">Assigned Team:</td>
-            <td style="padding: 6px 0; color: #1E293B; font-weight: 600;">{department_name}</td>
+            <td style="padding: 6px 0; color: #1E293B; font-weight: 600;">{safe_dept}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748B;">Specialist:</td>
-            <td style="padding: 6px 0; color: #1E293B;">{assigned_specialist}</td>
+            <td style="padding: 6px 0; color: #1E293B;">{safe_spec}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748B;">Target SLA:</td>
-            <td style="padding: 6px 0; color: #15803D; font-weight: 700;">Within {target_sla}</td>
+            <td style="padding: 6px 0; color: #15803D; font-weight: 700;">Within {safe_sla}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748B;">Status:</td>
-            <td style="padding: 6px 0;"><span style="background: #DCFCE7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;">ACTIVE / IN-PROGRESS</span></td>
+            <td style="padding: 6px 0;"><span style="background: {status_badge_bg}; color: {status_badge_fg}; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;">{status_badge_text}</span></td>
           </tr>
         </table>
       </div>
 
       <p style="font-size: 13.5px; line-height: 1.6; color: #334155; margin: 0 0 16px;">
-        Our team is actively reviewing your request. If any additional documents or clarifications are required, your assigned specialist will reach out directly on this thread.
-      </p>
-      <p style="font-size: 13px; color: #64748B; margin: 18px 0 0;">
-        You can reply to this email at any time to add comments or attach supporting documents to this ticket.
+        You can reply directly to this email thread at any time with your Employee ID, comments, or supporting documents—every reply updates Case <strong>{safe_case_num}</strong> automatically without creating duplicate tickets.
       </p>
     </div>
     <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px 28px; text-align: center; font-size: 11.5px; color: #94A3B8;">
@@ -853,17 +894,17 @@ def send_case_confirmation_email(
 
     plain = f"""Hello {employee_name},
 
-Your inquiry has been registered as an official case in Tata 1mg People Desk.
-
+Your inquiry has been automatically routed to {department_name} and registered as Case {case_number} in Tata 1mg People Desk.
+{verification_block_text}
 CASE DETAILS:
 • Case Number: {case_number}
 • Subject: {case_subject}
 • Department: {department_name}
 • Assigned Specialist: {assigned_specialist}
 • Target SLA: Within {target_sla}
-• Status: ACTIVE / IN-PROGRESS
+• Status: {status_badge_text}
 
-Our department team is currently reviewing your ticket. You may reply directly to this email to add more information or attachments.
+You may reply directly to this email to add more information or attachments to Case {case_number}.
 
 Best regards,
 Tata 1mg People Desk"""

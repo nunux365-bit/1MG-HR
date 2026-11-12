@@ -1,4 +1,7 @@
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,10 +9,56 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from backend.app.routes import auth, admin_users, cases, department_routes
 
+logger = logging.getLogger("backend.main")
+
+
+async def _background_imap_poller():
+    """Periodically syncs the centralized People Desk mailbox so inbound mails get auto-cased even offline."""
+    from backend.app.services.imap_service import (
+        has_system_mailbox_config,
+        sync_inbound_emails_from_mailbox,
+    )
+
+    try:
+        interval = max(20, int(os.getenv("IMAP_POLL_INTERVAL_SECONDS", "60")))
+    except (ValueError, TypeError):
+        interval = 60
+
+    await asyncio.sleep(5)
+    while True:
+        try:
+            configured, _, _ = has_system_mailbox_config()
+            if configured:
+                await asyncio.to_thread(sync_inbound_emails_from_mailbox, max_fetch=15)
+        except asyncio.CancelledError:
+            break
+        except Exception as err:
+            logger.warning(f"Background IMAP poll skipped: {err}")
+        await asyncio.sleep(interval)
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
+    task = None
+    enabled = os.getenv("ENABLE_BACKGROUND_IMAP_SYNC", "true").strip().lower() in ("1", "true", "yes")
+    if enabled and os.getenv("DISABLE_BACKGROUND_TASKS", "0") != "1":
+        task = asyncio.create_task(_background_imap_poller())
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
 app = FastAPI(
     title="Tata 1mg People Desk API",
     description="Unified Employee Query Management and Agent Helpdesk System for Tata 1mg",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # GZip compression middleware (compresses all responses >= 1000 bytes for faster loading)

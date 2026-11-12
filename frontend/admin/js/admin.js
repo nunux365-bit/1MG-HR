@@ -1043,11 +1043,14 @@ async function triggerMailboxSync() {
     const res = await fetch('/api/v1/inbox/sync', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast('Mailbox Synchronized', data.message || 'Incoming emails checked successfully.', 'success');
+      showToast('Mailbox Synchronized', data.message || 'Incoming emails checked and auto-routed successfully.', 'success');
     } else {
       showToast('Mailbox Sync', data.message || 'Could not fetch new emails.', 'info');
     }
     await loadDashboard();
+    if (typeof loadCases === 'function' && document.getElementById('casesView')?.classList.contains('active')) {
+      await loadCases();
+    }
   } catch (err) {
     console.error('Mailbox sync failed:', err);
     showToast('Mailbox Sync Error', 'Failed to reach IMAP sync endpoint.', 'error');
