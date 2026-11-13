@@ -5202,6 +5202,19 @@ button.badge-role-scope:hover .swap-icon-svg {
   transform: translateY(-1px);
 }
 
+.action-pill-btn.reset-pwd {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #DBEAFE;
+}
+.action-pill-btn.reset-pwd:hover {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #2563EB;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
 .action-icon-circle-btn {
   width: 30px;
   height: 30px;

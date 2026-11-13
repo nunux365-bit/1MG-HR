@@ -131,8 +131,9 @@ def get_imap_config() -> tuple[str, int, str, str]:
 
 def get_imap_config_for_dept(department_id: Optional[int] = None, user_id: Optional[int] = None) -> tuple[str, int, str, str]:
     """
-    Fetches stored IMAP credentials for a department or user from DB,
-    falling back to system environment variables.
+    Fetches stored IMAP credentials for a department from DB,
+    falling back to system environment variables (centralized peopledesk@1mg.com).
+    User accounts never store individual mailbox app passwords.
     """
     from backend.app.database import execute_query
     
@@ -148,18 +149,6 @@ def get_imap_config_for_dept(department_id: Optional[int] = None, user_id: Optio
             host = (dept.get("imap_host") or "").strip() or detect_imap_host(user)
             port = int(dept.get("imap_port") or 993)
             return host, port, user, password
-            
-    if user_id:
-        u = execute_query(
-            "SELECT email, mail_app_password, department_id FROM users WHERE id = %s;",
-            (user_id,),
-            fetch_one=True
-        )
-        if u and u.get("mail_app_password"):
-            user = (u.get("email") or "").strip()
-            password = (u.get("mail_app_password") or "").strip()
-            host = detect_imap_host(user)
-            return host, 993, user, password
             
     return get_imap_config()
 

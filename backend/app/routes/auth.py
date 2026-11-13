@@ -1,4 +1,5 @@
 import hashlib
+import json
 import secrets
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException
@@ -11,15 +12,30 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
-    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}:{hashed}"
+    iterations = 100_000
+    derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+    return f"pbkdf2_sha256${iterations}${salt}${derived.hex()}"
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    if not stored_hash or ":" not in stored_hash:
+    if not stored_hash:
         return False
-    salt, hashed = stored_hash.split(":", 1)
-    test_hash = hashlib.sha256((salt + password).encode()).hexdigest()
-    return secrets.compare_digest(hashed, test_hash)
+    if stored_hash.startswith("pbkdf2_sha256$"):
+        parts = stored_hash.split("$")
+        if len(parts) != 4:
+            return False
+        _, iter_str, salt, target_hex = parts
+        try:
+            iterations = int(iter_str)
+        except ValueError:
+            return False
+        derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+        return secrets.compare_digest(derived.hex(), target_hex)
+    elif ":" in stored_hash:
+        # Backward compatibility for legacy salt:sha256 format
+        salt, hashed = stored_hash.split(":", 1)
+        test_hash = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+        return secrets.compare_digest(hashed, test_hash)
+    return False
 
 # Request Models
 class CheckEmailRequest(BaseModel):
@@ -31,6 +47,12 @@ class LoginRequest(BaseModel):
 
 class SetPasswordRequest(BaseModel):
     email: EmailStr
+    new_password: str
+    confirm_password: str
+
+class ChangePasswordRequest(BaseModel):
+    email: EmailStr
+    current_password: str
     new_password: str
     confirm_password: str
 
@@ -116,9 +138,17 @@ def check_email(payload: CheckEmailRequest):
     sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
     mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
-    needs_mail_setup = bool(is_dept_head and not mail_configured)
+    needs_mail_setup = False
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
+    # If user has no password yet (Admin or Agent), always route to password setup!
+    if not has_password:
+        next_step = "SET_NEW_PASSWORD"
+    elif is_admin:
+        next_step = "ADMIN_PASSWORD"
+    else:
+        next_step = "ENTER_PASSWORD"
+
     return {
         "success": True,
         "exists": True,
@@ -128,21 +158,21 @@ def check_email(payload: CheckEmailRequest):
         "has_password": has_password,
         "is_dept_head": is_dept_head,
         "mail_configured": mail_configured,
-        "needs_mail_setup": needs_mail_setup,
+        "needs_mail_setup": False,
         "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
         "department_id": user.get("department_id"),
         "department_ids": dept_info["department_ids"],
         "departments": dept_info["departments"],
         "department_name": dept_info["department_name"],
         "designation": user["designation"] or ("Administrator" if is_admin else "HR Agent"),
-        "step": "ADMIN_PASSWORD" if is_admin else ("ENTER_PASSWORD" if has_password else "SET_NEW_PASSWORD")
+        "step": next_step
     }
 
 @router.post("/login")
 def login(payload: LoginRequest):
     """
     Step 2 of Login Flow:
-    Validates Admin App Password or Agent Password.
+    Validates portal password for Admin or HR Agent.
     """
     email_clean = payload.email.strip().lower()
     password = payload.password.strip()
@@ -165,34 +195,30 @@ def login(payload: LoginRequest):
     
     is_admin = (user["role"] == "ADMIN")
     
-    # Admin Login verification
-    if is_admin:
-        # If admin already has a password_hash in DB, verify against it
-        if user["password_hash"]:
-            if not verify_password(password, user["password_hash"]):
-                # Also allow ADMIN_APP_PASSWORD from .env as fallback if configured
-                if ADMIN_APP_PASSWORD and password == ADMIN_APP_PASSWORD:
-                    pass
-                else:
-                    raise HTTPException(status_code=401, detail="Invalid Admin App Password.")
-        else:
-            # First time admin sets their app password
-            new_hash = hash_password(password)
+    if not user["password_hash"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Account password not set yet. Please complete the password creation step."
+        )
+    
+    # Password verification
+    password_valid = False
+    if verify_password(password, user["password_hash"]):
+        password_valid = True
+        # Transparently upgrade legacy salt:sha256 hash to PBKDF2
+        if ":" in user["password_hash"] and not user["password_hash"].startswith("pbkdf2_sha256$"):
+            upgraded_hash = hash_password(password)
             execute_query(
                 "UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s;",
-                (new_hash, user["id"]),
+                (upgraded_hash, user["id"]),
                 commit=True
             )
-    else:
-        # Agent Login verification
-        if not user["password_hash"]:
-            raise HTTPException(
-                status_code=400, 
-                detail="Account password not set yet. Please complete the password creation step."
-            )
-        
-        if not verify_password(password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+    elif is_admin and ADMIN_APP_PASSWORD and password == ADMIN_APP_PASSWORD:
+        # Fallback for root admin recovery if explicitly configured in environment
+        password_valid = True
+
+    if not password_valid:
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
     
     # Generate simple session token
     session_token = secrets.token_urlsafe(32)
@@ -200,7 +226,6 @@ def login(payload: LoginRequest):
     sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
     mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
-    needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
@@ -213,7 +238,7 @@ def login(payload: LoginRequest):
             "role": user["role"],
             "is_dept_head": is_dept_head,
             "mail_configured": mail_configured,
-            "needs_mail_setup": needs_mail_setup,
+            "needs_mail_setup": False,
             "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
@@ -227,7 +252,8 @@ def login(payload: LoginRequest):
 @router.post("/set-password")
 def set_password(payload: SetPasswordRequest):
     """
-    Onboarding step for newly added Agents to create their password.
+    Onboarding step for newly added users (Admins or HR Agents) to create their initial password.
+    Protected against unauthenticated overwriting: fails if password_hash is already set.
     """
     email_clean = payload.email.strip().lower()
     new_pw = payload.new_password.strip()
@@ -241,7 +267,7 @@ def set_password(payload: SetPasswordRequest):
     
     user = execute_query(
         """
-        SELECT u.id, u.email, u.name, u.role, u.is_dept_head, u.department_id, 
+        SELECT u.id, u.email, u.name, u.role, u.password_hash, u.is_dept_head, u.department_id, 
                u.designation, u.mail_configured, d.team_name as department_name,
                d.dept_gmail, d.dept_app_password
         FROM users u 
@@ -254,12 +280,27 @@ def set_password(payload: SetPasswordRequest):
     
     if not user:
         raise HTTPException(status_code=404, detail="User account not found.")
+
+    if user.get("password_hash"):
+        raise HTTPException(
+            status_code=400, 
+            detail="Password is already set. Use Change Password or contact your administrator to reset it."
+        )
     
     # Hash and save password
     hashed = hash_password(new_pw)
     execute_query(
         "UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s;",
         (hashed, user["id"]),
+        commit=True
+    )
+
+    execute_query(
+        """
+        INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
+        VALUES (%s, %s, 'PASSWORD_CREATED', %s::jsonb, NOW());
+        """,
+        (user["email"], user["name"] or "User", json.dumps({"role": user["role"]})),
         commit=True
     )
     
@@ -269,7 +310,6 @@ def set_password(payload: SetPasswordRequest):
     sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
     mail_configured = bool(user.get("mail_configured") or dept_has_pw or sys_mail_ok)
-    needs_mail_setup = bool(is_dept_head and not mail_configured)
     dept_info = _get_user_department_info(user["id"], user.get("department_id"), user.get("department_name"), is_admin)
     
     return {
@@ -283,7 +323,7 @@ def set_password(payload: SetPasswordRequest):
             "role": user["role"],
             "is_dept_head": is_dept_head,
             "mail_configured": mail_configured,
-            "needs_mail_setup": needs_mail_setup,
+            "needs_mail_setup": False,
             "dept_gmail": user.get("dept_gmail") or sys_mail_user or "peopledesk@1mg.com",
             "department_id": user["department_id"],
             "department_ids": dept_info["department_ids"],
@@ -292,5 +332,54 @@ def set_password(payload: SetPasswordRequest):
             "designation": user["designation"]
         },
         "redirect_url": "/admin.html" if user["role"] == "ADMIN" else "/agent.html"
+    }
+
+@router.post("/change-password")
+def change_password(payload: ChangePasswordRequest):
+    """
+    Self-service password update for any authenticated user.
+    Validates current password before applying the new password.
+    """
+    email_clean = payload.email.strip().lower()
+    curr_pw = payload.current_password.strip()
+    new_pw = payload.new_password.strip()
+    confirm_pw = payload.confirm_password.strip()
+
+    if len(new_pw) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long.")
+
+    if new_pw != confirm_pw:
+        raise HTTPException(status_code=400, detail="New passwords do not match.")
+
+    user = execute_query(
+        "SELECT id, email, name, role, password_hash FROM users WHERE LOWER(email) = %s AND status = 'ACTIVE';",
+        (email_clean,),
+        fetch_one=True
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    if not user.get("password_hash") or not verify_password(curr_pw, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect.")
+
+    new_hash = hash_password(new_pw)
+    execute_query(
+        "UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s;",
+        (new_hash, user["id"]),
+        commit=True
+    )
+
+    execute_query(
+        """
+        INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
+        VALUES (%s, %s, 'PASSWORD_CHANGED', %s::jsonb, NOW());
+        """,
+        (user["email"], user["name"] or "User", json.dumps({"role": user["role"]})),
+        commit=True
+    )
+
+    return {
+        "success": True,
+        "message": "Password changed successfully."
     }
 

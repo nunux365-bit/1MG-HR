@@ -3233,20 +3233,6 @@ def configure_department_mailbox(req: MailboxConfigRequest):
             commit=True
         )
 
-    if req.user_id:
-        execute_query(
-            """
-            UPDATE users
-            SET mail_app_password = %s,
-                mail_configured = TRUE,
-                mail_last_synced_at = NOW(),
-                updated_at = NOW()
-            WHERE id = %s;
-            """,
-            (app_password, req.user_id),
-            commit=True
-        )
-
     # 3. Trigger immediate initial IMAP fetch
     sync_res = sync_inbound_emails_from_mailbox(
         max_fetch=25,
@@ -3321,11 +3307,15 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
         if not last_synced:
             last_synced = user.get("mail_last_synced_at")
 
-    # Fallback to centralized .env People Desk mailbox configuration
+    # Centralized People Desk mailbox check
     sys_ok, sys_user, sys_host = has_system_mailbox_config()
-    if not has_creds and sys_ok:
+    if sys_ok:
         has_creds = True
-        account_email = sys_user or account_email
+        account_email = sys_user or "peopledesk@1mg.com"
+        sync_status = "CONNECTED"
+    elif not has_creds and sys_user:
+        has_creds = True
+        account_email = sys_user
         sync_status = "CONNECTED"
     elif not account_email:
         account_email = sys_user or "peopledesk@1mg.com"
@@ -3339,6 +3329,7 @@ def get_mailbox_status(department_id: Optional[int] = None, user_id: Optional[in
         "department_name": dept_name,
         "sync_status": sync_status,
         "last_synced_at": last_synced,
+        "managed_centrally": sys_ok,
         "sync_start_date": sync_start_dt.isoformat() if sync_start_dt else None,
         "imap_host": (dept.get("imap_host") if dept and dept.get("imap_host") else None) or sys_host or detect_imap_host(account_email)
     }

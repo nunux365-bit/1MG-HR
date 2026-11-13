@@ -265,35 +265,17 @@ async function initMailboxStatus() {
     console.warn('Mailbox status check:', e);
   }
 
-  // Prompt Department Head on login if not configured yet
-  if (currentUser.is_dept_head && (!currentUser.mail_configured || currentUser.needs_mail_setup)) {
-    setTimeout(() => {
-      openMailboxConfigModal();
-    }, 700);
-  }
+  // Centralized People Desk mailbox handles ingestion; no personal app password prompt is needed.
 }
 
 function openMailboxConfigModal() {
   const modal = document.getElementById('mailboxConfigModal');
   if (!modal) return;
-
-  const deptDisplay = document.getElementById('mailboxConfigDeptDisplay');
-  const emailInput = document.getElementById('mailboxConfigEmailInput');
-  const passInput = document.getElementById('mailboxConfigAppPassInput');
-  const hostInput = document.getElementById('mailboxConfigHostInput');
-
-  const myDept = (allDepartments || []).find(d => d.id === currentUser.department_id) || {};
-  if (deptDisplay) {
-    deptDisplay.innerText = myDept.team_name || currentUser.department_name || 'Department Desk';
+  const centralEmailEl = document.getElementById('modalCentralMailEmail');
+  if (centralEmailEl) {
+    centralEmailEl.innerText = 'peopledesk@1mg.com';
   }
-  if (emailInput) {
-    emailInput.value = myDept.dept_gmail || currentUser.dept_gmail || currentUser.email || '';
-  }
-  if (passInput) passInput.value = '';
-  if (hostInput) hostInput.value = '';
-
   modal.style.display = 'flex';
-  passInput?.focus();
 }
 
 function closeMailboxConfigModal() {
@@ -301,73 +283,78 @@ function closeMailboxConfigModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function toggleMailboxPassVisibility() {
-  const input = document.getElementById('mailboxConfigAppPassInput');
-  const btn = document.getElementById('btnToggleMailPass');
-  if (!input) return;
-  if (input.type === 'password') {
-    input.type = 'text';
-    if (btn) btn.innerText = '🙈';
-  } else {
-    input.type = 'password';
-    if (btn) btn.innerText = '👁️';
-  }
+function openChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (!modal) return;
+  const currInput = document.getElementById('currentPasswordInput');
+  const newInput = document.getElementById('newPasswordChangeInput');
+  const confInput = document.getElementById('confirmPasswordChangeInput');
+  if (currInput) currInput.value = '';
+  if (newInput) newInput.value = '';
+  if (confInput) confInput.value = '';
+  modal.style.display = 'flex';
+  currInput?.focus();
 }
 
-async function handleMailboxConfigSubmit(event) {
-  event.preventDefault();
-  const email = document.getElementById('mailboxConfigEmailInput')?.value.trim();
-  const password = document.getElementById('mailboxConfigAppPassInput')?.value.trim();
-  const host = document.getElementById('mailboxConfigHostInput')?.value.trim();
-  const port = document.getElementById('mailboxConfigPortInput')?.value.trim();
-  const btn = document.getElementById('btnSaveMailboxConfig');
+function closeChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (modal) modal.style.display = 'none';
+}
 
-  if (!email || !password) {
-    showToast('Please enter both Mailbox Email and App Password', 'warning');
+async function handleChangePasswordSubmit(event) {
+  event.preventDefault();
+  const current_password = document.getElementById('currentPasswordInput')?.value.trim();
+  const new_password = document.getElementById('newPasswordChangeInput')?.value.trim();
+  const confirm_password = document.getElementById('confirmPasswordChangeInput')?.value.trim();
+  const btn = document.getElementById('btnSubmitChangePassword');
+
+  if (!current_password || !new_password || !confirm_password) {
+    showToast('Please fill in all password fields.', 'warning');
+    return;
+  }
+  if (new_password.length < 6) {
+    showToast('New password must be at least 6 characters long.', 'warning');
+    return;
+  }
+  if (new_password !== confirm_password) {
+    showToast('New passwords do not match. Please re-enter.', 'warning');
     return;
   }
 
   const origHtml = btn ? btn.innerHTML : '';
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div><span>Connecting Mailbox...</span>`;
+    btn.innerHTML = `<div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div><span>Updating...</span>`;
   }
 
   try {
-    const res = await fetch('/api/v1/inbox/configure-mailbox', {
+    const res = await fetch('/api/v1/auth/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        account_email: email,
-        app_password: password,
-        department_id: currentUser.department_id || null,
-        user_id: currentUser.id || null,
-        imap_host: host || null,
-        imap_port: port ? parseInt(port, 10) : 993
+        email: currentUser.email,
+        current_password,
+        new_password,
+        confirm_password
       })
     });
-
     const data = await res.json();
     if (res.ok && data.success) {
-      showToast(`🎉 ${data.message}`, 'success');
-      currentUser.mail_configured = true;
-      delete currentUser.needs_mail_setup;
-      localStorage.setItem('1mg_user', JSON.stringify(currentUser));
-      closeMailboxConfigModal();
-      initMailboxStatus();
-      await loadInboxEmails();
+      showToast('🎉 Password changed successfully!', 'success');
+      closeChangePasswordModal();
     } else {
-      showToast(data.detail || data.message || 'Failed to authenticate mailbox. Please verify App Password.', 'error');
+      showToast(data.detail || data.message || 'Failed to update password.', 'error');
     }
   } catch (err) {
-    console.error('Mailbox configuration error:', err);
-    showToast('Error connecting to mailbox server. Check credentials.', 'error');
+    console.error('Password change error:', err);
+    showToast('Network error while updating password.', 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = origHtml;
     }
   }
+}
 }
 
 // =========================================================================

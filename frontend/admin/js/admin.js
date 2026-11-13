@@ -66,6 +66,84 @@ function handleSignOut() {
   window.location.href = '/';
 }
 
+function openChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (!modal) return;
+  const currInput = document.getElementById('currentPasswordInput');
+  const newInput = document.getElementById('newPasswordChangeInput');
+  const confInput = document.getElementById('confirmPasswordChangeInput');
+  if (currInput) currInput.value = '';
+  if (newInput) newInput.value = '';
+  if (confInput) confInput.value = '';
+  modal.style.display = 'flex';
+  currInput?.focus();
+}
+
+function closeChangePasswordModal() {
+  const modal = document.getElementById('changePasswordModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function handleChangePasswordSubmit(event) {
+  event.preventDefault();
+  const user = JSON.parse(localStorage.getItem('1mg_user') || '{}');
+  const current_password = document.getElementById('currentPasswordInput')?.value.trim();
+  const new_password = document.getElementById('newPasswordChangeInput')?.value.trim();
+  const confirm_password = document.getElementById('confirmPasswordChangeInput')?.value.trim();
+  const btn = document.getElementById('btnSubmitChangePassword');
+
+  if (!user.email) {
+    showToast('Session Expired', 'Please log in again.', 'error');
+    return;
+  }
+  if (!current_password || !new_password || !confirm_password) {
+    showToast('Missing Fields', 'Please fill in all password fields.', 'error');
+    return;
+  }
+  if (new_password.length < 6) {
+    showToast('Weak Password', 'New password must be at least 6 characters long.', 'error');
+    return;
+  }
+  if (new_password !== confirm_password) {
+    showToast('Password Mismatch', 'New passwords do not match. Please re-enter.', 'error');
+    return;
+  }
+
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>Updating...</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/v1/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email,
+        current_password,
+        new_password,
+        confirm_password
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Password Changed', 'Your portal access password has been updated.', 'success');
+      closeChangePasswordModal();
+    } else {
+      showToast('Update Failed', data.detail || data.message || 'Failed to update password.', 'error');
+    }
+  } catch (err) {
+    console.error('Password change error:', err);
+    showToast('Network Error', 'Error connecting to backend.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+
 // =========================================================================
 // 1. DYNAMIC DEPARTMENTS (HANDLES 100s - 1000s OF DEPARTMENTS)
 // =========================================================================
@@ -324,7 +402,7 @@ function renderUsersTable(users, total, totalPages) {
 
   tbody.innerHTML = users.map(u => {
     const isHead = Boolean(u.is_dept_head);
-    const isPending = !u.has_password && u.role === 'HR_AGENT';
+    const isPending = !u.has_password;
     const initials = (u.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const userJson = escapeHtml(JSON.stringify(u));
     const avatarGradient = getAvatarGradient(u.name, u.email, u.role);
@@ -468,7 +546,19 @@ function renderUsersTable(users, total, totalPages) {
                 </svg>
                 <span>Resend</span>
               </button>
-            ` : ''}
+            ` : `
+              <button 
+                class="action-pill-btn reset-pwd"
+                onclick="triggerResetUserPassword(${u.id}, '${escapeHtml(u.name)}')" 
+                data-tooltip="Reset User Password &amp; Send Activation Link"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="13" height="13" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Reset</span>
+              </button>
+            `}
 
             <button 
               class="action-pill-btn edit"
@@ -719,6 +809,29 @@ async function triggerResendInvite(userId, agentName) {
     }
   } catch (err) {
     alert('Error connecting to backend.');
+  }
+}
+
+async function triggerResetUserPassword(userId, userName) {
+  if (!confirm(`Are you sure you want to reset the password for ${userName}? Their current password will be invalidated, and an activation invite will be dispatched.`)) {
+    return;
+  }
+  try {
+    const res = await fetch(`/api/v1/admin/users/${userId}/reset-password`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Password Reset', `Password reset for ${userName}. Activation link generated.`, 'success');
+      if (data.email_details) {
+        openEmailPreviewModal(data.email_details);
+      }
+      loadUsers();
+    } else {
+      showToast('Reset Failed', data.detail || data.message || 'Failed to reset password.', 'error');
+    }
+  } catch (err) {
+    showToast('Error', 'Error connecting to backend: ' + err.message, 'error');
   }
 }
 

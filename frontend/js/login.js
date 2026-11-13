@@ -80,64 +80,49 @@ async function handleCheckEmail(e) {
     currentSessionUser = data;
 
     // Transition based on detected role & password status
-    if (data.role === 'ADMIN') {
-      if (data.has_password) {
-        // Branch A: Admin App Password
-        document.getElementById('pageTitle').innerText = 'Admin Authentication';
-        document.getElementById('pageSubtitle').innerText = 'Enter your secure app password to continue';
-        document.getElementById('adminNameDisplay').innerText = data.name || 'Administrator';
-        document.getElementById('adminEmailDisplay').innerText = data.email;
-        showPane('stepAdminPassword');
-        document.getElementById('adminAppPasswordInput').value = '';
-        document.getElementById('adminAppPasswordInput').focus();
-      } else {
-        // First-time Admin onboarding: let new Admin set & confirm password
-        document.getElementById('pageTitle').innerText = 'Activate Admin Account';
-        document.getElementById('pageSubtitle').innerText = 'Set a password to complete your administrator onboarding';
-        document.getElementById('onboardAgentName').innerText = data.name || 'Administrator';
-        document.getElementById('onboardDeptName').innerText = 'All Departments (Admin Console)';
+    if (!data.has_password) {
+      // First-time onboarding for any role (Admin or Agent) - Create Password
+      const roleLabel = (data.role === 'ADMIN') ? 'Admin Account' : 'Your Account';
+      const deptLabel = (data.role === 'ADMIN') ? 'All Departments (Admin Console)' : (data.department_name || 'People Desk');
+      document.getElementById('pageTitle').innerText = 'Activate ' + roleLabel;
+      document.getElementById('pageSubtitle').innerText = 'Set a password to complete your onboarding';
+      document.getElementById('onboardAgentName').innerText = data.name || (data.role === 'ADMIN' ? 'Administrator' : 'Agent');
+      document.getElementById('onboardDeptName').innerText = deptLabel;
 
-        showPane('stepSetPassword');
-        document.getElementById('newPasswordInput').value = '';
-        document.getElementById('confirmPasswordInput').value = '';
-        document.getElementById('newPasswordInput').focus();
+      showPane('stepSetPassword');
+      document.getElementById('newPasswordInput').value = '';
+      document.getElementById('confirmPasswordInput').value = '';
+      document.getElementById('newPasswordInput').focus();
+    } else if (data.role === 'ADMIN') {
+      // Branch A: Admin with existing password
+      document.getElementById('pageTitle').innerText = 'Admin Sign In';
+      document.getElementById('pageSubtitle').innerText = 'Enter your password to continue';
+      document.getElementById('adminNameDisplay').innerText = data.name || 'Administrator';
+      document.getElementById('adminEmailDisplay').innerText = data.email;
+      showPane('stepAdminPassword');
+      document.getElementById('adminAppPasswordInput').value = '';
+      document.getElementById('adminAppPasswordInput').focus();
+    } else {
+      // Branch B: Agent with existing password
+      document.getElementById('pageTitle').innerText = 'Agent Sign In';
+      document.getElementById('pageSubtitle').innerText = 'Welcome back! Enter your password';
+      document.getElementById('agentNameDisplay').innerText = data.name || 'Agent';
+      document.getElementById('agentEmailDisplay').innerText = data.email;
+      document.getElementById('agentDeptDisplay').innerText = data.department_name || 'People Desk';
+      
+      // Department Head badge indicator
+      const badge = document.getElementById('agentRoleBadge');
+      if (data.is_dept_head) {
+        badge.className = 'role-pill head';
+        badge.innerText = 'DEPT HEAD';
+      } else {
+        badge.className = 'role-pill agent';
+        badge.innerText = 'AGENT';
       }
 
-    } else if (data.role === 'HR_AGENT') {
-      if (data.has_password) {
-        // Branch B: Agent with existing password
-        document.getElementById('pageTitle').innerText = 'Agent Sign In';
-        document.getElementById('pageSubtitle').innerText = 'Welcome back! Enter your password';
-        document.getElementById('agentNameDisplay').innerText = data.name || 'Agent';
-        document.getElementById('agentEmailDisplay').innerText = data.email;
-        document.getElementById('agentDeptDisplay').innerText = data.department_name || 'People Desk';
-        
-        // Department Head badge indicator
-        const badge = document.getElementById('agentRoleBadge');
-        if (data.is_dept_head) {
-          badge.className = 'role-pill head';
-          badge.innerText = 'DEPT HEAD';
-        } else {
-          badge.className = 'role-pill agent';
-          badge.innerText = 'AGENT';
-        }
-
-        showPane('stepAgentPassword');
-        document.getElementById('agentPasswordInput').value = '';
-        document.getElementById('agentPasswordInput').focus();
-
-      } else {
-        // Branch C: Agent newly added by admin - Needs to create password
-        document.getElementById('pageTitle').innerText = 'Activate Your Account';
-        document.getElementById('pageSubtitle').innerText = 'Set a password to complete your onboarding';
-        document.getElementById('onboardAgentName').innerText = data.name || 'Agent';
-        document.getElementById('onboardDeptName').innerText = data.department_name || 'People Desk';
-
-        showPane('stepSetPassword');
-        document.getElementById('newPasswordInput').value = '';
-        document.getElementById('confirmPasswordInput').value = '';
-        document.getElementById('newPasswordInput').focus();
-      }
+      showPane('stepAgentPassword');
+      document.getElementById('agentPasswordInput').value = '';
+      document.getElementById('agentPasswordInput').focus();
     }
 
   } catch (err) {
@@ -173,7 +158,7 @@ async function handleAdminLogin(e) {
     const data = await res.json();
 
     if (!res.ok || !data.success) {
-      showAlert(data.detail || 'Invalid Admin App Password. Please check and retry.');
+      showAlert(data.detail || 'Incorrect password. Please check and retry.');
       btn.disabled = false;
       btn.innerHTML = `<span>Sign In as Admin</span>`;
       return;

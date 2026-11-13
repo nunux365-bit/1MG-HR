@@ -233,7 +233,7 @@ def get_users(
             COUNT(*) as total_users,
             COUNT(*) FILTER (WHERE role = 'HR_AGENT') as total_agents,
             COUNT(*) FILTER (WHERE is_dept_head = TRUE) as total_dept_heads,
-            COUNT(*) FILTER (WHERE password_hash IS NULL AND role = 'HR_AGENT' AND status = 'ACTIVE') as pending_setup
+            COUNT(*) FILTER (WHERE password_hash IS NULL AND status = 'ACTIVE') as pending_setup
         FROM users;
     """
     stats_raw = execute_query(stats_query, fetch_one=True) or {}
@@ -718,6 +718,70 @@ def resend_invite(user_id: int, request: Request):
     return {
         "success": True,
         "message": f"Welcome invite re-sent to {user['email']}" if email_sent else f"Invite generated for {user['email']}. Notice: {email_res.get('error', 'SMTP issue')}",
+        "email_details": email_res,
+        "email_sent": email_sent
+    }
+
+@router.post("/users/{user_id}/reset-password")
+def reset_user_password(user_id: int, request: Request):
+    """
+    Admin resets a user's password.
+    Clears password_hash to NULL, forcing the user to create a fresh password on next login.
+    Generates a direct activation link and dispatches the welcome/invitation email.
+    """
+    user = execute_query(
+        """
+        SELECT u.id, u.name, u.email, u.role, u.is_dept_head, u.designation, d.team_name as department_name
+        FROM users u
+        LEFT JOIN hr_departments d ON u.department_id = d.id
+        WHERE u.id = %s;
+        """,
+        (user_id,),
+        fetch_one=True
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # Clear password_hash to trigger initial password setup on next login
+    execute_query("UPDATE users SET password_hash = NULL, updated_at = NOW() WHERE id = %s;", (user_id,), commit=True)
+
+    # Record in audit log
+    details_str = json.dumps({
+        "target_user_id": user_id,
+        "email": user["email"],
+        "name": user["name"]
+    })
+    execute_query(
+        """
+        INSERT INTO audit_logs (actor_email, actor_name, action, details, created_at)
+        VALUES (%s, 'Administrator', 'USER_PASSWORD_RESET', %s::jsonb, NOW());
+        """,
+        (ADMIN_EMAIL, details_str),
+        commit=True
+    )
+
+    # Resolve dynamic host & link
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    base_url = origin or ("/".join(referer.split("/")[:3]) if referer else str(request.base_url).rstrip("/"))
+    activation_link = f"{base_url}/?email={user['email']}"
+
+    email_res = send_welcome_email(
+        agent_name=user["name"],
+        agent_email=user["email"],
+        department_name=user.get("department_name") or ("All Departments" if user.get("role") == "ADMIN" else "People Desk"),
+        designation=user["designation"],
+        is_dept_head=bool(user["is_dept_head"]),
+        base_url=base_url,
+        sender_admin_email=ADMIN_EMAIL,
+        role=user.get("role") or "HR_AGENT"
+    )
+
+    email_sent = bool(email_res and email_res.get("sent"))
+    return {
+        "success": True,
+        "message": f"Password reset for {user['name']}. They can now create a new password on login." + (f" Reset link dispatched to {user['email']}." if email_sent else ""),
+        "activation_link": activation_link,
         "email_details": email_res,
         "email_sent": email_sent
     }

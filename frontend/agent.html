@@ -181,7 +181,10 @@
             </div>
           </div>
 
-          <button onclick="handleSignOut()" style="background: none; border: none; cursor: pointer; color: #EF4444; font-size: 11.5px; font-weight: 700; margin-left: 4px;" title="Sign out">
+          <button onclick="openChangePasswordModal()" style="background: none; border: none; cursor: pointer; color: #475569; font-size: 11.5px; font-weight: 600; margin-left: 6px; padding: 2px 6px; border-radius: 4px;" title="Change your portal password" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='none'">
+            Password
+          </button>
+          <button onclick="handleSignOut()" style="background: none; border: none; cursor: pointer; color: #EF4444; font-size: 11.5px; font-weight: 700; margin-left: 4px; padding: 2px 6px; border-radius: 4px;" title="Sign out" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='none'">
             Sign Out
           </button>
         </div>
@@ -1720,79 +1723,101 @@
     </div>
   </div>
 
-  <!-- MODAL: DEPARTMENT HEAD MAILBOX & APP PASSWORD CONFIGURATION -->
+  <!-- MODAL: PEOPLE DESK CENTRAL MAILBOX STATUS & INFORMATION -->
   <div class="modal-overlay" id="mailboxConfigModal" style="display: none; z-index: 1050;">
-    <div class="modal-content" style="max-width: 520px; width: 92%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+    <div class="modal-content" style="max-width: 480px; width: 92%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
       <div class="modal-header" style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px;">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 38px; height: 38px; border-radius: 8px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; color: #4F46E5;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; color: #10B981;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
           </div>
           <div>
-            <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B;">Department Mailbox Access</h3>
-            <span style="font-size: 12px; color: #64748B;">Configure Mail App Password for direct inbound ingestion</span>
+            <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B;">Central Mailbox Integration</h3>
+            <span style="font-size: 12px; color: #64748B;">Automated Inbound Ingestion &amp; Dispatch</span>
           </div>
         </div>
         <button class="modal-close" onclick="closeMailboxConfigModal()">&times;</button>
       </div>
 
-      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; margin-top: 14px; display: flex; gap: 10px; align-items: flex-start;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-        <div style="font-size: 12px; color: #1E40AF; line-height: 1.45;">
-          <strong>Department Head Authority:</strong> As Department Head, configure your mail app password to fetch, view, and route incoming employee queries sent to your department.
+      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px 14px; margin-top: 14px; display: flex; gap: 10px; align-items: flex-start;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2" style="flex-shrink: 0; margin-top: 2px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <div style="font-size: 12.5px; color: #166534; line-height: 1.5;">
+          <strong>Centralized People Desk Service:</strong> Corporate email synchronization is managed centrally via <strong id="modalCentralMailEmail">peopledesk@1mg.com</strong>.
         </div>
       </div>
 
-      <form id="mailboxConfigForm" onsubmit="handleMailboxConfigSubmit(event)" style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px;">
-        <div>
-          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Department Desk</label>
-          <div id="mailboxConfigDeptDisplay" style="font-size: 13px; font-weight: 600; color: #334155; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 6px; margin-top: 4px;">
-            Attendance HR Desk
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 14px;">
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px;">
+            <span style="color: #64748B; font-weight: 500;">Mailbox Address:</span>
+            <span style="color: #1E293B; font-weight: 700;">peopledesk@1mg.com</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px;">
+            <span style="color: #64748B; font-weight: 500;">Inbound Protocol:</span>
+            <span style="color: #1E293B; font-weight: 600;">IMAP SSL (Port 993)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
+            <span style="color: #64748B; font-weight: 500;">AI Department Routing:</span>
+            <span style="color: #059669; font-weight: 700;">Active · 3-Stage ML Router</span>
           </div>
         </div>
 
+        <p style="font-size: 12px; color: #64748B; line-height: 1.5; margin: 0;">
+          💡 Specialists and Department Heads use their own personal portal password to access the workbench. Individual mail app passwords are not required.
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+        <button type="button" class="btn-action" onclick="closeMailboxConfigModal()">Close</button>
+        <button type="button" class="btn-primary" onclick="closeMailboxConfigModal(); syncInboxMailbox();" style="background: #10B981; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Sync Mailbox Now</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHANGE PORTAL PASSWORD -->
+  <div class="modal-overlay" id="changePasswordModal" style="display: none; z-index: 1060;">
+    <div class="modal-content" style="max-width: 440px; width: 92%; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="border-bottom: 1px solid #E2E8F0; padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; color: #4F46E5;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <div>
+            <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 700; color: #1E293B;">Change Password</h3>
+            <span style="font-size: 12px; color: #64748B;">Update your personal portal access password</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+      </div>
+
+      <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)" style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px;">
         <div>
-          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Department Mailbox Email *</label>
-          <input type="email" id="mailboxConfigEmailInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; background-image: none; margin-top: 4px; font-size: 13px;" placeholder="e.g. attendance.desk@1mg.com" required>
-          <span style="font-size: 11px; color: #64748B; margin-top: 4px; display: block;">The official corporate inbox address where employees send tickets/queries.</span>
+          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Current Password *</label>
+          <input type="password" id="currentPasswordInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; background-image: none; margin-top: 4px; font-size: 13px;" placeholder="Enter your current password" required autocomplete="current-password">
         </div>
 
         <div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Mail App Password *</label>
-            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #2563EB; text-decoration: underline; font-weight: 600;">Generate Google App Password ↗</a>
-          </div>
-          <div style="position: relative; margin-top: 4px;">
-            <input type="password" id="mailboxConfigAppPassInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; padding-right: 36px; background-image: none; font-size: 13px; letter-spacing: 1px;" placeholder="e.g. abcd efgh ijkl mnop (16 characters)" required>
-            <button type="button" onclick="toggleMailboxPassVisibility()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748B; font-size: 14px;" id="btnToggleMailPass">👁️</button>
-          </div>
-          <span style="font-size: 11px; color: #64748B; margin-top: 4px; display: block;">For Google Workspace/Gmail, create a 16-character App Password under Google Account &gt; Security &gt; 2-Step Verification &gt; App Passwords.</span>
+          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">New Password *</label>
+          <input type="password" id="newPasswordChangeInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; background-image: none; margin-top: 4px; font-size: 13px;" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
         </div>
 
-        <!-- Collapsible Advanced Settings -->
-        <details style="border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 12px; background: #F8FAFC;">
-          <summary style="font-size: 12px; font-weight: 600; color: #475569; cursor: pointer;">Advanced IMAP Settings (Auto-detected)</summary>
-          <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <div style="flex: 2;">
-              <label style="font-size: 11px; font-weight: 600; color: #475569;">IMAP Host</label>
-              <input type="text" id="mailboxConfigHostInput" class="topbar-search-input" style="width: 100%; padding-left: 10px; background-image: none; margin-top: 2px; font-size: 12px;" placeholder="imap.gmail.com">
-            </div>
-            <div style="flex: 1;">
-              <label style="font-size: 11px; font-weight: 600; color: #475569;">IMAP Port</label>
-              <input type="number" id="mailboxConfigPortInput" class="topbar-search-input" style="width: 100%; padding-left: 10px; background-image: none; margin-top: 2px; font-size: 12px;" value="993">
-            </div>
-          </div>
-        </details>
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: #1E293B;">Confirm New Password *</label>
+          <input type="password" id="confirmPasswordChangeInput" class="topbar-search-input" style="width: 100%; padding-left: 12px; background-image: none; margin-top: 4px; font-size: 13px;" placeholder="Re-enter your new password" required minlength="6" autocomplete="new-password">
+        </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-          <button type="button" class="btn-action" onclick="closeMailboxConfigModal()">Later</button>
-          <button type="submit" class="btn-primary" id="btnSaveMailboxConfig" style="background: #10B981; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <span>Connect &amp; Fetch Emails</span>
+          <button type="button" class="btn-action" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="btnSubmitChangePassword" style="background: #2563EB; border: none; font-weight: 700;">
+            <span>Update Password</span>
           </button>
         </div>
       </form>
     </div>
+  </div>
   </div>
 
   <!-- MODAL: INGEST REAL INBOUND EMAIL -->
