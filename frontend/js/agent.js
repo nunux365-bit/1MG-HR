@@ -355,7 +355,6 @@ async function handleChangePasswordSubmit(event) {
     }
   }
 }
-}
 
 // =========================================================================
 // 2. VIEW SWITCHING & SIDEBAR
