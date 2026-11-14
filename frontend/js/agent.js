@@ -55,6 +55,41 @@ if (!currentUser.email) {
   window.location.href = '/login.html';
 }
 
+function toggleUserProfileDropdown(e) {
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  const popover = document.getElementById('googleProfilePopover');
+  if (!popover) return;
+  const isShowing = popover.style.display === 'block';
+  popover.style.display = isShowing ? 'none' : 'block';
+  const trigger = document.getElementById('googleAvatarTrigger');
+  if (trigger) {
+    trigger.setAttribute('aria-expanded', !isShowing);
+    if (!isShowing) {
+      trigger.classList.add('active');
+    } else {
+      trigger.classList.remove('active');
+    }
+  }
+}
+
+function closeUserProfileDropdown() {
+  const popover = document.getElementById('googleProfilePopover');
+  if (popover) popover.style.display = 'none';
+  const trigger = document.getElementById('googleAvatarTrigger');
+  if (trigger) {
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.classList.remove('active');
+  }
+}
+
+function openChangePasswordModalFromMenu() {
+  closeUserProfileDropdown();
+  openChangePasswordModal();
+}
+
 function toggleAgentSwitchDropdown() {
   const menu = document.getElementById('agentSwitchMenu');
   if (menu) {
@@ -70,12 +105,26 @@ function toggleAgentSwitchDropdown() {
   }
 }
 
-// Close switcher dropdown when clicking outside
+// Close profile dropdown & switcher when clicking outside or pressing Escape
 document.addEventListener('click', (e) => {
+  const accountWrapper = document.getElementById('googleAccountWrapper');
+  const popover = document.getElementById('googleProfilePopover');
+  if (popover && popover.style.display === 'block') {
+    if (accountWrapper && !accountWrapper.contains(e.target)) {
+      closeUserProfileDropdown();
+    }
+  }
+
   const menu = document.getElementById('agentSwitchMenu');
   const userMenu = document.querySelector('.user-profile-menu');
   if (menu && menu.style.display === 'block' && userMenu && !userMenu.contains(e.target)) {
     menu.style.display = 'none';
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeUserProfileDropdown();
   }
 });
 
@@ -85,6 +134,7 @@ function switchAgentProfile(userId) {
   currentUser = { ...prof };
   localStorage.setItem('1mg_user', JSON.stringify(currentUser));
   window._hasShownAssignedNotice = false;
+  closeUserProfileDropdown();
   const menu = document.getElementById('agentSwitchMenu');
   if (menu) menu.style.display = 'none';
   initUserSession();
@@ -191,15 +241,24 @@ function initUserSession() {
   const nameEl = document.getElementById('agentHeaderName');
   const emailEl = document.getElementById('agentHeaderEmail');
   const avatarEl = document.getElementById('agentAvatar');
+  const largeAvatarEl = document.getElementById('agentLargeAvatar');
   const deptTagEl = document.getElementById('agentDeptTag');
 
   const fullName = currentUser.name || 'HR Agent';
   if (nameEl) nameEl.innerText = fullName;
   if (emailEl) emailEl.innerText = currentUser.email || 'agent@1mg.com';
   
+  const initials = fullName.split(' ').map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase() || 'RY';
   if (avatarEl) {
-    const initials = fullName.split(' ').map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase() || 'VY';
     avatarEl.innerText = initials;
+  }
+  if (largeAvatarEl) {
+    largeAvatarEl.innerText = initials;
+  }
+
+  const trigger = document.getElementById('googleAvatarTrigger');
+  if (trigger) {
+    trigger.title = `People Desk Account: ${fullName} (${currentUser.email || ''})`;
   }
 
   const isAgent = currentUser.role !== 'ADMIN';
@@ -212,7 +271,13 @@ function initUserSession() {
   // Dept Head badge
   const headBadge = document.getElementById('deptHeadBadge');
   if (headBadge) {
-    headBadge.style.display = currentUser.is_dept_head ? 'inline-block' : 'none';
+    headBadge.style.display = currentUser.is_dept_head ? 'inline-flex' : 'none';
+  }
+
+  // Admin menu option inside Google dropdown
+  const adminMenuItem = document.getElementById('gpAdminMenuItem');
+  if (adminMenuItem) {
+    adminMenuItem.style.display = currentUser.role === 'ADMIN' ? 'block' : 'none';
   }
 
   // Configure Topbar Active Desk Badge
