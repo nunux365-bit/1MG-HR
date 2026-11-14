@@ -246,60 +246,54 @@
         <!-- WORKBENCH CONTROL SUB-BAR -->
         <div class="workbench-subbar">
           <div class="subbar-left">
-            <button class="btn-collapse-stream" onclick="toggleInboxCollapse()" title="Collapse/Expand Queue">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-              <span>Collapse Queue</span>
+            <button class="btn-collapse-stream" onclick="toggleInboxCollapse()" title="Toggle Queue Sidebar (⌘B)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+              <span>Queue</span>
             </button>
 
-            <!-- Triage Tabs -->
-            <div class="stream-tabs-row">
+            <div class="subbar-divider"></div>
+
+            <!-- Segmented Triage Tabs Track (Linear Style) -->
+            <div class="stream-tabs-row segmented">
               <button class="stream-tab-btn active" id="tabUsefulMail" onclick="setInboxTriageTab('useful', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 <span>Useful Mail</span>
-                <span class="tab-count-pill" id="countUsefulBadge">0</span>
+                <span class="tab-count-pill tab-pill-useful" id="countUsefulBadge">0</span>
               </button>
               <button class="stream-tab-btn" id="tabActionableMail" onclick="setInboxTriageTab('actionable', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                 <span>Actionable HR</span>
-                <span class="tab-count-pill" id="countActionableBadge">0</span>
+                <span class="tab-count-pill tab-pill-actionable" id="countActionableBadge">0</span>
               </button>
               <button class="stream-tab-btn" id="tabAssignedMe" onclick="setInboxTriageTab('assigned_to_me', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 <span>Assigned to Me</span>
-                <span class="tab-count-pill badge-assigned" id="countAssignedMeBadge">0</span>
+                <span class="tab-count-pill tab-pill-assigned" id="countAssignedMeBadge">0</span>
               </button>
               <button class="stream-tab-btn" id="tabUnclaimedMail" onclick="setInboxTriageTab('unclaimed', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 <span>Unclaimed Pool</span>
-                <span class="tab-count-pill" id="countUnclaimedMailBadge">0</span>
+                <span class="tab-count-pill tab-pill-unclaimed" id="countUnclaimedMailBadge">0</span>
               </button>
               <button class="stream-tab-btn" id="tabNoiseMail" onclick="setInboxTriageTab('noise', this)">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                 <span>Noise / System</span>
-                <span class="tab-count-pill" id="countNoiseBadge">0</span>
+                <span class="tab-count-pill tab-pill-noise" id="countNoiseBadge">0</span>
               </button>
             </div>
           </div>
 
           <div class="subbar-right">
-            <div class="subbar-search-box">
-              <input type="text" id="inboxSearchInput" class="stream-search-input" placeholder="Search emails, employee, subject..." oninput="handleInboxSearch()">
-            </div>
             <button id="btnMailboxStatus" class="btn-action subbar-btn" onclick="openMailboxConfigModal()" title="Department Mailbox Settings" style="display: none; align-items: center; gap: 6px; font-weight: 600;">
               <span id="mailboxStatusDot" style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
               <span id="mailboxStatusLabel">Mailbox: Connected</span>
             </button>
             <button class="btn-action subbar-btn" onclick="syncInboxMailbox(this)" title="Sync Inbound Mailbox" style="display: inline-flex; align-items: center; gap: 6px;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Sync Mailbox</span>
-            </button>
-            <span id="autoSyncBadge" style="font-size: 11px; font-weight: 600; color: #0284C7; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 4px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 5px;" title="Automatic 30-second mailbox synchronization active">
-              <span style="width: 6px; height: 6px; border-radius: 50%; background: #0284C7; display: inline-block;"></span>
-              <span>30s Auto-Sync</span>
-            </span>
-            <button class="btn-primary subbar-btn-new" onclick="openIngestEmailModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="Ingest Real Employee Inbound Email">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>+ Ingest Mail</span>
+              <span>Sync</span>
             </button>
           </div>
         </div>

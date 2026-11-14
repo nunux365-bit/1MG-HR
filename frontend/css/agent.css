@@ -537,7 +537,7 @@ body.admin-body {
    2. WORKBENCH SUB-TOOLBAR (MATCHING REFERENCE SCREENSHOT)
    ========================================================================== */
 .workbench-subbar {
-  height: 46px;
+  height: 48px;
   flex-shrink: 0;
   background: #FFFFFF;
   border-bottom: 1px solid var(--border-light);
@@ -552,98 +552,181 @@ body.admin-body {
 .subbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
 }
 
 .btn-collapse-stream {
-  padding: 5px 10px;
+  padding: 5px 11px;
   background: #F8FAFC;
   border: 1px solid var(--border-light);
-  border-radius: 6px;
-  font-size: 11.5px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-body);
+  color: #475569;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   white-space: nowrap;
   transition: all 0.15s ease;
+  height: 32px;
 }
 .btn-collapse-stream:hover {
   background: #FFFFFF;
   border-color: #CBD5E1;
-  color: var(--text-dark);
+  color: #0F172A;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
-.stream-tabs-row {
-  display: flex;
+.subbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #E2E8F0;
+  flex-shrink: 0;
+}
+
+/* Linear / Superhuman Style Segmented Track */
+.stream-tabs-row.segmented {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  background: #F1F5F9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 2px;
+  border: 1px solid #E2E8F0;
+  user-select: none;
   overflow-x: auto;
   scrollbar-width: none;
 }
-.stream-tabs-row::-webkit-scrollbar {
+.stream-tabs-row.segmented::-webkit-scrollbar {
   display: none;
 }
 
-.stream-tab-btn {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: #F8FAFC;
-  border: 1px solid var(--border-light);
+.stream-tabs-row.segmented .stream-tab-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+  background: transparent;
+  border: none;
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: none;
+  height: 28px;
 }
-.stream-tab-btn:hover {
-  background: #F1F5F9;
-  border-color: #CBD5E1;
-  color: var(--text-dark);
+
+.stream-tabs-row.segmented .stream-tab-btn:hover {
+  color: #0F172A;
+  background: rgba(255, 255, 255, 0.6);
 }
-.stream-tab-btn.active {
-  background: #FFF1F2;
+
+.stream-tabs-row.segmented .stream-tab-btn.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Specific Active Tab Accents & Icons */
+.stream-tabs-row.segmented .stream-tab-btn#tabUsefulMail.active {
   color: #E11D48;
-  border-color: #FECDD3;
-  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);
+}
+.stream-tabs-row.segmented .stream-tab-btn#tabUsefulMail.active svg {
+  stroke: #E11D48;
 }
 
-.stream-tab-btn#tabAssignedMe.active {
-  background: #EFF6FF !important;
-  color: #2563EB !important;
-  border-color: #BFDBFE !important;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
+.stream-tabs-row.segmented .stream-tab-btn#tabActionableMail.active {
+  color: #D97706;
 }
-.stream-tab-btn#tabAssignedMe.active .tab-count-pill {
-  background: #2563EB !important;
-  color: #FFFFFF !important;
+.stream-tabs-row.segmented .stream-tab-btn#tabActionableMail.active svg {
+  stroke: #D97706;
 }
 
+.stream-tabs-row.segmented .stream-tab-btn#tabAssignedMe.active {
+  color: #2563EB;
+}
+.stream-tabs-row.segmented .stream-tab-btn#tabAssignedMe.active svg {
+  stroke: #2563EB;
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabUnclaimedMail.active {
+  color: #475569;
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabNoiseMail.active {
+  color: #64748B;
+}
+
+/* Redesigned Tab Count Badges */
 .tab-count-pill {
   font-size: 10px;
   font-weight: 800;
-  background: #E2E8F0;
-  color: #475569;
-  padding: 1px 7px;
-  border-radius: 999px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  min-width: 17px;
+  text-align: center;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
 }
-.tab-count-pill.badge-assigned {
+
+/* Inactive Badge Colors */
+.tab-pill-useful {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+.tab-pill-actionable {
+  background: #FEF3C7;
+  color: #D97706;
+}
+.tab-pill-assigned {
   background: #DBEAFE;
   color: #1D4ED8;
-  border: 1px solid #BFDBFE;
 }
-.stream-tab-btn.active .tab-count-pill {
-  background: #E11D48;
-  color: #FFFFFF;
+.tab-pill-unclaimed {
+  background: #E2E8F0;
+  color: #475569;
+}
+.tab-pill-noise {
+  background: #E2E8F0;
+  color: #64748B;
+}
+
+/* Active Badge Colors */
+.stream-tabs-row.segmented .stream-tab-btn#tabUsefulMail.active .tab-count-pill {
+  background: #E11D48 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(225, 29, 72, 0.3);
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabActionableMail.active .tab-count-pill {
+  background: #D97706 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.3);
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabAssignedMe.active .tab-count-pill {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabUnclaimedMail.active .tab-count-pill {
+  background: #475569 !important;
+  color: #FFFFFF !important;
+}
+
+.stream-tabs-row.segmented .stream-tab-btn#tabNoiseMail.active .tab-count-pill {
+  background: #64748B !important;
+  color: #FFFFFF !important;
 }
 
 /* Colleague Assignment Stream Chips */
