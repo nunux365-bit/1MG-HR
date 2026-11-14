@@ -466,17 +466,19 @@ function handleSignOut() {
 // 3. COCKPIT CONTROLS: ✦ AI PANEL & STREAM COLLAPSE
 // =========================================================================
 function toggleAiPanel() {
-  const panel = document.getElementById('aiCopilotPanel');
+  const panel = document.getElementById('inboxAiCopilotPanel') || document.getElementById('aiCopilotPanel');
+  const replyPanel = document.getElementById('replyDossierPane');
   const btn = document.getElementById('aiPanelToggleBtn');
-  if (!panel || !btn) return;
 
   isAiPanelOpen = !isAiPanelOpen;
   if (isAiPanelOpen) {
-    panel.classList.remove('collapsed');
-    btn.classList.add('active');
+    if (panel) panel.classList.remove('collapsed');
+    if (replyPanel) replyPanel.classList.remove('collapsed');
+    if (btn) btn.classList.add('active');
   } else {
-    panel.classList.add('collapsed');
-    btn.classList.remove('active');
+    if (panel) panel.classList.add('collapsed');
+    if (replyPanel) replyPanel.classList.add('collapsed');
+    if (btn) btn.classList.remove('active');
   }
 }
 
@@ -2851,7 +2853,7 @@ function renderCopilotToneDraft() {
 
 function switchResponseTone(toneKey, btnEl) {
   currentActiveTone = toneKey;
-  document.querySelectorAll('#aiCopilotPanel .tone-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#inboxAiCopilotPanel .tone-tab-btn, #aiCopilotPanel .tone-tab-btn').forEach(b => b.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
 
   const draftBox = document.getElementById('copilotDraftContent');

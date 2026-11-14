@@ -5671,6 +5671,16 @@ body.admin-body {
   overflow-y: auto;
   padding: 16px;
   gap: 14px;
+  transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), min-width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.22s ease;
+}
+
+.reply-dossier-pane.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border-left: none !important;
+  visibility: hidden;
+  overflow: hidden;
 }
 
 .reply-dossier-pane::-webkit-scrollbar {
