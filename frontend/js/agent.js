@@ -1610,14 +1610,9 @@ async function selectInboxEmail(emailId) {
 
   if (convertBtn) {
     if (email.is_converted && email.case_number) {
-      convertBtn.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        <span>Converted: ${formatCaseNumber(email.case_number)}</span>
-      `;
-      convertBtn.className = 'btn-ribbon-primary converted';
-      convertBtn.title = `Click to inspect active case ${formatCaseNumber(email.case_number)} in Cases Workspace`;
-      convertBtn.onclick = () => openConvertedCaseInWorkspace(email.case_number);
+      convertBtn.style.display = 'none'; // User requested: remove "Converted: 1MG-XXXXX" ribbon button
     } else {
+      convertBtn.style.display = 'inline-flex';
       convertBtn.innerHTML = `
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>Convert to Case</span>
