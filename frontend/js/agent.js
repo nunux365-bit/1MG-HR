@@ -983,59 +983,60 @@ function renderInboxEmailStream() {
     const initial = senderName.charAt(0).toUpperCase();
     const isDomainVerified = (e.sender_email || '').toLowerCase().endsWith('@1mg.com');
 
-    // Clean snippet of raw literal \n and extra whitespace
+    // Clean and decode snippet of raw literal \n, extra whitespace, and HTML entities
     const rawSnippet = (e.snippet || e.body || '');
-    const cleanSnippet = rawSnippet
+    const cleanSnippet = decodeHtmlEntities(rawSnippet)
       .replace(/\\r\\n|\\n|\\r/g, ' ')
       .replace(/\r\n|\n|\r/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Converted Status or Actionable Status chip
+    // Converted Status or Actionable Status chip (Clean, minimal, max 1 badge)
     const isConverted = Boolean(e.is_converted && e.case_number);
     const isAwaitingEmpId = Boolean(e.actionable_reason === 'AWAITING_EMP_ID' || (ai.requires_emp_id && e.actionable_reason !== 'VERIFIED_BY_REPLY'));
     const isVerifiedByReply = Boolean(e.actionable_reason === 'VERIFIED_BY_REPLY' || (ai.detected_code && !isDomainVerified));
+    const isUrgent = Boolean(ai.is_urgent || (ai.urgency || '').includes('HIGH'));
+    const slaText = isUrgent ? '4h Urgent' : (ai.target_sla ? ai.target_sla.replace('Target SLA', 'SLA') : '48h SLA');
+
     let statusChip = '';
     if (isConverted) {
       statusChip = `<span class="apple-chip chip-converted" title="Converted to Case ${e.case_number}">✓ ${formatCaseNumber(e.case_number)}</span>`;
+    } else if (isUrgent) {
+      statusChip = `<span class="apple-chip chip-sla urgent" title="High Urgency"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> 4h Urgent</span>`;
     } else if (isVerifiedByReply) {
       statusChip = `<span class="apple-chip" style="background: rgba(16, 185, 129, 0.12); color: #047857; border: 1px solid rgba(16, 185, 129, 0.3);" title="Employee ID Verified from Reply"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> ${ai.detected_code || 'Verified'}</span>`;
     } else if (isAwaitingEmpId) {
-      statusChip = `<span class="apple-chip chip-warning" style="background: rgba(245, 158, 11, 0.12); color: #B45309; border: 1px solid rgba(245, 158, 11, 0.3);" title="Awaiting Employee ID"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Need Emp ID</span>`;
+      statusChip = `<span class="apple-chip chip-warning" style="background: rgba(245, 158, 11, 0.12); color: #B45309; border: 1px solid rgba(245, 158, 11, 0.3);" title="Awaiting Employee ID">Need ID</span>`;
     } else if (e.is_actionable === 1) {
-      statusChip = `<span class="apple-chip chip-actionable" title="Actionable HR Request"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Actionable</span>`;
+      statusChip = `<span class="apple-chip chip-sla" title="Target SLA">${escapeHtml(slaText)}</span>`;
     } else {
       statusChip = `<span class="apple-chip chip-noise" title="Noise Ingest">Noise</span>`;
     }
 
     const threadChip = (e.thread_count && e.thread_count > 1)
-      ? `<span class="apple-chip" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; border: 1px solid #BFDBFE;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> ${e.thread_count} msgs</span>`
+      ? `<span class="apple-chip" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; border: 1px solid #BFDBFE;">${e.thread_count} msgs</span>`
       : '';
 
-    // Colleague Assignment Chip
+    // Colleague Assignment Chip - Only show if specifically assigned to an individual
     const isAssignedToMe = (
       (e.assigned_user_id && currentUser?.id && e.assigned_user_id === currentUser.id) ||
       (e.assigned_user_email && currentUser?.email && e.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())
     );
     let assignmentChip = '';
     if (isAssignedToMe) {
-      assignmentChip = `<span class="apple-chip chip-assigned-me" title="Assigned directly to you"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Assigned to You</span>`;
+      assignmentChip = `<span class="apple-chip chip-assigned-me" title="Assigned directly to you">Assigned</span>`;
     } else if (e.assigned_user_name) {
-      assignmentChip = `<span class="apple-chip chip-assigned-other" title="Assigned to ${escapeHtml(e.assigned_user_name)}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${escapeHtml(e.assigned_user_name)}</span>`;
-    } else {
-      assignmentChip = `<span class="apple-chip chip-unassigned-pool" title="Unassigned in Desk Pool">⚡ Pool</span>`;
+      assignmentChip = `<span class="apple-chip chip-assigned-other" title="Assigned to ${escapeHtml(e.assigned_user_name)}">${escapeHtml(e.assigned_user_name)}</span>`;
     }
 
     const catKey = (e.category || 'INQUIRY').toLowerCase();
     const formattedCat = formatCategoryTitle(e.category);
-    const isUrgent = Boolean(ai.is_urgent || (ai.urgency || '').includes('HIGH'));
-    const slaText = isUrgent ? '4h Urgent' : (ai.target_sla ? ai.target_sla.replace('Target SLA', 'SLA') : '48h SLA');
     const dateFormatted = formatAppleDate(e.received_at);
 
-    // Apple-styled Domain Badge
+    // Subtle 1MG Badge (only for verified internal directory)
     const domainBadge = isDomainVerified
       ? `<span class="apple-pill-badge verified" title="Verified 1mg Employee">1MG</span>`
-      : `<span class="apple-pill-badge ext" title="External Senders">EXT</span>`;
+      : '';
 
     return `
       <div class="stream-card ${isSelected ? 'active' : ''} ${isUnread ? 'is-unread' : 'is-read'}" onclick="selectInboxEmail(${e.id})">
@@ -1064,16 +1065,12 @@ function renderInboxEmailStream() {
           ${escapeHtml(cleanSnippet)}
         </div>
 
-        <!-- Row 4: Apple Micro-Chips Meta Strip -->
+        <!-- Row 4: Apple Micro-Chips Meta Strip (Clean & Uncluttered) -->
         <div class="apple-card-chips">
           <span class="apple-chip chip-dept ${catKey}">${escapeHtml(formattedCat)}</span>
-          <span class="apple-chip chip-sla ${isUrgent ? 'urgent' : ''}">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span>${escapeHtml(slaText)}</span>
-          </span>
+          ${statusChip}
           ${assignmentChip}
           ${threadChip}
-          ${statusChip}
         </div>
       </div>
     `;
@@ -1307,84 +1304,132 @@ function formatThreadConversationHtml(email) {
 function formatEmailBodyHtml(rawBody, email = {}, ai = {}) {
   if (!rawBody) return '<p class="mail-para text-muted">No message content provided.</p>';
 
-  // 1. Decode pre-escaped HTML entities (&amp;, &quot;, etc.)
+  // 1. Decode pre-escaped HTML entities (&amp;, &quot;, &rsquo;, &nbsp;, etc.)
   let text = decodeHtmlEntities(String(rawBody))
     .replace(/\\r\\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\\r/g, '\n')
     .trim();
 
-  // 2. Intelligent paragraph segmentation for dense unspaced email content
-  if (!text.includes('\n\n')) {
-    text = text.replace(/([.!?])\s+(Congratulations!|As a member you get|Free shipping|Rapid deliveries|Early access to sale|Premium support|Exclusive offers|View all Benefits|Explore Care Plan now|Care Plan discount is|With lots of care|Need help\?|Download the app|Connect with us|Purchased on|Validity \d+ months|Visit your Care Plan page)/gi, '$1\n\n$2');
-    text = text.replace(/(Order now|Free shipping|Rapid deliveries|Early access to sale|Exclusive offers|Download Invoice)\s+([A-Z])/g, '$1\n\n$2');
+  // 2. Separate fresh message from quoted thread history (Gmail / Superhuman style)
+  const quoteSplitRegex = /(?:\r?\n)+(?:>{1,4}\s*|On\s+[A-Za-z0-9,\s]+wrote:|---+ Original Message ---+|From:\s+[^\n]+<[^\n]+>)/i;
+  const quoteMatch = text.match(quoteSplitRegex);
+
+  let mainBody = text;
+  let quotedHistory = '';
+
+  if (quoteMatch && quoteMatch.index > 0) {
+    mainBody = text.substring(0, quoteMatch.index).trim();
+    quotedHistory = text.substring(quoteMatch.index).trim();
   }
 
-  const paragraphs = text.split(/\n\s*\n/);
-  const orgCounts = {};
+  // Helper to render segmented paragraphs with highlights & formatting
+  function renderParagraphs(content, isQuoted = false) {
+    if (!content.includes('\n\n') && !isQuoted) {
+      content = content.replace(/([.!?])\s+(Congratulations!|As a member you get|Free shipping|Rapid deliveries|Early access to sale|Premium support|Exclusive offers|View all Benefits|Explore Care Plan now|Care Plan discount is|With lots of care|Need help\?|Download the app|Connect with us|Purchased on|Validity \d+ months|Visit your Care Plan page)/gi, '$1\n\n$2');
+      content = content.replace(/(Order now|Free shipping|Rapid deliveries|Early access to sale|Exclusive offers|Download Invoice)\s+([A-Z])/g, '$1\n\n$2');
+    }
 
-  return paragraphs.map(p => {
-    let trimmed = p.trim();
-    if (!trimmed) return '';
+    const paragraphs = content.split(/\n\s*\n/);
+    const orgCounts = {};
 
-    let safe = escapeHtml(trimmed);
+    return paragraphs.map(p => {
+      let trimmed = p.trim();
+      if (!trimmed) return '';
 
-    // AI Smart Highlighting if enabled (Clean Apple typography, NO disruptive inline SVGs!)
-    if (isAiHighlightsActive) {
-      // 1. Employee Code matching
-      safe = safe.replace(/\b(EMP\d+|1MG\d+|NUNUX\d+)\b/gi, (match) => {
-        return `<mark class="ai-mark ai-mark-code" title="HRMS Identifier">${match}</mark>`;
-      });
+      // Strip leading '>' quotes if in quoted mode
+      if (isQuoted) {
+        trimmed = trimmed.split('\n').map(l => l.replace(/^\s*>+\s?/, '')).join('\n').trim();
+        if (!trimmed) return '';
+      }
 
-      // 2. Organization / Facility Entities (Max 2 to avoid clutter)
-      safe = safe.replace(/\b(Apex Solutions|Tata 1mg|Gurugram DC Hub|Gurugram Hub|GitGuardian|GitHub|LottieFiles|Amplifon|Lenskart|Clove)\b/gi, (match) => {
-        const k = match.toLowerCase();
-        orgCounts[k] = (orgCounts[k] || 0) + 1;
-        if (orgCounts[k] <= 2) {
-          return `<mark class="ai-mark ai-mark-org" title="Entity: Organization / Facility">${match}</mark>`;
+      let safe = escapeHtml(trimmed);
+
+      // AI Smart Highlighting if enabled (Clean Apple typography, NO disruptive inline SVGs!)
+      if (isAiHighlightsActive && !isQuoted) {
+        // 1. Employee Code matching
+        safe = safe.replace(/\b(EMP\d+|1MG\d+|NUNUX\d+)\b/gi, (match) => {
+          return `<mark class="ai-mark ai-mark-code" title="HRMS Identifier">${match}</mark>`;
+        });
+
+        // 2. Organization / Facility Entities (Max 2 to avoid clutter)
+        safe = safe.replace(/\b(Apex Solutions|Tata 1mg|Gurugram DC Hub|Gurugram Hub|GitGuardian|GitHub|LottieFiles|Amplifon|Lenskart|Clove)\b/gi, (match) => {
+          const k = match.toLowerCase();
+          orgCounts[k] = (orgCounts[k] || 0) + 1;
+          if (orgCounts[k] <= 2) {
+            return `<mark class="ai-mark ai-mark-org" title="Entity: Organization / Facility">${match}</mark>`;
+          }
+          return match;
+        });
+
+        // 3. Dates & Times
+        safe = safe.replace(/\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{2,4})?|\d{1,2}:\d{2}\s*(?:AM|PM))\b/gi, (match) => {
+          return `<mark class="ai-mark ai-mark-date" title="Detected Date / Time">${match}</mark>`;
+        });
+
+        // 4. Critical Operational Statuses
+        safe = safe.replace(/\b(pending|absent|failure|exposed|missing|urgent|denied|discrepancy)\b/gi, (match) => {
+          return `<mark class="ai-mark ai-mark-status" title="Status: ${match}"><span class="mark-status-dot"></span>${match}</mark>`;
+        });
+
+        // 5. Key HR Topics / Verification processes
+        safe = safe.replace(/\b(background verification|employment verification|previous employment verification|biometric punch-in system|biometric attendance punch|optical scanner failure|health card|privilege leave|punch regularization|Care Plan membership|prescription medicines)\b/gi, (match) => {
+          return `<mark class="ai-mark ai-mark-topic" title="Key HR / Operational Topic">${match}</mark>`;
+        });
+
+        // 6. Action Requests
+        safe = safe.replace(/(check whether the employment verification request has been shared with my previous employer|check whether .*? has been shared|regularize the attendance for that date|regularize my morning in-punch|verify and update the portal ledger|Place an order now to start saving|Download Invoice)/gi, (match) => {
+          return `<mark class="ai-mark ai-mark-action" title="Core Employee Action Request">${match}</mark>`;
+        });
+      }
+
+      // Replace linebreaks inside paragraph with <br>
+      safe = safe.replace(/\n/g, '<br>');
+
+      // Check if paragraph is sign-off or disclaimer
+      if (!isQuoted) {
+        if (trimmed.match(/^(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you|With lots of care)[\s,]/i)) {
+          return `<div class="mail-signoff-block">${safe}</div>`;
         }
-        return match;
-      });
+        if (trimmed.match(/(?:©\s*\d{4}|All rights reserved|Tower\s*-B|Presidency Building)/i)) {
+          return `<div class="mail-footer-block">${safe}</div>`;
+        }
+      }
 
-      // 3. Dates & Times
-      safe = safe.replace(/\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{2,4})?|\d{1,2}:\d{2}\s*(?:AM|PM))\b/gi, (match) => {
-        return `<mark class="ai-mark ai-mark-date" title="Detected Date / Time">${match}</mark>`;
-      });
+      return `<p class="mail-para ${isQuoted ? 'quoted-para' : ''}">${safe}</p>`;
+    }).filter(Boolean).join('');
+  }
 
-      // 4. Critical Operational Statuses
-      safe = safe.replace(/\b(pending|absent|failure|exposed|missing|urgent|denied|discrepancy)\b/gi, (match) => {
-        return `<mark class="ai-mark ai-mark-status" title="Status: ${match}"><span class="mark-status-dot"></span>${match}</mark>`;
-      });
+  let html = renderParagraphs(mainBody, false);
 
-      // 5. Key HR Topics / Verification processes
-      safe = safe.replace(/\b(background verification|employment verification|previous employment verification|biometric punch-in system|biometric attendance punch|optical scanner failure|health card|privilege leave|punch regularization|Care Plan membership|prescription medicines)\b/gi, (match) => {
-        return `<mark class="ai-mark ai-mark-topic" title="Key HR / Operational Topic">${match}</mark>`;
-      });
+  // If quoted history exists, tuck it behind an elegant collapsible pill (like Gmail)
+  if (quotedHistory) {
+    const cleanQuote = quotedHistory
+      .split('\n')
+      .map(line => line.replace(/^\s*>+\s?/, ''))
+      .filter(l => l.trim().length > 0)
+      .join('\n');
 
-      // 6. Action Requests
-      safe = safe.replace(/(check whether the employment verification request has been shared with my previous employer|check whether .*? has been shared|regularize the attendance for that date|regularize my morning in-punch|verify and update the portal ledger|Place an order now to start saving|Download Invoice)/gi, (match) => {
-        return `<mark class="ai-mark ai-mark-action" title="Core Employee Action Request">${match}</mark>`;
-      });
+    if (cleanQuote.trim()) {
+      html += `
+        <div class="mail-quoted-section">
+          <details class="mail-quoted-details">
+            <summary class="mail-quoted-summary">
+              <span class="mail-quoted-toggle-pill" title="Click to view quoted thread history">
+                <span class="quoted-dots">•••</span>
+                <span class="quoted-text">Show quoted message</span>
+              </span>
+            </summary>
+            <div class="mail-quoted-content">
+              ${renderParagraphs(cleanQuote, true)}
+            </div>
+          </details>
+        </div>
+      `;
     }
+  }
 
-    // Replace linebreaks inside paragraph with <br>
-    safe = safe.replace(/\n/g, '<br>');
-
-    // Check if paragraph is thread quote history
-    if (trimmed.startsWith('>') || trimmed.startsWith('&gt;')) {
-      return `<blockquote class="mail-quote-block">${safe}</blockquote>`;
-    }
-
-    // Check if paragraph is sign-off or disclaimer
-    if (trimmed.match(/^(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you|With lots of care)[\s,]/i)) {
-      return `<div class="mail-signoff-block">${safe}</div>`;
-    }
-    if (trimmed.match(/(?:©\s*\d{4}|All rights reserved|Tower\s*-B|Presidency Building)/i)) {
-      return `<div class="mail-footer-block">${safe}</div>`;
-    }
-
-    return `<p class="mail-para">${safe}</p>`;
-  }).filter(Boolean).join('');
+  return html;
 }
 
 function initMailInspectorScrollEffects() {
@@ -1618,7 +1663,7 @@ async function selectInboxEmail(emailId) {
 
   const intentTagEl = document.getElementById('inboxHeaderIntentTag');
   const metaDotEl = document.getElementById('inboxHeaderMetaDot');
-  if (intentTagEl) intentTagEl.style.display = ai.intent_label ? 'inline-flex' : 'none';
+  if (intentTagEl) intentTagEl.style.display = 'none'; // Unclutter email header: intent is cleanly featured in right AI Copilot
   if (metaDotEl) metaDotEl.style.display = senderEmail ? 'inline' : 'none';
 
   // Subject Header Pills

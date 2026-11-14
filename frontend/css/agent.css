@@ -33,7 +33,7 @@
   --text-muted: #64748B;
   --text-light: #94A3B8;
 
-  --stream-w: 340px;
+  --stream-w: 310px;
   --ai-copilot-w: 310px;
 
   --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
@@ -1253,16 +1253,17 @@ body.admin-body {
    APPLE-GRADE STREAM CARD DESIGN (macOS / iOS Inspired)
    ========================================================================== */
 .stream-card {
-  flex-shrink: 0 !important; /* CRITICAL: Never squish cards in flex column */
-  min-height: 108px; /* Full height guarantee for sender, subject, snippet & tags */
-  padding: 12px 14px;
+  flex-shrink: 0 !important;
+  min-height: auto;
+  padding: 10px 12px;
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
+  gap: 3px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -1431,16 +1432,16 @@ body.admin-body {
 
 /* Snippet */
 .apple-card-snippet {
-  font-size: 12px;
-  line-height: 1.38;
+  font-size: 11.5px;
+  line-height: 1.35;
   color: #64748B;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: -0.1px;
+  letter-spacing: -0.05px;
   flex-shrink: 0;
 }
 
@@ -1690,10 +1691,7 @@ body.admin-body {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 .ribbon-case-pill {
@@ -2201,10 +2199,10 @@ body.admin-body {
 }
 
 .mail-header-section {
-  padding: 22px 24px 16px;
+  padding: 18px 24px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .mail-subject-row {
@@ -2216,11 +2214,11 @@ body.admin-body {
 
 .mail-subject-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #0F172A;
   line-height: 1.35;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   word-break: break-word;
 }
 
@@ -2538,17 +2536,17 @@ body.admin-body {
 }
 
 .mail-body-canvas {
-  padding: 22px 26px 28px;
-  font-size: 14px;
-  line-height: 1.75;
-  color: #334155;
+  padding: 16px 24px 24px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #1E293B;
   word-break: break-word;
 }
 
 .mail-body-canvas .mail-para {
-  margin: 0 0 16px 0;
-  line-height: 1.75;
-  color: #334155;
+  margin: 0 0 14px 0;
+  line-height: 1.7;
+  color: #1E293B;
 }
 
 .mail-body-canvas .mail-para:last-child {
@@ -3389,6 +3387,74 @@ body.admin-body {
   color: #64748B;
   font-size: 12.5px;
   line-height: 1.6;
+}
+
+/* Quoted Email Chain (Gmail / Superhuman Standard Collapsible) */
+.mail-quoted-section {
+  margin-top: 14px;
+  padding-top: 8px;
+}
+
+.mail-quoted-details {
+  border: none;
+}
+
+.mail-quoted-summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.mail-quoted-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mail-quoted-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748B;
+  transition: all 0.15s ease;
+}
+.mail-quoted-toggle-pill:hover {
+  background: #E2E8F0;
+  color: #1E293B;
+  border-color: #CBD5E1;
+}
+
+.mail-quoted-toggle-pill .quoted-dots {
+  letter-spacing: 2px;
+  font-weight: 800;
+  color: #94A3B8;
+  font-size: 11px;
+}
+
+.mail-quoted-content {
+  margin-top: 10px;
+  padding: 12px 16px;
+  background: #F8FAFC;
+  border-left: 3px solid #CBD5E1;
+  border-radius: 0 8px 8px 0;
+  color: #64748B;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.mail-quoted-content .quoted-para {
+  margin: 0 0 10px 0;
+  color: #64748B;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.mail-quoted-content .quoted-para:last-child {
+  margin-bottom: 0;
 }
 
 /* ==========================================================================
