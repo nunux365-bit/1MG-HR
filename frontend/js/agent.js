@@ -1370,6 +1370,11 @@ function formatEmailBodyHtml(rawBody, email = {}, ai = {}) {
     // Replace linebreaks inside paragraph with <br>
     safe = safe.replace(/\n/g, '<br>');
 
+    // Check if paragraph is thread quote history
+    if (trimmed.startsWith('>') || trimmed.startsWith('&gt;')) {
+      return `<blockquote class="mail-quote-block">${safe}</blockquote>`;
+    }
+
     // Check if paragraph is sign-off or disclaimer
     if (trimmed.match(/^(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you|With lots of care)[\s,]/i)) {
       return `<div class="mail-signoff-block">${safe}</div>`;

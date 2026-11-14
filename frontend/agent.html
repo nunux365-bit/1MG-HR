@@ -469,28 +469,9 @@
                     </button>
                   </div>
 
-                  <!-- AI Smart Digest Strip (Sleek, Compact, High-Value) -->
-                  <div class="mail-ai-digest-strip" id="inboxAiDigestStrip">
-                    <div class="digest-strip-left">
-                      <span class="digest-sparkle-pill">
-                        <span class="sparkle-icon">✦</span>
-                        <span>Key Signals</span>
-                      </span>
-                      <div class="digest-pills-row" id="inboxAiDigestPills">
-                        <!-- Populated by JS -->
-                      </div>
-                    </div>
-                    <div class="digest-strip-right">
-                      <button class="btn-toggle-highlights active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle AI Key Entity Highlights in Email Body">
-                        <span class="toggle-dot"></span>
-                        <span id="inboxToggleAiHighlightsLabel">Smart Highlights: ON</span>
-                      </button>
-                    </div>
-                  </div>
+                  <div class="mail-divider" style="margin: 16px 0 20px 0;"></div>
 
-                  <div class="mail-divider"></div>
-
-                  <!-- Email Body Canvas -->
+                  <!-- Pure Email Body Canvas (Clean & Focused) -->
                   <div class="mail-body-canvas" id="inboxEmailBody"></div>
                 </div>
 
@@ -514,12 +495,18 @@
                 <span class="copilot-sparkle-badge">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
                 </span>
-                <span class="copilot-header-title">AI & TRIAGE COPILOT</span>
+                <span class="copilot-header-title">AI &amp; TRIAGE COPILOT</span>
                 <span class="copilot-status-dot" title="Active Engine Live"></span>
               </div>
-              <button onclick="toggleAiPanel()" class="copilot-close-btn" title="Close AI Panel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="btn-toggle-highlights active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle in-text highlights" style="padding: 3px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #E2E8F0; background: #F8FAFC; color: #475569; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
+                  <span class="toggle-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #9333EA; display: inline-block;"></span>
+                  <span id="inboxToggleAiHighlightsLabel" style="font-size: 10.5px; font-weight: 700;">Highlights: ON</span>
+                </button>
+                <button onclick="toggleAiPanel()" class="copilot-close-btn" title="Close AI Panel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
             </div>
 
             <div class="ai-copilot-body">
@@ -535,7 +522,7 @@
                         <circle cx="12" cy="12" r="2"></circle>
                       </svg>
                     </span>
-                    <span class="copilot-section-heading">AI Intent Engine</span>
+                    <span class="copilot-section-heading">AI Intent &amp; Triage</span>
                   </div>
                   <span class="ai-confidence-badge" id="inboxCopilotConfidence">
                     <span>—</span>
@@ -547,6 +534,13 @@
                     <span>Awaiting selection</span>
                   </span>
                 </div>
+
+                <!-- Extracted Key Signals (Moved from email body to AI section) -->
+                <div class="copilot-signals-container">
+                  <span class="copilot-signals-label">Extracted Key Signals:</span>
+                  <div class="digest-pills-row" id="inboxAiDigestPills"></div>
+                </div>
+
                 <div class="ai-sla-tracker" id="inboxCopilotSlaInfo">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                   <span>Target SLA: <strong>Pending selection</strong></span>
@@ -590,29 +584,8 @@
                 </div>
               </div>
 
-              <!-- MODULE 3: CASE & SLA COCKPIT -->
-              <div class="copilot-section-card conversion-card-box">
-                <div class="copilot-card-top">
-                  <div class="copilot-title-group">
-                    <span class="copilot-icon-badge conversion">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                      </svg>
-                    </span>
-                    <span class="copilot-section-heading" style="color: #9A3412;">Case & SLA Conversion</span>
-                  </div>
-                </div>
-                <div style="font-size: 11.5px; color: #7C2D12; line-height: 1.45;" id="inboxCopilotUrgencyDesc">
-                  Select an email to view conversion recommendation.
-                </div>
-                <button class="btn-convert-case-primary" id="inboxCopilotConvertBtn" onclick="convertCurrentInboxEmail()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  <span>Claim & Convert to Active Case</span>
-                </button>
-              </div>
-
-              <!-- MODULE 4: RESPONSE STUDIO (3-TONE SMART DRAFTER) -->
-              <div class="copilot-section-card" style="border-color: #E9D5FF;">
+              <!-- MODULE 3: RESPONSE STUDIO & CASE ACTION -->
+              <div class="copilot-section-card copilot-response-action-card">
                 <div class="copilot-card-top">
                   <div class="copilot-title-group">
                     <span class="copilot-icon-badge studio">
@@ -620,7 +593,7 @@
                         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                       </svg>
                     </span>
-                    <span class="copilot-section-heading" style="color: #6B21A8;">Response Studio (Smart Drafter)</span>
+                    <span class="copilot-section-heading" style="color: #6B21A8;">Response Studio &amp; Case Action</span>
                   </div>
                 </div>
 
@@ -643,14 +616,25 @@
                 </div>
 
                 <!-- Actions: Insert or Direct Send -->
-                <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div class="copilot-actions-row">
                   <button class="btn-ai-insert-draft" onclick="insertInboxDraftToReply()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span>Insert Draft to Reply Box</span>
+                    <span>Insert to Reply</span>
                   </button>
                   <button class="btn-ai-send-direct" onclick="sendInboxAiReplyDirectly()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    <span>Send AI Reply & Convert</span>
+                    <span>Send &amp; Convert</span>
+                  </button>
+                </div>
+
+                <!-- Case Conversion & SLA Integration Strip -->
+                <div class="copilot-case-action-footer">
+                  <div class="copilot-case-status-text" id="inboxCopilotUrgencyDesc">
+                    Select an email to view conversion recommendation.
+                  </div>
+                  <button class="btn-convert-case-primary" id="inboxCopilotConvertBtn" onclick="convertCurrentInboxEmail()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Claim &amp; Convert to Active Case</span>
                   </button>
                 </div>
               </div>
