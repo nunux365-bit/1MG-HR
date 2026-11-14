@@ -129,7 +129,7 @@
 
       <!-- Global Employee & Ticket Search -->
       <div class="topbar-search-bar">
-        <input type="text" id="globalSearchInput" class="topbar-search-input" placeholder="Search employee name, case ref, email..." oninput="handleGlobalSearch(this.value)">
+        <input type="text" id="globalSearchInput" class="topbar-search-input" placeholder="Search employee name, case ref, email..." oninput="handleGlobalSearch(this.value)" onkeydown="handleGlobalSearchKeydown(event)">
         <span class="search-kbd-shortcut">⌘K</span>
       </div>
 

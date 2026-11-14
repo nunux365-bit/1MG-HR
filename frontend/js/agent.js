@@ -125,6 +125,18 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeUserProfileDropdown();
+    const search = document.getElementById('globalSearchInput');
+    if (search && document.activeElement === search) {
+      search.blur();
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const search = document.getElementById('globalSearchInput');
+    if (search) {
+      search.focus();
+      search.select();
+    }
   }
 });
 
@@ -528,7 +540,34 @@ function setInspectorView(viewType) {
 function handleGlobalSearch(query) {
   const streamInput = document.getElementById('streamSearchInput');
   if (streamInput) streamInput.value = query;
+
+  // 1. Live filter the active Inbox Email Stream
+  renderInboxEmailStream();
+
+  // 2. Live filter the Cases Stream
   renderInboxStream();
+}
+
+function handleGlobalSearchKeydown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const query = (e.target.value || '').trim();
+    if (!query) return;
+
+    // Check if in inbox view
+    const inboxView = document.getElementById('inboxView');
+    if (inboxView && inboxView.style.display !== 'none') {
+      const firstCard = document.querySelector('#inboxEmailStreamList .stream-card');
+      if (firstCard) {
+        firstCard.click();
+      }
+    } else {
+      const firstCaseCard = document.querySelector('#inboxStreamList .stream-card');
+      if (firstCaseCard) {
+        firstCaseCard.click();
+      }
+    }
+  }
 }
 
 // =========================================================================
@@ -932,18 +971,29 @@ function renderInboxEmailStream() {
   const countPill = document.getElementById('inboxStreamCountPill');
   if (!streamList) return;
 
+  const globalInput = document.getElementById('globalSearchInput');
   const searchInput = document.getElementById('inboxSearchInput');
-  const query = (searchInput?.value || '').toLowerCase().trim();
+  const rawQuery = (globalInput?.value || searchInput?.value || '').trim();
+  const query = rawQuery.toLowerCase();
 
   let filtered = allInboxEmails.filter(e => {
     if (!query) return true;
     const ai = e.ai_insights || {};
+    const formattedCase = e.case_number ? formatCaseNumber(e.case_number).toLowerCase() : '';
+    const rawCase = (e.case_number || '').toLowerCase();
+
     return (e.subject || '').toLowerCase().includes(query) ||
            (e.sender_name || '').toLowerCase().includes(query) ||
            (e.sender_email || '').toLowerCase().includes(query) ||
            (e.body || '').toLowerCase().includes(query) ||
+           (e.snippet || '').toLowerCase().includes(query) ||
            (ai.detected_name || '').toLowerCase().includes(query) ||
-           (ai.detected_code || '').toLowerCase().includes(query);
+           (ai.detected_code || '').toLowerCase().includes(query) ||
+           (ai.intent_label || '').toLowerCase().includes(query) ||
+           (ai.intent_code || '').toLowerCase().includes(query) ||
+           (e.category || '').toLowerCase().includes(query) ||
+           rawCase.includes(query) ||
+           formattedCase.includes(query);
   });
 
   if (countPill) {
@@ -958,11 +1008,17 @@ function renderInboxEmailStream() {
           <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
         </svg>
         <div style="font-weight: 700; color: var(--text-dark); margin-bottom: 4px; font-size: 13.5px;">No correspondence found</div>
-        <div style="font-size: 12px; max-width: 220px; margin: 0 auto; line-height: 1.4;">No inbound items match this stream filter.</div>
+        <div style="font-size: 12px; max-width: 220px; margin: 0 auto; line-height: 1.4;">No inbound items match "${escapeHtml(rawQuery)}".</div>
       </div>
     `;
     if (railEl) railEl.innerHTML = '';
+    renderEmptyInboxCockpit();
     return;
+  }
+
+  // If search active and current selection is no longer in filtered results, select the first match
+  if (query && !filtered.some(e => e.id === currentSelectedEmailId)) {
+    selectInboxEmail(filtered[0].id);
   }
 
   const appleAvatarGradients = [
