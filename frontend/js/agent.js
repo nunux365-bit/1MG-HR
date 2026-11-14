@@ -1165,7 +1165,7 @@ function toggleEmailAiHighlights() {
   const btn = document.getElementById('inboxToggleAiHighlightsBtn');
   const label = document.getElementById('inboxToggleAiHighlightsLabel');
   if (btn) btn.classList.toggle('active', isAiHighlightsActive);
-  if (label) label.innerText = isAiHighlightsActive ? 'Smart Highlights: ON' : 'Smart Highlights: OFF';
+  if (label) label.innerText = isAiHighlightsActive ? 'Highlights' : 'Off';
 
   // Re-render currently viewed email
   const email = allInboxEmails.find(e => e.id === currentSelectedEmailId);

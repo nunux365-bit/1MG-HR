@@ -492,19 +492,24 @@
             
             <div class="ai-copilot-header">
               <div class="copilot-header-brand">
-                <span class="copilot-sparkle-badge">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <span class="copilot-sparkle-badge" title="AI Intelligence Engine">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 1C12 7.075 7.075 12 1 12C7.075 12 12 16.925 12 23C12 16.925 16.925 12 23 12C16.925 12 12 7.075 12 1Z"/>
+                  </svg>
                 </span>
-                <span class="copilot-header-title">AI &amp; TRIAGE COPILOT</span>
+                <span class="copilot-header-title">AI Copilot</span>
                 <span class="copilot-status-dot" title="Active Engine Live"></span>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="btn-toggle-highlights active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle in-text highlights" style="padding: 3px 8px; font-size: 11px; border-radius: 6px; border: 1px solid #E2E8F0; background: #F8FAFC; color: #475569; display: inline-flex; align-items: center; gap: 5px; cursor: pointer;">
-                  <span class="toggle-dot" style="width: 6px; height: 6px; border-radius: 50%; background: #9333EA; display: inline-block;"></span>
-                  <span id="inboxToggleAiHighlightsLabel" style="font-size: 10.5px; font-weight: 700;">Highlights: ON</span>
+              <div class="copilot-header-actions">
+                <button class="btn-toggle-highlights active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle in-text AI smart highlights">
+                  <span class="toggle-dot"></span>
+                  <span id="inboxToggleAiHighlightsLabel">Highlights</span>
                 </button>
-                <button onclick="toggleAiPanel()" class="copilot-close-btn" title="Close AI Panel">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button onclick="toggleAiPanel()" class="copilot-close-btn" title="Collapse Copilot Panel">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -516,10 +521,9 @@
                 <div class="copilot-card-top">
                   <div class="copilot-title-group">
                     <span class="copilot-icon-badge intent">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
-                        <circle cx="12" cy="12" r="6"></circle>
-                        <circle cx="12" cy="12" r="2"></circle>
+                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
                       </svg>
                     </span>
                     <span class="copilot-section-heading">AI Intent &amp; Triage</span>
@@ -552,9 +556,10 @@
                 <div class="copilot-card-top">
                   <div class="copilot-title-group">
                     <span class="copilot-icon-badge hrms">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <polyline points="16 11 18 13 22 9"></polyline>
                       </svg>
                     </span>
                     <span class="copilot-section-heading">HRMS Entity Matching</span>
@@ -589,8 +594,10 @@
                 <div class="copilot-card-top">
                   <div class="copilot-title-group">
                     <span class="copilot-icon-badge studio">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        <line x1="9" y1="10" x2="15" y2="10"></line>
+                        <line x1="12" y1="7" x2="12" y2="13"></line>
                       </svg>
                     </span>
                     <span class="copilot-section-heading" style="color: #6B21A8;">Response Studio &amp; Case Action</span>
