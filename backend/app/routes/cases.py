@@ -2569,17 +2569,17 @@ def get_inbox_emails(
         "all": int(counts_row.get("total_count") or 0)
     }
 
-    # Fetch emails with all essential metadata
+    # Fetch emails with all essential metadata (float threads with latest replies/activity to the top)
     query = f"""
         SELECT 
             id, provider, account_email, sender_name, sender_email, subject, body,
-            received_at, category, is_actionable, actionable_reason,
+            received_at, updated_at, category, is_actionable, actionable_reason,
             department_id, employee_id, case_id, case_number, is_converted, created_at,
             is_read, read_by_user_id, read_by_name, read_at, thread_id, parent_id,
             assigned_user_id, assigned_user_name, assigned_user_email, transfer_notes
         FROM emails
         WHERE {where_clause}
-        ORDER BY received_at DESC NULLS LAST, id DESC
+        ORDER BY GREATEST(COALESCE(received_at, created_at), COALESCE(updated_at, received_at, created_at)) DESC NULLS LAST, id DESC
         LIMIT {int(limit)} OFFSET {int(offset)};
     """
     email_rows = execute_query(query, tuple(params) if params else None, fetch_all=True) or []
@@ -2590,14 +2590,14 @@ def get_inbox_emails(
         ai_data = extract_ai_email_entities(em)
         em_data = dict(em)
 
-        # Thread lookup: fetch child replies belonging to this conversation
+        # Thread lookup: fetch child replies (newest first so replies appear at the TOP)
         replies = execute_query(
             """
-            SELECT id, parent_id, thread_id, sender_name, sender_email, subject, body, received_at,
+            SELECT id, parent_id, thread_id, provider, sender_name, sender_email, subject, body, received_at,
                    category, is_actionable, actionable_reason, employee_id
             FROM emails
             WHERE parent_id = %s
-            ORDER BY received_at ASC, id ASC;
+            ORDER BY received_at DESC NULLS LAST, id DESC;
             """,
             (em["id"],),
             fetch_all=True
@@ -2608,19 +2608,45 @@ def get_inbox_emails(
                 return None
             return val.isoformat() if hasattr(val, "isoformat") else str(val)
 
-        thread_messages = []
-        thread_messages.append({
-            "id": em["id"],
-            "type": "EMPLOYEE_INITIAL",
-            "sender_name": em.get("sender_name") or "Employee",
-            "sender_email": em.get("sender_email"),
-            "subject": em.get("subject"),
-            "body": em.get("body") or "",
-            "received_at": _safe_iso(em.get("received_at"))
-        })
+        reply_messages = []
+        has_employee_reply = False
+        inherited_emp_id = em.get("employee_id")
+        for rep in replies:
+            is_agent_reply = (
+                (rep.get("actionable_reason") or "").upper() == "AGENT_REPLY"
+                or (rep.get("provider") or "").upper() == "OUTBOUND_SMTP"
+            )
+            rep_type = "AGENT_REPLY" if is_agent_reply else "EMPLOYEE_REPLY"
+            rep_code = None
 
-        # Include system prompt milestone if Emp ID request was dispatched
-        if em.get("actionable_reason") in ("AWAITING_EMP_ID", "VERIFIED_BY_REPLY") or replies:
+            if not is_agent_reply:
+                has_employee_reply = True
+                rep_ai = extract_ai_email_entities(rep)
+                rep_code = rep_ai.get("detected_code")
+                if rep_code and not ai_data.get("detected_code"):
+                    ai_data["detected_code"] = rep_code
+                    ai_data["emp_id_status"] = "VERIFIED_EXT_CODE"
+                    ai_data["requires_emp_id"] = False
+                    if rep_ai.get("matched_employee"):
+                        ai_data["matched_employee"] = rep_ai["matched_employee"]
+                if rep.get("employee_id"):
+                    inherited_emp_id = rep.get("employee_id")
+
+            reply_messages.append({
+                "id": rep["id"],
+                "type": rep_type,
+                "sender_name": rep.get("sender_name") or ("People Desk" if is_agent_reply else em.get("sender_name") or "Employee"),
+                "sender_email": rep.get("sender_email"),
+                "subject": rep.get("subject"),
+                "body": rep.get("body") or "",
+                "received_at": _safe_iso(rep.get("received_at")),
+                "detected_code": rep_code
+            })
+
+        # Order newest-first: Sent/Inbound Replies at the TOP, System Bot next, Initial Query at the bottom
+        thread_messages = list(reply_messages)
+
+        if em.get("actionable_reason") in ("AWAITING_EMP_ID", "VERIFIED_BY_REPLY") or has_employee_reply:
             thread_messages.append({
                 "id": f"bot-{em['id']}",
                 "type": "SYSTEM_BOT",
@@ -2631,29 +2657,18 @@ def get_inbox_emails(
                 "received_at": _safe_iso(em.get("received_at"))
             })
 
-        inherited_emp_id = em.get("employee_id")
-        for rep in replies:
-            rep_ai = extract_ai_email_entities(rep)
-            rep_code = rep_ai.get("detected_code")
-            if rep_code and not ai_data.get("detected_code"):
-                ai_data["detected_code"] = rep_code
-                ai_data["emp_id_status"] = "VERIFIED_EXT_CODE"
-                ai_data["requires_emp_id"] = False
-                if rep_ai.get("matched_employee"):
-                    ai_data["matched_employee"] = rep_ai["matched_employee"]
-            if rep.get("employee_id"):
-                inherited_emp_id = rep.get("employee_id")
+        thread_messages.append({
+            "id": em["id"],
+            "type": "EMPLOYEE_INITIAL",
+            "sender_name": em.get("sender_name") or "Employee",
+            "sender_email": em.get("sender_email"),
+            "subject": em.get("subject"),
+            "body": em.get("body") or "",
+            "received_at": _safe_iso(em.get("received_at"))
+        })
 
-            thread_messages.append({
-                "id": rep["id"],
-                "type": "EMPLOYEE_REPLY",
-                "sender_name": rep.get("sender_name") or em.get("sender_name") or "Employee",
-                "sender_email": rep.get("sender_email"),
-                "subject": rep.get("subject"),
-                "body": rep.get("body") or "",
-                "received_at": _safe_iso(rep.get("received_at")),
-                "detected_code": rep_code
-            })
+        latest_reply_at = reply_messages[0]["received_at"] if reply_messages else None
+        em_data["last_activity_at"] = latest_reply_at or _safe_iso(em.get("updated_at")) or _safe_iso(em.get("received_at"))
 
         # Inherit employee profile verification from replies if available
         if inherited_emp_id:
@@ -2969,13 +2984,26 @@ def transfer_inbox_email(email_id: int, req: EmailTransferRequest):
 
 @router.post("/inbox/emails/{email_id}/reply")
 def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
-    """Send direct reply via People Desk corporate mail dispatch to employee inquiry."""
+    """Send direct reply via People Desk corporate mail dispatch and persist it in the thread."""
     email_row = execute_query("SELECT * FROM emails WHERE id = %s;", (email_id,), fetch_all=False)
     if not email_row:
         raise HTTPException(status_code=404, detail="Email record not found")
 
-    # Always touch updated_at
-    execute_query("UPDATE emails SET updated_at = NOW() WHERE id = %s;", (email_id,), commit=True)
+    root_id = email_row.get("parent_id") or email_id
+    thread_id = email_row.get("thread_id") or f"TH-{root_id}"
+    orig_subject = email_row.get("subject") or "Your Inquiry"
+    reply_subject = orig_subject if orig_subject.lower().startswith("re:") else f"Re: {orig_subject}"
+    actor_name = req.actor_name or "HR Specialist"
+    actor_email = req.actor_email or email_row.get("account_email") or "peopledesk@1mg.com"
+
+    # Bump root thread timestamp so replied conversation floats to the top of the queue
+    execute_query(
+        "UPDATE emails SET thread_id = COALESCE(thread_id, %s), is_read = TRUE, updated_at = NOW() WHERE id = %s;",
+        (thread_id, root_id),
+        commit=True,
+    )
+    if root_id != email_id:
+        execute_query("UPDATE emails SET updated_at = NOW() WHERE id = %s;", (email_id,), commit=True)
 
     # Dispatch real SMTP reply from People Desk
     email_res = None
@@ -2986,14 +3014,50 @@ def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
             email_res = send_inbox_reply_email(
                 recipient_email=sender_email,
                 recipient_name=email_row.get("sender_name") or "Colleague",
-                original_subject=email_row.get("subject") or "Your Inquiry",
+                original_subject=orig_subject,
                 message_text=req.message,
-                specialist_name=req.actor_name or "HR Specialist",
+                specialist_name=actor_name,
                 in_reply_to=email_row.get("provider_message_id")
             )
         except Exception as mail_err:
             logger.warning(f"Failed to send direct inbox reply email #{email_id}: {mail_err}")
             email_res = {"sent": False, "error": str(mail_err)}
+
+    # Persist outbound reply in emails table so it renders at the TOP of the conversation thread
+    saved_reply = execute_query(
+        """
+        INSERT INTO emails (
+            provider, thread_id, parent_id, account_email,
+            sender_name, sender_email, subject, body, received_at,
+            category, department_id, employee_id, case_id, case_number,
+            is_actionable, actionable_reason, is_read,
+            classification_status, processing_status, created_at, updated_at
+        ) VALUES (
+            'OUTBOUND_SMTP', %s, %s, %s,
+            %s, %s, %s, %s, NOW(),
+            %s, %s, %s, %s, %s,
+            1, 'AGENT_REPLY', TRUE,
+            'OUTBOUND', 'SENT', NOW(), NOW()
+        )
+        RETURNING id, sender_name, sender_email, subject, body, received_at;
+        """,
+        (
+            thread_id,
+            root_id,
+            email_row.get("account_email") or "peopledesk@1mg.com",
+            actor_name,
+            actor_email,
+            reply_subject,
+            req.message,
+            email_row.get("category") or "PEOPLEDESK",
+            email_row.get("department_id"),
+            email_row.get("employee_id"),
+            email_row.get("case_id"),
+            email_row.get("case_number"),
+        ),
+        fetch_one=True,
+        commit=True,
+    )
 
     # If linked to a case, log communication to audit trail
     if email_row.get("case_id"):
@@ -3009,17 +3073,29 @@ def reply_to_inbox_email(email_id: int, req: InboxReplyRequest):
             """,
             (
                 email_row["case_id"], email_row.get("case_number", ""),
-                req.actor_email or "peopledesk@1mg.com", req.actor_name or "HR Specialist",
+                actor_email, actor_name,
                 audit_note
             ),
             commit=True
         )
 
+    reply_rec_at = saved_reply.get("received_at") if saved_reply else None
+    reply_payload = {
+        "id": saved_reply["id"] if saved_reply else None,
+        "type": "AGENT_REPLY",
+        "sender_name": saved_reply["sender_name"] if saved_reply else actor_name,
+        "sender_email": saved_reply["sender_email"] if saved_reply else actor_email,
+        "subject": saved_reply["subject"] if saved_reply else reply_subject,
+        "body": saved_reply["body"] if saved_reply else req.message,
+        "received_at": reply_rec_at.isoformat() if hasattr(reply_rec_at, "isoformat") else (str(reply_rec_at) if reply_rec_at else None),
+    }
+
     return {
         "success": True,
         "message": f"Reply successfully dispatched to {sender_email}",
         "email_sent": bool(email_res and email_res.get("sent")),
-        "email_details": email_res
+        "email_details": email_res,
+        "reply_message": reply_payload
     }
 
 class EmailIngestRequest(BaseModel):

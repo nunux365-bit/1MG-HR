@@ -1075,6 +1075,10 @@ function renderInboxEmailStream() {
     const threadChip = (e.thread_count && e.thread_count > 1)
       ? `<span class="apple-chip" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; border: 1px solid #BFDBFE;">${e.thread_count} msgs</span>`
       : '';
+    const hasAgentReply = Array.isArray(e.thread_messages) && e.thread_messages.some(m => m.type === 'AGENT_REPLY');
+    const repliedChip = hasAgentReply
+      ? `<span class="apple-chip chip-replied" title="Reply sent from People Desk">↩ Replied</span>`
+      : '';
 
     // Colleague Assignment Chip - Only show if specifically assigned to an individual
     const isAssignedToMe = (
@@ -1090,7 +1094,7 @@ function renderInboxEmailStream() {
 
     const catKey = (e.category || 'INQUIRY').toLowerCase();
     const formattedCat = formatCategoryTitle(e.category);
-    const dateFormatted = formatAppleDate(e.received_at);
+    const dateFormatted = formatAppleDate(e.last_activity_at || e.received_at);
 
     // Subtle 1MG Badge (only for verified internal directory)
     const domainBadge = isDomainVerified
@@ -1129,6 +1133,7 @@ function renderInboxEmailStream() {
           <span class="apple-chip chip-dept ${catKey}">${escapeHtml(formattedCat)}</span>
           ${statusChip}
           ${assignmentChip}
+          ${repliedChip}
           ${threadChip}
         </div>
       </div>
@@ -1265,17 +1270,30 @@ function toggleEmailAiHighlights() {
 }
 
 function formatThreadConversationHtml(email) {
-  const threads = email.thread_messages || [];
-  if (!threads.length) {
+  const rawThreads = email.thread_messages || [];
+  if (!rawThreads.length) {
     return formatEmailBodyHtml(email.body, email, email.ai_insights || {});
   }
+
+  // Always show newest replies (AGENT_REPLY / EMPLOYEE_REPLY) at the TOP, System Bot next, Initial Query at the bottom
+  const replyMsgs = rawThreads
+    .filter(m => m.type === 'AGENT_REPLY' || m.type === 'EMPLOYEE_REPLY')
+    .sort((a, b) => {
+      const ta = a.received_at ? new Date(a.received_at).getTime() : 0;
+      const tb = b.received_at ? new Date(b.received_at).getTime() : 0;
+      if (tb !== ta) return tb - ta;
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    });
+  const botMsgs = rawThreads.filter(m => m.type === 'SYSTEM_BOT');
+  const initialMsgs = rawThreads.filter(m => m.type === 'EMPLOYEE_INITIAL');
+  const threads = [...replyMsgs, ...botMsgs, ...initialMsgs];
 
   let html = `
     <div class="inbox-thread-timeline">
       <div class="inbox-thread-header">
         <div class="inbox-thread-header-title">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path></svg>
-          <span>Threaded Conversation History (${threads.length} ${threads.length === 1 ? 'message' : 'messages'})</span>
+          <span>Conversation History (${threads.length} ${threads.length === 1 ? 'message' : 'messages'} · Latest at Top)</span>
         </div>
         <div style="font-size: 11px; font-weight: 700; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1315,12 +1333,17 @@ function formatThreadConversationHtml(email) {
         </div>
       `;
     } else {
-      const isInitial = (msg.type === 'EMPLOYEE_INITIAL' || idx === 0);
-      const isReply = (msg.type === 'EMPLOYEE_REPLY');
-      const senderName = msg.sender_name || email.sender_name || 'Employee';
+      const isAgentReply = (msg.type === 'AGENT_REPLY');
+      const isEmployeeReply = (msg.type === 'EMPLOYEE_REPLY');
+      const isReply = isAgentReply || isEmployeeReply;
+      const isLatestTopReply = (idx === 0 && isReply);
+      const senderName = msg.sender_name || (isAgentReply ? 'People Desk' : email.sender_name || 'Employee');
       const initial = senderName.charAt(0).toUpperCase();
       const codeChip = msg.detected_code
         ? `<span class="thread-id-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><line x1="15" y1="8" x2="17" y2="8"></line><line x1="15" y1="12" x2="17" y2="12"></line></svg><span>Provided ID: <strong>${escapeHtml(msg.detected_code)}</strong></span></span>`
+        : '';
+      const latestTag = isLatestTopReply
+        ? `<span class="thread-latest-tag">Latest Reply</span>`
         : '';
 
       const rawText = msg.body || '';
@@ -1350,19 +1373,25 @@ function formatThreadConversationHtml(email) {
         `;
       }
 
+      const cardClass = isAgentReply ? 'agent-reply' : (isEmployeeReply ? 'reply' : 'initial');
+      const avatarClass = isAgentReply ? 'agent' : (isEmployeeReply ? 'reply' : 'initial');
+      const badgeClass = isAgentReply ? 'agent' : (isEmployeeReply ? 'reply' : 'initial');
+      const badgeInner = isAgentReply
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Sent Reply'
+        : (isEmployeeReply
+          ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg> Employee Reply'
+          : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Original Query');
+
       html += `
-        <div class="thread-item-message ${isReply ? 'reply' : 'initial'}">
+        <div class="thread-item-message ${cardClass}">
           <div class="thread-message-header">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <div class="thread-user-avatar ${isReply ? 'reply' : 'initial'}">${initial}</div>
+              <div class="thread-user-avatar ${avatarClass}">${initial}</div>
               <div style="display: flex; flex-direction: column;">
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                   <span style="font-weight: 700; font-size: 13px; color: #0F172A;">${escapeHtml(senderName)}</span>
-                  <span class="thread-role-badge ${isReply ? 'reply' : 'initial'}">
-                    ${isReply
-                      ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg> Employee Reply'
-                      : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Original Query'}
-                  </span>
+                  <span class="thread-role-badge ${badgeClass}">${badgeInner}</span>
+                  ${latestTag}
                   ${codeChip}
                 </div>
                 <span style="font-size: 11px; color: #64748B; margin-top: 1px;">&lt;${escapeHtml(msg.sender_email || email.sender_email)}&gt;</span>
@@ -1373,8 +1402,8 @@ function formatThreadConversationHtml(email) {
               ${msg.received_at ? formatAppleDate(msg.received_at) : ''}
             </span>
           </div>
-          <div style="font-size: 13px; line-height: 1.6; color: #334155;">
-            ${formatEmailBodyHtml(cleanBody, email, email.ai_insights || {})}
+          <div style="font-size: 13.5px; line-height: 1.65; color: #334155;">
+            ${formatEmailBodyHtml(cleanBody, email, isAgentReply ? {} : (email.ai_insights || {}))}
           </div>
           ${quotedHtml}
         </div>
@@ -2313,7 +2342,51 @@ async function sendInboxReply() {
 
     if (data.success) {
       showToast(`Reply dispatched to ${email?.sender_email || 'recipient'} via SMTP!`, 'success');
+      const sentBody = replyInput.value.trim();
       replyInput.value = '';
+
+      if (email) {
+        const replyMsg = data.reply_message || {
+          id: Date.now(),
+          type: 'AGENT_REPLY',
+          sender_name: currentUser.name || 'People Desk',
+          sender_email: currentUser.email || 'peopledesk@1mg.com',
+          subject: email.subject ? (email.subject.toLowerCase().startsWith('re:') ? email.subject : `Re: ${email.subject}`) : 'Re: Inquiry',
+          body: sentBody,
+          received_at: new Date().toISOString()
+        };
+
+        if (!Array.isArray(email.thread_messages) || email.thread_messages.length === 0) {
+          email.thread_messages = [{
+            id: email.id,
+            type: 'EMPLOYEE_INITIAL',
+            sender_name: email.sender_name || 'Employee',
+            sender_email: email.sender_email,
+            subject: email.subject,
+            body: email.body || '',
+            received_at: email.received_at
+          }];
+        }
+
+        // Prepend sent reply so it always displays at the TOP
+        email.thread_messages.unshift(replyMsg);
+        email.thread_count = (email.thread_count || 1) + 1;
+        email.last_activity_at = replyMsg.received_at || new Date().toISOString();
+
+        // Float replied thread to the top of the left queue
+        const idxInList = allInboxEmails.findIndex(item => item.id === email.id);
+        if (idxInList > 0) {
+          allInboxEmails.splice(idxInList, 1);
+          allInboxEmails.unshift(email);
+        }
+
+        renderInboxEmailStream();
+        const bodyEl = document.getElementById('inboxEmailBody');
+        if (bodyEl) {
+          bodyEl.innerHTML = formatThreadConversationHtml(email);
+        }
+        scrollMailToTop();
+      }
     } else {
       showToast(data.detail || 'Failed to dispatch reply', 'error');
     }
