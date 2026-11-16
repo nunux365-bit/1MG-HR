@@ -242,27 +242,36 @@ def find_department_assignee(dept_id: Optional[int]) -> Optional[Dict[str, Any]]
     )
 
 
-def _extract_sender_name(body: str, sender_name: str) -> str:
+def _extract_sender_name(body: str, sender_name: str, sender_email: str = "") -> str:
+    # Use horizontal whitespace [ \t]+ so regex never bleeds across newlines into "Employee ID:"
     struct_name_match = re.search(
-        r"(?:Employee\s*(?:/\s*Client)?|Employee\s*Name)\s*:\s*([A-Za-z]+(?:\s+[A-Za-z]+)+)",
+        r"\*?(?:Employee\s*(?:/\s*Client)?|Employee\s*Name)\*?\s*:\*?\s*([A-Za-z]+(?:[ \t]+[A-Za-z]+){0,3})",
         body or "",
         re.IGNORECASE,
     )
     signoff_name_match = re.search(
-        r"(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you)[\s,]*\r?\n\s*([A-Za-z]+(?:\s+[A-Za-z]+)+)",
+        r"(?:Regards|Warm regards|Best regards|Sincere regards|Thanks|Sincerely|Best|Thank you)[,!.]?[ \t]*\r?\n[ \t]*([A-Za-z]+(?:[ \t]+[A-Za-z]+){0,3})",
         body or "",
         re.IGNORECASE,
     )
     salutation_match = re.search(
-        r"(?:Hello|Dear|Hi)\s+([A-Za-z]+(?:\s+[A-Za-z]+)+)[\s,]",
+        r"(?:Hello|Dear|Hi)[ \t]+([A-Za-z]+(?:[ \t]+[A-Za-z]+){1,3})[ \t,]",
         body or "",
         re.IGNORECASE,
     )
 
+    def _clean_candidate(val: str) -> str:
+        cleaned = re.sub(r"\b(?:Employee\s*ID|Emp\s*ID|Employee|ID|Code|Date|Status|Details)\b.*$", "", val or "", flags=re.IGNORECASE).strip(" :-,*")
+        return cleaned
+
     if struct_name_match:
-        return struct_name_match.group(1).strip()
+        cand = _clean_candidate(struct_name_match.group(1))
+        if cand:
+            return cand
     if signoff_name_match:
-        return signoff_name_match.group(1).strip()
+        cand = _clean_candidate(signoff_name_match.group(1))
+        if cand and cand.lower() not in ("team", "hr", "team hr", "tata 1mg", "people desk"):
+            return cand
     if salutation_match and (
         not sender_name
         or any(
@@ -270,13 +279,36 @@ def _extract_sender_name(body: str, sender_name: str) -> str:
             for k in ("operations", "flow", "portal", "system", "desk", "support", "admin", "hr", "notification")
         )
     ):
-        return salutation_match.group(1).strip()
+        cand = _clean_candidate(salutation_match.group(1))
+        if cand and not any(k in cand.lower() for k in ("hr team", "sir", "madam", "maam", "team")):
+            return cand
 
-    if sender_name and not any(
-        k in sender_name.lower()
+    clean_sender = (sender_name or "").strip()
+    if clean_sender and clean_sender.lower() != "employee" and not any(
+        k in clean_sender.lower()
         for k in ("gitguardian", "lottiefiles", "security", "noreply", "alert", "system", "newsletter", "flow operations", "hr flow")
     ):
-        return sender_name.strip()
+        return clean_sender
+
+    # Friendly label for known BGV screening partners when display name is missing/"Employee"
+    se = (sender_email or "").lower()
+    bgv_vendors = (
+        ("authbridge", "AuthBridge BGV"),
+        ("fadv.com", "First Advantage (FADV)"),
+        ("hireright", "HireRight BGV"),
+        ("cfirst.io", "cFirst BGV"),
+        ("dcoderesearch", "Dcode Research BGV"),
+        ("xstreamsecure", "XstreamSecure BGV"),
+        ("crystalscreening", "Crystal Screening BGV"),
+        ("securitas", "Securitas BGV"),
+        ("itraceu", "iTraceU BGV"),
+        ("kryacheck", "KryaCheck BGV"),
+        ("arcattest", "ArcAttest BGV"),
+    )
+    for dom, label in bgv_vendors:
+        if dom in se:
+            return label
+
     return "Employee"
 
 
@@ -333,7 +365,7 @@ def build_email_ai_insights(email_row: dict) -> dict:
         }
 
     detected_code = detect_employee_code(text_content)
-    detected_name = _extract_sender_name(body, sender_name)
+    detected_name = _extract_sender_name(body, sender_name, sender_email)
     matched_employee = lookup_hrms_employee(detected_code, sender_email, detected_name)
 
     if matched_employee:
@@ -346,13 +378,24 @@ def build_email_ai_insights(email_row: dict) -> dict:
     requires_emp_id = not is_domain_verified and not detected_code and not (matched_employee and matched_employee.get("is_verified"))
     emp_id_status = "AWAITING_EMP_ID" if requires_emp_id else ("VERIFIED_1MG" if is_domain_verified else "VERIFIED_EXT_CODE")
 
-    # Classify via unified Stage 1 + Stage 2 ML Pipeline
+    # Classify via unified Stage 1 + Stage 2 ML Pipeline.
+    # Only honor stored_category as explicit_category if a live department with that category exists;
+    # otherwise route dynamically to the active configured desk (e.g. People Desk).
+    from backend.app.services.classifier_service import _fetch_departments, resolve_category_code
+    live_depts = _fetch_departments()
+    live_categories = {resolve_category_code(d) for d in live_depts}
+
     stored_category = (email_row.get("category") or "").upper()
-    explicit_cat = stored_category if stored_category not in ("", "UNKNOWN", "SYSTEM_ALERT", "NEWSLETTER", "SPAM", "INQUIRY") else None
+    explicit_cat = (
+        stored_category
+        if stored_category in live_categories and stored_category not in ("", "UNKNOWN", "SYSTEM_ALERT", "NEWSLETTER", "SPAM", "INQUIRY")
+        else None
+    )
     cls_res = classify_inbound_email_ai(
         subject=subject,
         body=body,
         explicit_category=explicit_cat,
+        departments=live_depts,
     )
 
     cat = cls_res.get("category_code") or "PEOPLEDESK"

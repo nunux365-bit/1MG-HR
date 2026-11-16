@@ -2569,7 +2569,7 @@ def get_inbox_emails(
         "all": int(counts_row.get("total_count") or 0)
     }
 
-    # Fetch emails with all essential metadata (float threads with latest replies/activity to the top)
+    # Fetch emails with all essential metadata (float threads with actual replies to the top)
     query = f"""
         SELECT 
             id, provider, account_email, sender_name, sender_email, subject, body,
@@ -2579,7 +2579,10 @@ def get_inbox_emails(
             assigned_user_id, assigned_user_name, assigned_user_email, transfer_notes
         FROM emails
         WHERE {where_clause}
-        ORDER BY GREATEST(COALESCE(received_at, created_at), COALESCE(updated_at, received_at, created_at)) DESC NULLS LAST, id DESC
+        ORDER BY GREATEST(
+            COALESCE(received_at, created_at),
+            COALESCE((SELECT MAX(r.received_at) FROM emails r WHERE r.parent_id = emails.id), received_at, created_at)
+        ) DESC NULLS LAST, id DESC
         LIMIT {int(limit)} OFFSET {int(offset)};
     """
     email_rows = execute_query(query, tuple(params) if params else None, fetch_all=True) or []
@@ -2668,7 +2671,7 @@ def get_inbox_emails(
         })
 
         latest_reply_at = reply_messages[0]["received_at"] if reply_messages else None
-        em_data["last_activity_at"] = latest_reply_at or _safe_iso(em.get("updated_at")) or _safe_iso(em.get("received_at"))
+        em_data["last_activity_at"] = latest_reply_at or _safe_iso(em.get("received_at"))
 
         # Inherit employee profile verification from replies if available
         if inherited_emp_id:

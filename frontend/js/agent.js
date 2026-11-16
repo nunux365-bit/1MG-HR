@@ -1092,8 +1092,9 @@ function renderInboxEmailStream() {
       assignmentChip = `<span class="apple-chip chip-assigned-other" title="Assigned to ${escapeHtml(e.assigned_user_name)}">${escapeHtml(e.assigned_user_name)}</span>`;
     }
 
-    const catKey = (e.category || 'INQUIRY').toLowerCase();
-    const formattedCat = formatCategoryTitle(e.category);
+    const resolvedCategory = (e.is_actionable === 1 && ai.category) ? ai.category : (e.category || 'INQUIRY');
+    const catKey = resolvedCategory.toLowerCase();
+    const formattedCat = formatCategoryTitle(resolvedCategory);
     const dateFormatted = formatAppleDate(e.last_activity_at || e.received_at);
 
     // Subtle 1MG Badge (only for verified internal directory)
@@ -1762,7 +1763,8 @@ async function selectInboxEmail(emailId) {
   const toggleNoiseBtn = document.getElementById('inboxToggleNoiseBtn');
   const convertBtn = document.getElementById('inboxConvertCaseBtn');
 
-  const deptTitle = formatCategoryTitle(email.category || ai.category);
+  const resolvedCategory = (email.is_actionable === 1 && ai.category) ? ai.category : (email.category || ai.category);
+  const deptTitle = formatCategoryTitle(resolvedCategory);
 
   if (ribId) ribId.innerText = `#EML-${String(email.id).padStart(3, '0')}`;
   if (ribCat) ribCat.innerText = deptTitle;
@@ -1926,14 +1928,22 @@ async function selectInboxEmail(emailId) {
   // Domain Verification Pill
   if (verifiedTag) {
     verifiedTag.style.display = 'inline-flex';
-    const isDomainVerified = senderEmail.toLowerCase().endsWith('@1mg.com') || (email.sender_name && email.sender_name.toLowerCase().includes('1mg')) || Boolean(matchedEmp && matchedEmp.is_verified);
-    if (isDomainVerified) {
+    const isCorporateDomain = senderEmail.toLowerCase().endsWith('@1mg.com');
+    const isEmpVerified = Boolean(ai.detected_code || (matchedEmp && matchedEmp.is_verified));
+    if (isCorporateDomain) {
       verifiedTag.innerHTML = `
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        <span>✓ 1mg Directory</span>
+        <span>1mg Directory</span>
       `;
       verifiedTag.className = 'mail-verified-tag 1mg-verified';
       verifiedTag.title = 'Verified Corporate Email in Tata 1mg Domain';
+    } else if (isEmpVerified) {
+      verifiedTag.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Emp ID Verified</span>
+      `;
+      verifiedTag.className = 'mail-verified-tag 1mg-verified';
+      verifiedTag.title = 'External email verified via Employee ID';
     } else {
       verifiedTag.innerHTML = `
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>

@@ -475,6 +475,41 @@
                   <div class="mail-body-canvas" id="inboxEmailBody"></div>
                 </div>
 
+                <!-- Quick Reply Composer -->
+                <div class="mail-reply-composer" id="inboxReplyComposer">
+                  <div class="reply-composer-header">
+                    <div class="reply-composer-title">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.4"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                      <span>Reply to <span id="inboxReplyTargetName">Employee</span></span>
+                    </div>
+                    <div class="reply-composer-presets">
+                      <select class="canned-dropdown" onchange="insertInboxPreset(this.value); this.selectedIndex=0;">
+                        <option value="">Quick Templates...</option>
+                        <option value="acknowledge">Acknowledge &amp; Reviewing</option>
+                        <option value="punch_regularized">Attendance Regularized</option>
+                        <option value="salary_dispatched">Salary / Payslip Update</option>
+                        <option value="mediclaim_added">Mediclaim / ESIC Update</option>
+                      </select>
+                    </div>
+                  </div>
+                  <textarea id="inboxQuickReplyInput" class="mail-reply-textarea" placeholder="Write your reply here (sent directly via People Desk SMTP and shown at the top of the thread)..."></textarea>
+                  <div class="reply-composer-footer">
+                    <div class="reply-dispatch-route">
+                      <span class="smtp-dot"></span>
+                      <span>Dispatching from peopledesk@1mg.com</span>
+                    </div>
+                    <div class="reply-action-group">
+                      <button type="button" class="btn-insert-ai-draft" onclick="insertInboxDraftToReply()">
+                        <span>✦ Insert AI Draft</span>
+                      </button>
+                      <button type="button" class="btn-send-dispatch" onclick="sendInboxReply()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <span>Send Response</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               <!-- Floating Scroll to Top Pill (Apple / Superhuman Standard) -->
