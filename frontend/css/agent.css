@@ -1495,9 +1495,18 @@ body.admin-body {
   background: #FDF2F8;
   color: #BE185D;
 }
-.apple-chip.chip-dept.leave {
+.apple-chip.chip-dept.leave,
+.apple-chip.chip-dept.leaves {
   background: #ECFEFF;
   color: #0E7490;
+}
+.apple-chip.chip-dept.relations {
+  background: #F5F3FF;
+  color: #6D28D9;
+}
+.apple-chip.chip-dept.system_alert {
+  background: #F1F5F9;
+  color: #64748B;
 }
 
 /* SLA pill */
@@ -2542,21 +2551,113 @@ body.admin-body {
 }
 
 .mail-body-canvas {
-  padding: 16px 24px 24px;
-  font-size: 13.5px;
-  line-height: 1.7;
+  padding: 18px 26px 26px;
+  font-size: 14px;
+  line-height: 1.72;
   color: #1E293B;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 78ch;
 }
 
 .mail-body-canvas .mail-para {
   margin: 0 0 14px 0;
-  line-height: 1.7;
+  line-height: 1.72;
   color: #1E293B;
 }
 
 .mail-body-canvas .mail-para:last-child {
   margin-bottom: 0;
+}
+
+.mail-inline-strong {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.mail-inline-link {
+  color: #2563EB;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.25);
+  overflow-wrap: anywhere;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.mail-inline-link:hover {
+  color: #1D4ED8;
+  border-bottom-color: #1D4ED8;
+}
+
+.mail-inline-asset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  margin: 2px 2px;
+  border-radius: 6px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.mail-inline-asset-chip svg {
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+/* Structured Key-Value Details & Verification Table Card */
+.mail-kv-card {
+  margin: 14px 0 18px 0;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #FAFBFD;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+}
+
+.mail-kv-title {
+  padding: 9px 14px;
+  background: #F1F5F9;
+  border-bottom: 1px solid #E2E8F0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  letter-spacing: 0.01em;
+}
+
+.mail-kv-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.mail-kv-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 38%) 1fr;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #F1F5F9;
+  align-items: baseline;
+}
+.mail-kv-row:last-child {
+  border-bottom: none;
+}
+.mail-kv-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.mail-kv-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.mail-kv-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #0F172A;
+  overflow-wrap: anywhere;
 }
 
 .mail-signoff-block {

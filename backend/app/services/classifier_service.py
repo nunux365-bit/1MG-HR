@@ -379,6 +379,66 @@ def predict_department_ml(
     }
 
 
+def _sync_trained_department_intents(category_code: str, unique_labels: List[str], accuracy: float) -> None:
+    """Persists training status and aligns hr_departments.intents with trained intent labels."""
+    dept_row = execute_query(
+        """
+        SELECT id, sla_hours, intents
+        FROM hr_departments
+        WHERE UPPER(COALESCE(category_code, '')) = %s OR UPPER(dept_code) = %s
+        LIMIT 1;
+        """,
+        (category_code, f"DEPT-{category_code}"),
+        fetch_one=True,
+    )
+    if not dept_row:
+        return
+
+    default_sla = int(dept_row.get("sla_hours") or 24)
+    existing_intents = _parse_json_list(dept_row.get("intents"))
+    existing_map = {
+        str(item.get("code")).strip().upper(): item
+        for item in existing_intents
+        if isinstance(item, dict) and item.get("code")
+    }
+    canonical_cfg = next((c for c in CANONICAL_DEPARTMENT_CONFIGS if c["category_code"] == category_code), None)
+    canonical_map = {
+        str(item.get("code")).strip().upper(): item
+        for item in (canonical_cfg.get("intents", []) if canonical_cfg else [])
+        if isinstance(item, dict) and item.get("code")
+    }
+
+    synced_intents = []
+    for code in unique_labels:
+        match = existing_map.get(code) or canonical_map.get(code)
+        if match:
+            synced_intents.append({
+                "code": code,
+                "name": match.get("name") or code.replace("_", " ").title(),
+                "sla_hours": int(match.get("sla_hours") or default_sla),
+            })
+        else:
+            synced_intents.append({
+                "code": code,
+                "name": code.replace("_", " ").title(),
+                "sla_hours": default_sla,
+            })
+
+    execute_query(
+        """
+        UPDATE hr_departments
+        SET ai_model_status = 'TRAINED',
+            model_accuracy = %s,
+            intents = %s::jsonb,
+            trained_at = NOW(),
+            updated_at = NOW()
+        WHERE UPPER(COALESCE(category_code, '')) = %s OR UPPER(dept_code) = %s;
+        """,
+        (accuracy, json.dumps(synced_intents), category_code, f"DEPT-{category_code}"),
+        commit=True,
+    )
+
+
 def train_department_model(category_code: str, dataset: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Trains a LinearSVC model with TfidfVectorizer on the provided labeled dataset.
@@ -451,18 +511,7 @@ def train_department_model(category_code: str, dataset: List[Dict[str, Any]]) ->
     }
     MODEL_CACHE.pop("__DEPT_ROUTER__", None)
 
-    execute_query(
-        """
-        UPDATE hr_departments
-        SET ai_model_status = 'TRAINED',
-            model_accuracy = %s,
-            trained_at = NOW(),
-            updated_at = NOW()
-        WHERE UPPER(COALESCE(category_code, '')) = %s OR UPPER(dept_code) = %s;
-        """,
-        (accuracy, cat, f"DEPT-{cat}"),
-        commit=True,
-    )
+    _sync_trained_department_intents(cat, unique_labels, accuracy)
 
     return {
         "success": True,

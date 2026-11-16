@@ -1039,9 +1039,12 @@ function renderInboxEmailStream() {
     const initial = senderName.charAt(0).toUpperCase();
     const isDomainVerified = (e.sender_email || '').toLowerCase().endsWith('@1mg.com');
 
-    // Clean and decode snippet of raw literal \n, extra whitespace, and HTML entities
+    // Clean and decode snippet of raw literal \n, [image: ...] tags, markdown asterisks, and HTML entities
     const rawSnippet = (e.snippet || e.body || '');
     const cleanSnippet = decodeHtmlEntities(rawSnippet)
+      .replace(/\[image:\s*([^\]]+)\]/gi, '[$1]')
+      .replace(/\*([^*\n]{1,60})\*/g, '$1')
+      .replace(/<((?:https?:\/\/)[^>\s]+)>/gi, '$1')
       .replace(/\\r\\n|\\n|\\r/g, ' ')
       .replace(/\r\n|\n|\r/g, ' ')
       .replace(/\s+/g, ' ')
@@ -1205,13 +1208,39 @@ function formatCategoryTitle(raw) {
 
 function decodeHtmlEntities(str) {
   if (!str) return '';
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ');
+  let decoded = String(str);
+  const namedMap = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+    '&rsquo;': '’',
+    '&lsquo;': '‘',
+    '&ldquo;': '“',
+    '&rdquo;': '”',
+    '&ndash;': '–',
+    '&mdash;': '—',
+    '&bull;': '•',
+    '&hellip;': '…',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™'
+  };
+  decoded = decoded.replace(/&(?:amp|lt|gt|quot|apos|nbsp|rsquo|lsquo|ldquo|rdquo|ndash|mdash|bull|hellip|copy|reg|trade|#39);/gi, (m) => {
+    return namedMap[m.toLowerCase()] || m;
+  });
+  decoded = decoded.replace(/&#(\d+);/g, (_, num) => {
+    const cp = parseInt(num, 10);
+    return (!isNaN(cp) && cp > 0 && cp < 0x10FFFF) ? String.fromCodePoint(cp) : _;
+  });
+  decoded = decoded.replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+    const cp = parseInt(hex, 16);
+    return (!isNaN(cp) && cp > 0 && cp < 0x10FFFF) ? String.fromCodePoint(cp) : _;
+  });
+  return decoded;
 }
 
 let isAiHighlightsActive = true;
@@ -1295,7 +1324,7 @@ function formatThreadConversationHtml(email) {
         : '';
 
       const rawText = msg.body || '';
-      const quoteRegex = /(?:^|\n)(?:From:\s*|On\s+.*?\s+wrote:|---+ Original Message ---+)/i;
+      const quoteRegex = /(?:\r?\n)+\s*(?:>{1,4}(?:\s|$)|From:\s+[^\n]+@|On\s+[\s\S]{10,160}?\bwrote:|---+ Original Message ---+)/i;
       const match = rawText.match(quoteRegex);
       let cleanBody = rawText;
       let quotedBody = '';
@@ -1360,16 +1389,25 @@ function formatThreadConversationHtml(email) {
 function formatEmailBodyHtml(rawBody, email = {}, ai = {}) {
   if (!rawBody) return '<p class="mail-para text-muted">No message content provided.</p>';
 
-  // 1. Decode pre-escaped HTML entities (&amp;, &quot;, &rsquo;, &nbsp;, etc.)
+  // 1. Decode HTML entities (&rsquo;, &ndash;, &nbsp;, numeric codes, etc.) & normalize line endings
   let text = decodeHtmlEntities(String(rawBody))
+    .replace(/\u00A0/g, ' ')
     .replace(/\\r\\n/g, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\\r/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
     .trim();
 
-  // 2. Separate fresh message from quoted thread history (Gmail / Superhuman style)
-  const quoteSplitRegex = /(?:\r?\n)+(?:>{1,4}\s*|On\s+[A-Za-z0-9,\s]+wrote:|---+ Original Message ---+|From:\s+[^\n]+<[^\n]+>)/i;
-  const quoteMatch = text.match(quoteSplitRegex);
+  // 2. Clean broken markdown bullet spacing like "-\n\n*Employee Name:* Vaibhav" -> "- *Employee Name:* Vaibhav"
+  text = text
+    .replace(/(?:^|\n)\s*-\s*\n+\s*/g, '\n- ')
+    .replace(/(\*{1,2}[^*\n]{2,50}:\*{1,2})\s*\n{2,}(?=\s*[-•*]\s+)/g, '$1\n');
+
+  // 3. Separate fresh message from quoted thread history (handles >>, multi-line On ... wrote:, Outlook headers)
+  const quoteSplitRegex = /(?:\n){2,}\s*(?:>{1,4}(?:\s|$)|On\s+[\s\S]{10,180}?\bwrote:|---+ Original Message ---+|From:\s+[^\n]+(?:<[^\n]+>|@))/i;
+  const fallbackQuoteRegex = /\n\s*(?:>{2,}(?:\s|$)|On\s+[^\n]{12,140}\bwrote:|---+ Original Message ---+)/i;
+  const quoteMatch = text.match(quoteSplitRegex) || text.match(fallbackQuoteRegex);
 
   let mainBody = text;
   let quotedHistory = '';
@@ -1379,80 +1417,189 @@ function formatEmailBodyHtml(rawBody, email = {}, ai = {}) {
     quotedHistory = text.substring(quoteMatch.index).trim();
   }
 
-  // Helper to render segmented paragraphs with highlights & formatting
-  function renderParagraphs(content, isQuoted = false) {
-    if (!content.includes('\n\n') && !isQuoted) {
-      content = content.replace(/([.!?])\s+(Congratulations!|As a member you get|Free shipping|Rapid deliveries|Early access to sale|Premium support|Exclusive offers|View all Benefits|Explore Care Plan now|Care Plan discount is|With lots of care|Need help\?|Download the app|Connect with us|Purchased on|Validity \d+ months|Visit your Care Plan page)/gi, '$1\n\n$2');
-      content = content.replace(/(Order now|Free shipping|Rapid deliveries|Early access to sale|Exclusive offers|Download Invoice)\s+([A-Z])/g, '$1\n\n$2');
+  // Normalize single-line collapsed HTML emails (like AuthBridge BGV questionnaires) into readable sections
+  function structureCollapsedText(content, isQuoted) {
+    if (isQuoted) return content;
+    let out = content.replace(/[ \t]{2,}/g, ' ');
+    if (!out.includes('\n\n')) {
+      out = out
+        .replace(/^(Dear\s+(?:Sir\/Ma['’]?am|Sir\/Madam|HR\s*Team|Team|HR|All)[^,\n]*,)\s+/i, '$1\n\n')
+        .replace(/\s+(Details as Mentioned by the Applicant[^.]*?\s+Details Confirmed by[^\n]*?)\s+(?=1\s+Employee Code)/i, '\n\n**$1**\n')
+        .replace(/\s+(\d{1,2})\s+(Employee Code|Tenure|Designation|Cost to Company|Reason for Leaving|Exit Formalities|Is the candidate\/Applicant eligible for rehire\s*\??|UAN|PAN of the Employee|Certificate number as on Form 16|TAN of the Employer|Feedback on account of[^0-9]*|TDS Status|Date of Verification|Time of Verification)\b/gi, '\n$1. $2:')
+        .replace(/\s+(\(If Applicable\)\s*\*\*Important:)/gi, '\n\n$1')
+        .replace(/\s+(We thank you in advance for your time and support\.)/gi, '\n\n$1')
+        .replace(/\s+(Note:\s+This specific correspondence)/gi, '\n\n$1')
+        .replace(/\s+(AuthBridge\s+is a leading provider)/gi, '\n\n$1')
+        .replace(/\s+(Are you getting Ex-employee verifications)/gi, '\n\n$1')
+        .replace(/\s+(To get more information about our services)/gi, '\n\n$1')
+        .replace(/\s+((?:Sincere|Warm|Best)\s+Regards,|Regards,|Thanks\s*(?:&|and)\s*Regards,)/gi, '\n\n$1\n')
+        .replace(/([.!?])\s+(Congratulations!|As a member you get|Free shipping|Rapid deliveries|Early access to sale|Premium support|Exclusive offers|View all Benefits|Explore Care Plan now|Care Plan discount is|With lots of care|Need help\?|Download the app|Connect with us|Purchased on|Validity \d+ months|Visit your Care Plan page)/gi, '$1\n\n$2')
+        .replace(/(Order now|Free shipping|Rapid deliveries|Early access to sale|Exclusive offers|Download Invoice)\s+([A-Z])/g, '$1\n\n$2');
+    }
+    return out;
+  }
+
+  function applyAiHighlightsToText(safeText) {
+    const orgCounts = {};
+    let out = safeText;
+
+    // 1. Employee / Ticket Codes (covers EMP1024, CON1MG3202, 1MGHC4931, APRT00012, 1MG4453, NUNUX12)
+    out = out.replace(/\b(CON1MG-?\d+|1MG[A-Z]{0,4}-?\d+|EMP[A-Z]{0,3}-?\d+|APRT\d+|NUNUX-?\d+)\b/gi, (match) => {
+      return `<mark class="ai-mark ai-mark-code" title="HRMS Identifier">${match}</mark>`;
+    });
+
+    // 2. Organization / HR System Entities (Max 2 per entity to avoid clutter)
+    out = out.replace(/\b(AuthBridge|HireRight|First Advantage|FADV|Darwinbox|PeopleStrong|Truein|MediBuddy|Refyne|Happay|Advantage Club|Tata 1mg|Gurugram DC Hub|Gurugram Hub|Apex Solutions|ESIC|EPFO|U\.?A\.?N\.?)\b/gi, (match) => {
+      const k = match.toLowerCase();
+      orgCounts[k] = (orgCounts[k] || 0) + 1;
+      if (orgCounts[k] <= 2) {
+        return `<mark class="ai-mark ai-mark-org" title="System / Organization">${match}</mark>`;
+      }
+      return match;
+    });
+
+    // 3. Dates & Times
+    out = out.replace(/\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},?\s*\d{4}|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*(?:\d{2,4})?|\d{1,2}:\d{2}\s*(?:AM|PM))\b/gi, (match) => {
+      return `<mark class="ai-mark ai-mark-date" title="Detected Date / Time">${match}</mark>`;
+    });
+
+    // 4. Critical Operational Statuses
+    out = out.replace(/\b(pending|absent|failure|exposed|missing|urgent|denied|discrepancy|hold|rejected|incorrect)\b/gi, (match) => {
+      return `<mark class="ai-mark ai-mark-status" title="Status: ${match}"><span class="mark-status-dot"></span>${match}</mark>`;
+    });
+
+    // 5. Key HR Topics
+    out = out.replace(/\b(background verification|employment verification|previous employment verification|attendance correction|attendance management system|biometric punch|punch regularization|salary slip|payslip|esic card|mediclaim|relieving letter|experience letter|full and final|fnf)\b/gi, (match) => {
+      return `<mark class="ai-mark ai-mark-topic" title="Key HR Topic">${match}</mark>`;
+    });
+
+    return out;
+  }
+
+  function formatInlineContent(rawLine, allowHighlights) {
+    // Tokenize URLs and [image: ...] tags BEFORE escaping & highlighting so highlights never corrupt hrefs
+    const tokens = [];
+    let tokenized = rawLine
+      .replace(/\[image:\s*([^\]]+)\]/gi, (_, imgName) => {
+        const idx = tokens.length;
+        tokens.push(`<span class="mail-inline-asset-chip" title="Embedded image"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><span>${escapeHtml(imgName.trim())}</span></span>`);
+        return `__MAIL_TOK_${idx}__`;
+      })
+      .replace(/<(https?:\/\/[^>\s]+)>|\b(https?:\/\/[^\s<>()]+[^\s<>().,;!?])/gi, (_, bracketUrl, bareUrl) => {
+        const rawUrl = bracketUrl || bareUrl;
+        const idx = tokens.length;
+        let label = rawUrl;
+        try {
+          const u = new URL(rawUrl);
+          const pathShort = u.pathname && u.pathname !== '/' ? u.pathname.slice(0, 28) + (u.pathname.length > 28 ? '…' : '') : '';
+          label = `${u.hostname.replace(/^www\./, '')}${pathShort}`;
+        } catch (e) {
+          label = rawUrl.length > 48 ? rawUrl.slice(0, 45) + '…' : rawUrl;
+        }
+        tokens.push(`<a class="mail-inline-link" href="${escapeHtml(rawUrl)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(rawUrl)}">${escapeHtml(label)}</a>`);
+        return `__MAIL_TOK_${idx}__`;
+      });
+
+    // Format **bold** or *bold* markers safely
+    const boldTokens = [];
+    tokenized = tokenized.replace(/\*\*([^*\n]{1,120})\*\*|\*([^*\n]{1,80})\*/g, (_, b1, b2) => {
+      const idx = boldTokens.length;
+      const inner = escapeHtml((b1 || b2 || '').trim());
+      boldTokens.push(`<strong class="mail-inline-strong">${allowHighlights ? applyAiHighlightsToText(inner) : inner}</strong>`);
+      return `__BOLD_TOK_${idx}__`;
+    });
+
+    let safe = escapeHtml(tokenized);
+    if (allowHighlights) {
+      safe = applyAiHighlightsToText(safe);
     }
 
-    const paragraphs = content.split(/\n\s*\n/);
-    const orgCounts = {};
+    safe = safe.replace(/__BOLD_TOK_(\d+)__/g, (_, i) => boldTokens[Number(i)] || '');
+    safe = safe.replace(/__MAIL_TOK_(\d+)__/g, (_, i) => tokens[Number(i)] || '');
+    return safe;
+  }
+
+  function renderStructuredBlockIfApplicable(trimmed, allowHighlights) {
+    const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+
+    // Pattern A: Markdown / Bullet Key-Value block (e.g. *Employee Details:* \n - *Employee Name:* Vaibhav)
+    const kvRows = [];
+    let heading = '';
+    let nonKvCount = 0;
+
+    lines.forEach((line, idx) => {
+      const cleanLine = line.replace(/^[-•*]\s+/, '').trim();
+      const numberedMatch = cleanLine.match(/^(\d{1,2})\.\s+([^:]{2,75}):\s*(.*)$/);
+      const boldKvMatch = cleanLine.match(/^\*{1,2}([^*:]{2,55}):\*{1,2}\s*(.+)$/);
+      const plainKvMatch = cleanLine.match(/^([A-Za-z][A-Za-z0-9\s\/()]{1,42}):\s+(.+)$/);
+
+      if (idx === 0 && cleanLine.match(/^\*{1,2}[^*]+:\*{1,2}$/) && !cleanLine.match(/:\*{1,2}\s+\S/)) {
+        heading = cleanLine.replace(/^\*{1,2}|\*{1,2}$/g, '').replace(/:$/, '').trim();
+      } else if (idx === 0 && cleanLine.match(/^\*\*Details as Mentioned/i)) {
+        heading = cleanLine.replace(/^\*{1,2}|\*{1,2}$/g, '').trim();
+      } else if (numberedMatch) {
+        kvRows.push({ label: `${numberedMatch[1]}. ${numberedMatch[2].trim()}`, value: numberedMatch[3].trim() || '—' });
+      } else if (boldKvMatch) {
+        kvRows.push({ label: boldKvMatch[1].trim(), value: boldKvMatch[2].trim() });
+      } else if (plainKvMatch && !/^https?$/i.test(plainKvMatch[1])) {
+        kvRows.push({ label: plainKvMatch[1].trim(), value: plainKvMatch[2].trim() });
+      } else {
+        nonKvCount++;
+      }
+    });
+
+    if (kvRows.length >= 2 && nonKvCount <= 1) {
+      const titleHtml = heading ? `<div class="mail-kv-title">${escapeHtml(heading)}</div>` : '';
+      const rowsHtml = kvRows.map(r => `
+        <div class="mail-kv-row">
+          <div class="mail-kv-label">${escapeHtml(r.label)}</div>
+          <div class="mail-kv-value">${formatInlineContent(r.value, allowHighlights)}</div>
+        </div>
+      `).join('');
+      return `<div class="mail-kv-card">${titleHtml}<div class="mail-kv-grid">${rowsHtml}</div></div>`;
+    }
+
+    return null;
+  }
+
+  // Helper to render segmented paragraphs with highlights & formatting
+  function renderParagraphs(content, isQuoted = false) {
+    const prepared = structureCollapsedText(content, isQuoted);
+    const paragraphs = prepared.split(/\n\s*\n/);
+    const allowHighlights = isAiHighlightsActive && !isQuoted;
 
     return paragraphs.map(p => {
       let trimmed = p.trim();
       if (!trimmed) return '';
 
-      // Strip leading '>' quotes if in quoted mode
       if (isQuoted) {
         trimmed = trimmed.split('\n').map(l => l.replace(/^\s*>+\s?/, '')).join('\n').trim();
         if (!trimmed) return '';
       }
 
-      let safe = escapeHtml(trimmed);
-
-      // AI Smart Highlighting if enabled (Clean Apple typography, NO disruptive inline SVGs!)
-      if (isAiHighlightsActive && !isQuoted) {
-        // 1. Employee Code matching
-        safe = safe.replace(/\b(EMP\d+|1MG\d+|NUNUX\d+)\b/gi, (match) => {
-          return `<mark class="ai-mark ai-mark-code" title="HRMS Identifier">${match}</mark>`;
-        });
-
-        // 2. Organization / Facility Entities (Max 2 to avoid clutter)
-        safe = safe.replace(/\b(Apex Solutions|Tata 1mg|Gurugram DC Hub|Gurugram Hub|GitGuardian|GitHub|LottieFiles|Amplifon|Lenskart|Clove)\b/gi, (match) => {
-          const k = match.toLowerCase();
-          orgCounts[k] = (orgCounts[k] || 0) + 1;
-          if (orgCounts[k] <= 2) {
-            return `<mark class="ai-mark ai-mark-org" title="Entity: Organization / Facility">${match}</mark>`;
-          }
-          return match;
-        });
-
-        // 3. Dates & Times
-        safe = safe.replace(/\b(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{2,4})?|\d{1,2}:\d{2}\s*(?:AM|PM))\b/gi, (match) => {
-          return `<mark class="ai-mark ai-mark-date" title="Detected Date / Time">${match}</mark>`;
-        });
-
-        // 4. Critical Operational Statuses
-        safe = safe.replace(/\b(pending|absent|failure|exposed|missing|urgent|denied|discrepancy)\b/gi, (match) => {
-          return `<mark class="ai-mark ai-mark-status" title="Status: ${match}"><span class="mark-status-dot"></span>${match}</mark>`;
-        });
-
-        // 5. Key HR Topics / Verification processes
-        safe = safe.replace(/\b(background verification|employment verification|previous employment verification|biometric punch-in system|biometric attendance punch|optical scanner failure|health card|privilege leave|punch regularization|Care Plan membership|prescription medicines)\b/gi, (match) => {
-          return `<mark class="ai-mark ai-mark-topic" title="Key HR / Operational Topic">${match}</mark>`;
-        });
-
-        // 6. Action Requests
-        safe = safe.replace(/(check whether the employment verification request has been shared with my previous employer|check whether .*? has been shared|regularize the attendance for that date|regularize my morning in-punch|verify and update the portal ledger|Place an order now to start saving|Download Invoice)/gi, (match) => {
-          return `<mark class="ai-mark ai-mark-action" title="Core Employee Action Request">${match}</mark>`;
-        });
-      }
-
-      // Replace linebreaks inside paragraph with <br>
-      safe = safe.replace(/\n/g, '<br>');
-
-      // Check if paragraph is sign-off or disclaimer
       if (!isQuoted) {
-        if (trimmed.match(/^(?:Regards|Warm regards|Thanks|Sincerely|Best|Thank you|With lots of care)[\s,]/i)) {
-          return `<div class="mail-signoff-block">${safe}</div>`;
+        const kvHtml = renderStructuredBlockIfApplicable(trimmed, allowHighlights);
+        if (kvHtml) return kvHtml;
+
+        // Genuine sign-offs only (not full sentences like "Thank you for your assistance.")
+        const firstLine = trimmed.split('\n')[0].trim();
+        if (
+          firstLine.match(/^(?:Regards|Warm regards|Best regards|Sincere regards|Thanks\s*(?:&|and)\s*regards|Sincerely|Kind regards|With lots of care|Team HR|Thank you)[,!.]?$/i) ||
+          trimmed.match(/^(?:Regards|Warm regards|Best regards|Sincere regards|Thanks\s*(?:&|and)\s*regards|Sincerely|Kind regards)[,]/i)
+        ) {
+          const safeSignoff = trimmed.split('\n').map(l => formatInlineContent(l, false)).join('<br>');
+          return `<div class="mail-signoff-block">${safeSignoff}</div>`;
         }
-        if (trimmed.match(/(?:©\s*\d{4}|All rights reserved|Tower\s*-B|Presidency Building)/i)) {
-          return `<div class="mail-footer-block">${safe}</div>`;
+
+        if (trimmed.match(/(?:©\s*\d{4}|All rights reserved|Tower\s*-B|Presidency Building|ISO\s*9001:2015|WorkAttest|You received this email to let you know)/i)) {
+          const safeFooter = trimmed.split('\n').map(l => formatInlineContent(l, false)).join('<br>');
+          return `<div class="mail-footer-block">${safeFooter}</div>`;
         }
       }
 
-      return `<p class="mail-para ${isQuoted ? 'quoted-para' : ''}">${safe}</p>`;
+      const renderedLines = trimmed.split('\n').map(l => formatInlineContent(l, allowHighlights)).join('<br>');
+      return `<p class="mail-para ${isQuoted ? 'quoted-para' : ''}">${renderedLines}</p>`;
     }).filter(Boolean).join('');
   }
 
@@ -1714,7 +1861,9 @@ async function selectInboxEmail(emailId) {
 
   const intentTagEl = document.getElementById('inboxHeaderIntentTag');
   const metaDotEl = document.getElementById('inboxHeaderMetaDot');
-  if (intentTagEl) intentTagEl.style.display = 'none'; // Unclutter email header: intent is cleanly featured in right AI Copilot
+  if (intentTagEl) {
+    intentTagEl.style.display = (email.is_actionable === 1 && ai.intent_label) ? 'inline-flex' : 'none';
+  }
   if (metaDotEl) metaDotEl.style.display = senderEmail ? 'inline' : 'none';
 
   // Subject Header Pills
