@@ -881,11 +881,11 @@ button, input, select, textarea {
 }
 
 .v2-subbar {
-  height: 46px;
+  height: 52px;
   flex-shrink: 0;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
-  padding: 0 16px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -902,39 +902,47 @@ button, input, select, textarea {
 .v2-segmented-tabs {
   display: inline-flex;
   align-items: center;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px;
-  gap: 2px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  gap: 8px;
 }
 
 .v2-seg-tab {
-  height: 28px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 12px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #FFFFFF;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-3);
+  color: var(--text-2);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   cursor: pointer;
-  transition: all 0.14s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: all 0.15s ease;
 }
 
-.v2-seg-tab:hover { color: var(--text-1); }
+.v2-seg-tab:hover {
+  background: var(--bg-subtle);
+  border-color: #CBD5E1;
+  color: var(--text-1);
+}
 
 .v2-seg-tab.active {
-  background: #FFFFFF;
+  background: var(--coral-soft);
+  border-color: var(--coral);
   color: var(--text-1);
-  box-shadow: var(--shadow-xs);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(255, 111, 97, 0.14);
 }
 
 .v2-seg-tab svg {
-  opacity: 0.7;
+  width: 15px;
+  height: 15px;
+  opacity: 0.72;
   flex-shrink: 0;
 }
 
@@ -945,15 +953,15 @@ button, input, select, textarea {
 
 .v2-seg-count {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 99px;
-  background: #E2E8F0;
+  background: #F1F5F9;
   color: var(--text-2);
 }
 
-.v2-seg-count.coral { background: var(--coral-soft); color: var(--coral); }
+.v2-seg-count.coral { background: #FFE4E0; color: var(--coral-hover); }
 .v2-seg-count.teal { background: var(--teal-soft); color: var(--teal); }
 .v2-seg-count.blue { background: var(--blue-soft); color: var(--blue); }
 .v2-seg-count.amber { background: var(--amber-soft); color: var(--amber); }
@@ -963,13 +971,13 @@ button, input, select, textarea {
 .v2-inline-search {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 7px;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg-subtle);
-  width: 210px;
+  width: 220px;
 }
 
 .v2-inline-search.wide { width: 250px; }
@@ -983,7 +991,7 @@ button, input, select, textarea {
   border: none;
   background: transparent;
   outline: none;
-  font-size: 12px;
+  font-size: 13px;
   width: 100%;
 }
 

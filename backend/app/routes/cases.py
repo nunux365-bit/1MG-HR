@@ -2499,6 +2499,7 @@ def get_inbox_emails(
     elif tab == "noise":
         conditions.append(noise_expr)
     elif tab in ("assigned_to_me", "assigned_me", "assigned"):
+        conditions.append(f"{useful_expr} AND {unresolved_expr}")
         if user_id and user_email:
             u_email_clean = user_email.strip().lower()
             conditions.append("(e.assigned_user_id = %s OR LOWER(e.assigned_user_email) = %s OR c.assigned_user_id = %s OR LOWER(c.assigned_user_email) = %s)")
@@ -2568,7 +2569,7 @@ def get_inbox_emails(
             COUNT(*) FILTER (WHERE e.is_actionable = 1) as actionable_count,
             COUNT(*) FILTER (WHERE e.is_actionable = 1 AND (e.is_converted = 0 OR e.is_converted IS NULL) AND (e.assigned_user_id IS NULL AND (e.assigned_user_name IS NULL OR e.assigned_user_name = ''))) as unclaimed_count,
             COUNT(*) FILTER (WHERE {noise_expr}) as noise_count,
-            COUNT(*) FILTER (WHERE {assigned_cond}) as assigned_to_me_count,
+            COUNT(*) FILTER (WHERE {assigned_cond} AND {useful_expr} AND {unresolved_expr}) as assigned_to_me_count,
             COUNT(*) as total_count
         FROM emails e
         LEFT JOIN cases c ON e.case_id = c.id

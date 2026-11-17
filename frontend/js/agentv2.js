@@ -1888,7 +1888,7 @@ async function sendDossierReply() {
     if (data.success) {
       ta.value = '';
       showToast(activeDossierReplyMode === 'PUBLIC_REPLY' ? 'Reply dispatched!' : 'Internal note saved!', 'success');
-      await fetchCasesData();
+      await Promise.all([fetchCasesData(), loadInboxEmails({ silent: true })]);
       loadAgentCasesKPIs();
       openAgentCaseDossier(activeDossierCase.id);
     } else {
@@ -2220,7 +2220,7 @@ async function submitReply() {
     if (data.success) {
       ta.value = '';
       showToast(shouldResolve ? 'Reply sent & case resolved!' : 'Message saved!', 'success');
-      await fetchCasesData();
+      await Promise.all([fetchCasesData(), loadInboxEmails({ silent: true })]);
       renderReplyCasesList();
       loadReplyThread(currentSelectedCaseId);
     } else {
