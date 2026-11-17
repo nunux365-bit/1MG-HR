@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent v2.0 · Tata 1mg People Desk</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-mark.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.0">
+</head>
+<body class="v2-body">
+
+  <!-- =====================================================================
+       APP SHELL: ICON-RAIL SIDEBAR + VIEWPORT-LOCKED WORKSPACE
+       ===================================================================== -->
+  <div class="v2-shell" id="v2Shell">
+
+    <!-- LEFT NAVIGATION RAIL -->
+    <aside class="v2-rail" id="v2Sidebar" aria-label="Agent Navigation">
+      <div class="v2-rail-brand">
+        <a href="/agentv2.0" class="v2-brand-link" title="Tata 1mg People Desk · Agent v2.0">
+          <div class="v2-brand-mark">
+            <img src="/assets/logo-mark.svg" alt="1mg">
+          </div>
+          <div class="v2-brand-text">
+            <span class="v2-brand-name">People Desk</span>
+            <span class="v2-brand-ver">AGENT v2.0</span>
+          </div>
+        </a>
+      </div>
+
+      <nav class="v2-rail-nav">
+        <button type="button" class="v2-nav-item active" data-view="inboxView" onclick="switchView('inboxView', this)" title="Inbox Triage">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+              <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+            </svg>
+          </span>
+          <span class="v2-nav-label">Inbox</span>
+          <span class="v2-nav-badge" id="navInboxBadge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="v2-nav-item" data-view="casesView" onclick="switchView('casesView', this)" title="Cases Command">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </span>
+          <span class="v2-nav-label">Cases</span>
+          <span class="v2-nav-badge" id="navCasesBadge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="v2-nav-item" data-view="threadsView" onclick="switchView('threadsView', this)" title="Active Case Threads">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </span>
+          <span class="v2-nav-label">Threads</span>
+          <span class="v2-nav-badge" id="navThreadsBadge" style="display:none;">0</span>
+        </button>
+
+        <button type="button" class="v2-nav-item" data-view="radarView" onclick="switchView('radarView', this)" title="SLA Radar &amp; Intake">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </span>
+          <span class="v2-nav-label">SLA Radar</span>
+          <span class="v2-nav-badge urgent" id="navRadarBadge" style="display:none;">0</span>
+        </button>
+      </nav>
+
+      <div class="v2-rail-footer">
+        <div class="v2-rail-divider"></div>
+        <button type="button" class="v2-nav-item subtle" onclick="openNewCaseModal()" title="Log New Case">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </span>
+          <span class="v2-nav-label">New Case</span>
+        </button>
+        <button type="button" class="v2-nav-item subtle" onclick="openIngestEmailModal()" title="Ingest Inbound Email">
+          <span class="v2-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </span>
+          <span class="v2-nav-label">Ingest Mail</span>
+        </button>
+        <div class="v2-rail-status" title="Live Queue Engine Active">
+          <span class="v2-pulse-dot"></span>
+          <span class="v2-status-text" id="railClockDisplay">Live · Ready</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN COLUMN -->
+    <div class="v2-main">
+
+      <!-- TOPBAR -->
+      <header class="v2-topbar">
+        <div class="v2-topbar-left">
+          <div class="v2-view-heading">
+            <h1 class="v2-view-title" id="currentViewTitle">Inbox Triage</h1>
+            <span class="v2-version-chip">v2.0</span>
+          </div>
+          <span class="v2-desk-pill" id="topbarDeskBadge">PEOPLE DESK</span>
+        </div>
+
+        <!-- Command Palette / Global Search Trigger -->
+        <div class="v2-topbar-center">
+          <div class="v2-omni-search">
+            <svg class="v2-omni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="globalSearchInput" class="v2-omni-input" placeholder="Search cases, emails, employees — or press ⌘K for commands..." oninput="handleGlobalSearch(this.value)" onkeydown="handleGlobalSearchKeydown(event)">
+            <button type="button" class="v2-kbd-btn" onclick="openCommandPalette()" title="Open Command Palette (⌘K)">⌘K</button>
+          </div>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="v2-topbar-right">
+          <!-- Auto-Sync Pulse -->
+          <button type="button" class="v2-sync-pill" id="topbarSyncBtn" onclick="syncInboxMailbox(this)" title="Sync People Desk Mailbox (Auto-sync every 30s)">
+            <svg class="v2-sync-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span id="topbarSyncLabel">Sync</span>
+          </button>
+
+          <!-- Mailbox Status (Dept Head / Admin) -->
+          <button type="button" class="v2-mailbox-pill" id="btnMailboxStatus" onclick="openMailboxConfigModal()" style="display: none;" title="Central Mailbox Status">
+            <span class="v2-status-dot" id="mailboxStatusDot"></span>
+            <span id="mailboxStatusLabel">Mailbox: Connected</span>
+          </button>
+
+          <!-- AI Copilot Drawer Switch -->
+          <button type="button" class="v2-copilot-toggle active" id="aiPanelToggleBtn" onclick="toggleAiPanel()" title="Toggle AI Copilot Drawer (⌘\)">
+            <span class="v2-sparkle">✦</span>
+            <span>Copilot</span>
+            <span class="v2-toggle-indicator"></span>
+          </button>
+
+          <!-- Switch to Admin (Admins only) -->
+          <button type="button" class="v2-btn-ghost" id="switchAdminBtn" onclick="window.location.href='/admin.html'" style="display: none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <span>Admin</span>
+          </button>
+
+          <!-- User Profile Popover -->
+          <div class="v2-profile-wrap" id="profileWrapper">
+            <button type="button" class="v2-avatar-btn" id="profileTriggerBtn" onclick="toggleProfileMenu(event)" aria-haspopup="true" aria-expanded="false">
+              <span class="v2-avatar-circle" id="agentAvatar">AG</span>
+              <span class="v2-avatar-caret">▾</span>
+            </button>
+
+            <div class="v2-profile-popover" id="profilePopover" style="display: none;">
+              <div class="v2-pop-header">
+                <div class="v2-pop-avatar" id="agentLargeAvatar">AG</div>
+                <div class="v2-pop-meta">
+                  <div class="v2-pop-name" id="agentHeaderName">HR Specialist</div>
+                  <div class="v2-pop-email" id="agentHeaderEmail">agent@1mg.com</div>
+                  <div class="v2-pop-badges">
+                    <span class="v2-pop-dept" id="agentDeptTag">People Desk</span>
+                    <span class="v2-pop-head" id="deptHeadBadge" style="display: none;">⭐ DEPT HEAD</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="v2-pop-menu">
+                <button type="button" class="v2-pop-item" onclick="openChangePasswordModal()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>Change Password</span>
+                </button>
+                <button type="button" class="v2-pop-item" id="popAdminItem" onclick="window.location.href='/admin.html'" style="display: none;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  <span>Admin Console</span>
+                </button>
+                <button type="button" class="v2-pop-item" onclick="window.location.href='/agent.html'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                  <span>Switch to Classic Agent v1</span>
+                </button>
+                <button type="button" class="v2-pop-item" onclick="openCommandPalette()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>Command Palette (⌘K)</span>
+                </button>
+              </div>
+
+              <div class="v2-pop-footer">
+                <button type="button" class="v2-signout-btn" onclick="handleSignOut()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- =================================================================
+           MAIN WORKSPACE VIEWPORT
+           ================================================================= -->
+      <main class="v2-viewport">
+
+        <!-- ===============================================================
+             VIEW 1: INBOX TRIAGE COCKPIT
+             =============================================================== -->
+        <section id="inboxView" class="v2-view active">
+          <!-- Subbar -->
+          <div class="v2-subbar">
+            <div class="v2-subbar-left">
+              <button type="button" class="v2-icon-btn" onclick="toggleInboxCollapse()" title="Toggle Queue Sidebar ([)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              </button>
+
+              <div class="v2-segmented-tabs" role="tablist">
+                <button type="button" class="v2-seg-tab active" id="tabUsefulMail" onclick="setInboxTriageTab('useful', this)">
+                  <span>Useful</span>
+                  <span class="v2-seg-count" id="countUsefulBadge">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="tabActionableMail" onclick="setInboxTriageTab('actionable', this)">
+                  <span>Actionable</span>
+                  <span class="v2-seg-count coral" id="countActionableBadge">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="tabAssignedMe" onclick="setInboxTriageTab('assigned_to_me', this)">
+                  <span>Assigned to Me</span>
+                  <span class="v2-seg-count blue" id="countAssignedMeBadge">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="tabUnclaimedMail" onclick="setInboxTriageTab('unclaimed', this)">
+                  <span>Unclaimed</span>
+                  <span class="v2-seg-count amber" id="countUnclaimedMailBadge">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="tabNoiseMail" onclick="setInboxTriageTab('noise', this)">
+                  <span>Noise</span>
+                  <span class="v2-seg-count muted" id="countNoiseBadge">0</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="v2-subbar-right">
+              <div class="v2-inline-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="inboxSearchInput" placeholder="Filter queue..." oninput="handleInboxSearch()">
+              </div>
+              <button type="button" class="v2-btn-secondary sm" onclick="openIngestEmailModal()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Ingest Mail</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3-Pane Split -->
+          <div class="v2-inbox-grid" id="inboxCockpitContainer">
+
+            <!-- PANE 1: EMAIL STREAM -->
+            <aside class="v2-stream-pane" id="inboxStreamPane">
+              <div class="v2-stream-head">
+                <span class="v2-stream-title">Inbound Stream</span>
+                <span class="v2-stream-count" id="inboxStreamCountPill">0 items</span>
+              </div>
+
+              <div class="v2-stream-list" id="inboxEmailStreamList">
+                <div class="v2-loading-box">Loading inbound emails...</div>
+              </div>
+
+              <!-- Collapsed Mini-Rail -->
+              <div class="v2-stream-mini-rail" id="inboxCollapsedRail">
+                <button type="button" class="v2-mini-expand-btn" onclick="toggleInboxCollapse()" title="Expand Queue ([)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                </button>
+                <div class="v2-mini-avatars" id="inboxCollapsedAvatars"></div>
+              </div>
+            </aside>
+
+            <!-- PANE 2: EMAIL INSPECTOR + COMPOSER -->
+            <section class="v2-inspector-pane" id="inboxInspectorPane">
+              <!-- Empty State -->
+              <div class="v2-empty-state" id="inboxEmptyState">
+                <div class="v2-empty-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <h3>No Communication Selected</h3>
+                <p>Choose an inbound email from the queue to review employee identity, AI intent insights, and draft a response.</p>
+                <div class="v2-shortcut-hints">
+                  <span><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
+                  <span><kbd>[</kbd> Toggle Queue</span>
+                  <span><kbd>C</kbd> Convert to Case</span>
+                  <span><kbd>⌘K</kbd> Commands</span>
+                </div>
+              </div>
+
+              <!-- Active Email Content -->
+              <div class="v2-inspector-active" id="inboxActiveContent" style="display: none;">
+                <!-- Sticky Action Ribbon -->
+                <div class="v2-ribbon" id="inboxInspectorRibbon">
+                  <div class="v2-ribbon-left">
+                    <span class="v2-id-chip mono" id="inboxRibbonEmailId">#EML-000</span>
+                    <span class="v2-desk-chip" id="inboxRibbonDesk">People Desk</span>
+                    <span class="v2-sla-chip" id="inboxRibbonSla">
+                      <span class="v2-sla-dot"></span>
+                      <span id="inboxRibbonSlaText">48h SLA</span>
+                    </span>
+                    <span class="v2-read-chip" id="inboxRibbonReadStatus"></span>
+                    <span class="v2-assignee-chip" id="inboxRibbonAssignee" style="display: none;"></span>
+                  </div>
+                  <div class="v2-ribbon-actions">
+                    <button type="button" class="v2-btn-secondary sm" id="inboxTransferDeptBtn" onclick="openTransferDepartmentModal()" title="Transfer desk or reassign teammate">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                      <span>Reassign</span>
+                    </button>
+                    <button type="button" class="v2-btn-secondary sm" id="inboxToggleNoiseBtn" onclick="toggleCurrentInboxNoise()">
+                      <span>Mark Noise</span>
+                    </button>
+                    <button type="button" class="v2-btn-primary sm" id="inboxConvertCaseBtn" onclick="convertCurrentInboxEmail()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <span>Convert to Case</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Scrollable Reader Body -->
+                <div class="v2-mail-scroll" id="inboxMailScroll">
+                  <div class="v2-mail-card">
+                    <div class="v2-mail-header">
+                      <h2 class="v2-mail-subject" id="inboxSubjectTitle">Loading...</h2>
+                      <div class="v2-mail-sender-bar">
+                        <div class="v2-mail-sender-left">
+                          <div class="v2-mail-avatar" id="inboxSenderAvatar">E</div>
+                          <div>
+                            <div class="v2-sender-name-row">
+                              <span class="v2-sender-name" id="inboxHeaderSenderName">Employee</span>
+                              <span class="v2-verified-pill" id="inboxHeaderVerifiedTag" style="display: none;"></span>
+                              <span class="v2-intent-tag" id="inboxHeaderIntentTag" style="display: none;">
+                                <span>✦</span>
+                                <span id="inboxHeaderIntentLabel"></span>
+                              </span>
+                            </div>
+                            <div class="v2-sender-sub-row">
+                              <span id="inboxHeaderSenderEmail"></span>
+                              <span id="inboxHeaderMetaDot" style="display: none;">·</span>
+                              <span id="inboxHeaderRecipientDesk"></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="v2-mail-sender-right">
+                          <span class="v2-mail-time" id="inboxHeaderTimestamp"></span>
+                          <div class="v2-mail-tools">
+                            <button type="button" class="v2-tool-mini" onclick="copyInboxEmailBody()" title="Copy body">Copy</button>
+                            <button type="button" class="v2-tool-mini" onclick="window.print()" title="Print">Print</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Handover Banner -->
+                    <div class="v2-handover-banner" id="inboxAssignmentBanner" style="display: none;">
+                      <div class="v2-handover-left">
+                        <span class="v2-handover-icon">👤</span>
+                        <div>
+                          <div class="v2-handover-title">
+                            Assigned Specialist: <strong id="inboxHandoverName">Unassigned</strong>
+                            <span class="v2-you-pill" id="inboxHandoverYouTag" style="display: none;">You</span>
+                          </div>
+                          <div class="v2-handover-note" id="inboxHandoverNotesRow" style="display: none;">
+                            “<span id="inboxHandoverNotesText"></span>”
+                          </div>
+                        </div>
+                      </div>
+                      <button type="button" class="v2-btn-ghost xs" onclick="openTransferDepartmentModal()">Change</button>
+                    </div>
+
+                    <div class="v2-mail-divider"></div>
+
+                    <!-- Thread / Body Canvas -->
+                    <div class="v2-mail-body" id="inboxEmailBody"></div>
+                  </div>
+                </div>
+
+                <!-- Docked Quick Reply Composer -->
+                <div class="v2-docked-composer" id="inboxReplyComposer">
+                  <div class="v2-composer-top">
+                    <div class="v2-composer-to">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.4"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                      <span>Reply to <strong id="inboxReplyTargetName">Employee</strong></span>
+                      <span class="v2-smtp-tag"><span class="v2-smtp-dot"></span> peopledesk@1mg.com</span>
+                    </div>
+                    <div class="v2-composer-presets">
+                      <select class="v2-select-mini" onchange="insertInboxPreset(this.value); this.selectedIndex=0;">
+                        <option value="">Templates...</option>
+                        <option value="attendance_reg">Attendance Regularized</option>
+                        <option value="payroll_slip">Salary / Payslip Update</option>
+                        <option value="mediclaim_tpa">Mediclaim / TPA Update</option>
+                        <option value="bgv_status">BGV Follow-up</option>
+                        <option value="info_needed">Request Details</option>
+                      </select>
+                      <button type="button" class="v2-btn-ai-sm" onclick="insertInboxDraftToReply()">✦ AI Draft</button>
+                    </div>
+                  </div>
+                  <textarea id="inboxQuickReplyInput" class="v2-composer-textarea" rows="3" placeholder="Write your reply (⌘+Enter to send via People Desk SMTP)..."></textarea>
+                  <div class="v2-composer-bottom">
+                    <span class="v2-composer-hint">Replies float to top of thread &amp; dispatch via corporate SMTP</span>
+                    <div class="v2-composer-btns">
+                      <button type="button" class="v2-btn-primary sm" id="inboxSendReplyBtn" onclick="sendInboxReply()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <span>Send Reply</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Scroll to Top -->
+                <button type="button" id="inboxScrollToTopBtn" class="v2-scroll-top-pill" onclick="scrollMailToTop()">↑ Top</button>
+              </div>
+            </section>
+
+            <!-- PANE 3: COLLAPSIBLE AI COPILOT DRAWER -->
+            <aside class="v2-copilot-pane" id="inboxAiCopilotPanel">
+              <div class="v2-copilot-head">
+                <div class="v2-copilot-brand">
+                  <span class="v2-copilot-spark">✦</span>
+                  <span>AI Copilot</span>
+                  <span class="v2-copilot-live-dot" title="Engine Live"></span>
+                </div>
+                <div class="v2-copilot-head-actions">
+                  <button type="button" class="v2-highlight-toggle active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle in-text AI highlights">
+                    <span class="v2-ht-dot"></span>
+                    <span id="inboxToggleAiHighlightsLabel">Highlights</span>
+                  </button>
+                  <button type="button" class="v2-icon-btn sm" onclick="toggleAiPanel()" title="Close Copilot (⌘\)">✕</button>
+                </div>
+              </div>
+
+              <div class="v2-copilot-scroll">
+                <!-- Card 1: Intent & Triage -->
+                <div class="v2-copilot-card">
+                  <div class="v2-cc-header">
+                    <span class="v2-cc-title">AI Intent &amp; Triage</span>
+                    <span class="v2-conf-badge" id="inboxCopilotConfidence">—</span>
+                  </div>
+                  <div class="v2-intent-pill" id="inboxCopilotIntentPill">
+                    <span class="v2-intent-dot"></span>
+                    <span>Awaiting selection</span>
+                  </div>
+                  <div class="v2-signals-wrap">
+                    <span class="v2-signals-label">Extracted Signals</span>
+                    <div class="v2-signals-row" id="inboxAiDigestPills"></div>
+                  </div>
+                  <div class="v2-sla-meta" id="inboxCopilotSlaInfo">
+                    <span>Target SLA: <strong>Pending</strong></span>
+                  </div>
+                </div>
+
+                <!-- Card 2: HRMS Entity Matching -->
+                <div class="v2-copilot-card">
+                  <div class="v2-cc-header">
+                    <span class="v2-cc-title">HRMS Entity Match</span>
+                  </div>
+                  <div class="v2-hrms-grid">
+                    <div class="v2-hrms-cell"><span>Employee</span><strong id="inboxCopilotExtractedName">—</strong></div>
+                    <div class="v2-hrms-cell"><span>Emp Code</span><strong class="mono" id="inboxCopilotExtractedCode">—</strong></div>
+                    <div class="v2-hrms-cell"><span>Location</span><strong id="inboxCopilotExtractedLocation">—</strong></div>
+                    <div class="v2-hrms-cell"><span>Designation</span><strong id="inboxCopilotExtractedDesig">—</strong></div>
+                  </div>
+                  <div class="v2-verify-status" id="inboxCopilotHrmsStatus">
+                    <span>Select an email to verify HRMS identity</span>
+                  </div>
+                </div>
+
+                <!-- Card 3: Response Studio & Conversion -->
+                <div class="v2-copilot-card studio">
+                  <div class="v2-cc-header">
+                    <span class="v2-cc-title">Response Studio</span>
+                  </div>
+                  <div class="v2-tone-tabs">
+                    <button type="button" class="v2-tone-btn active" id="inboxToneEmpathetic" onclick="switchInboxTone('empathetic', this)">Empathetic</button>
+                    <button type="button" class="v2-tone-btn" id="inboxToneConcise" onclick="switchInboxTone('concise', this)">Concise</button>
+                    <button type="button" class="v2-tone-btn" id="inboxToneVerify" onclick="switchInboxTone('verify_docs', this)">Verify Docs</button>
+                  </div>
+                  <div class="v2-draft-preview" id="inboxCopilotDraft">
+                    Select an email from the stream to synthesize contextual AI draft replies.
+                  </div>
+                  <div class="v2-studio-btns">
+                    <button type="button" class="v2-btn-secondary sm" onclick="insertInboxDraftToReply()">Insert Draft</button>
+                    <button type="button" class="v2-btn-ai sm" onclick="sendInboxAiReplyDirectly()">Send &amp; Convert</button>
+                  </div>
+
+                  <div class="v2-convert-box">
+                    <div class="v2-convert-desc" id="inboxCopilotUrgencyDesc">
+                      Select an email to see case conversion recommendation.
+                    </div>
+                    <button type="button" class="v2-btn-convert" id="inboxCopilotConvertBtn" onclick="convertCurrentInboxEmail()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <span>Claim &amp; Convert to Case</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 2: CASES COMMAND (MASTER-DETAIL, NO HORIZONTAL SCROLL)
+             =============================================================== -->
+        <section id="casesView" class="v2-view">
+          <!-- Top KPI & Actions Strip -->
+          <div class="v2-cases-topbar">
+            <div class="v2-kpi-strip">
+              <button type="button" class="v2-kpi-pill active" data-bento-filter="ALL" onclick="filterCasesByBento('ALL', this)">
+                <span class="v2-kpi-label">Total</span>
+                <strong class="v2-kpi-val" id="caseKpiTotal">0</strong>
+              </button>
+              <button type="button" class="v2-kpi-pill" data-bento-filter="ACTIVE" onclick="filterCasesByBento('ACTIVE', this)">
+                <span class="v2-kpi-dot blue"></span>
+                <span class="v2-kpi-label">Active</span>
+                <strong class="v2-kpi-val" id="caseKpiActive">0</strong>
+              </button>
+              <button type="button" class="v2-kpi-pill" data-bento-filter="BREACHED" onclick="filterCasesByBento('BREACHED', this)">
+                <span class="v2-kpi-dot red"></span>
+                <span class="v2-kpi-label">Breached</span>
+                <strong class="v2-kpi-val danger" id="caseKpiBreached">0</strong>
+              </button>
+              <button type="button" class="v2-kpi-pill" data-bento-filter="RESOLVED" onclick="filterCasesByBento('RESOLVED', this)">
+                <span class="v2-kpi-dot teal"></span>
+                <span class="v2-kpi-label">Resolved</span>
+                <strong class="v2-kpi-val" id="caseKpiResolved">0</strong>
+                <span class="v2-kpi-rate" id="caseKpiRate">100%</span>
+              </button>
+            </div>
+
+            <div class="v2-cases-actions">
+              <button type="button" class="v2-btn-secondary sm" onclick="exportCasesCsv()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Export CSV</span>
+              </button>
+              <button type="button" class="v2-btn-secondary sm" onclick="loadCases()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Refresh</span>
+              </button>
+              <button type="button" class="v2-btn-primary sm" onclick="openNewCaseModal()">
+                <span>+ Log Case</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Queue Tabs & Filters -->
+          <div class="v2-cases-filters-bar">
+            <div class="v2-dept-tabs" id="caseQueueTabsBar">
+              <button type="button" class="v2-dept-tab active" onclick="selectAgentQueueTab('ALL', this)">
+                <span>All Queues</span>
+                <span class="v2-tab-badge" id="queueBadgeAll">0</span>
+              </button>
+            </div>
+
+            <div class="v2-filter-controls">
+              <div class="v2-inline-search wide">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="caseSearchInput" placeholder="Search Case #, employee, title, specialist..." oninput="handleAgentCaseSearch()">
+              </div>
+
+              <div class="v2-status-pills" id="caseStatusPillsBar">
+                <button type="button" class="v2-pill-btn active" onclick="filterAgentCasesByStatus('ALL', this)">All</button>
+                <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('OPEN', this)">Open</button>
+                <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('IN_PROGRESS', this)">In Progress</button>
+                <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('WAITING_ON_EMPLOYEE', this)">Waiting</button>
+                <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('RESOLVED', this)">Resolved</button>
+              </div>
+
+              <select id="casePriorityFilter" class="v2-select-sm" onchange="filterAgentCasesByPriority()">
+                <option value="ALL">Priority: All</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+
+              <select id="caseSlaRiskFilter" class="v2-select-sm" onchange="filterAgentCasesBySlaRisk()">
+                <option value="ALL">SLA: All</option>
+                <option value="BREACHED">Breached</option>
+                <option value="AT_RISK">Urgent (&lt;2h)</option>
+                <option value="SAFE">On Track</option>
+              </select>
+
+              <select id="caseSpecialistFilter" class="v2-select-sm" onchange="filterAgentCasesBySpecialist()">
+                <option value="ALL">All Specialists</option>
+                <option value="MINE">Assigned to Me</option>
+                <option value="UNASSIGNED">Unassigned</option>
+              </select>
+
+              <button type="button" class="v2-btn-ghost xs" onclick="resetAgentCaseFilters()">Reset</button>
+            </div>
+          </div>
+
+          <!-- Master-Detail Split Workspace -->
+          <div class="v2-cases-workspace" id="casesMasterDetail">
+            <!-- Left: Clean Scannable Case Table/List (No horizontal scroll) -->
+            <div class="v2-cases-list-pane">
+              <div class="v2-list-meta">
+                <span id="caseTableCountText">0 Cases</span>
+                <span class="v2-list-hint">Click any case to inspect 360° dossier</span>
+              </div>
+              <div class="v2-cases-scroll" id="agentCasesListContainer">
+                <div class="v2-loading-box">Loading cases...</div>
+              </div>
+            </div>
+
+            <!-- Right: Integrated 360° Case Dossier Drawer -->
+            <aside class="v2-dossier-pane" id="casesDossierPane" style="display: none;">
+              <div class="v2-dossier-header">
+                <div class="v2-dossier-head-top">
+                  <div class="v2-dossier-id-group">
+                    <span class="v2-id-chip mono" id="dossierNavCaseNum">1MG-00000</span>
+                    <span id="heroStatusBadge"></span>
+                    <span id="heroPriorityBadge"></span>
+                    <span id="heroDeptBadge" class="v2-desk-chip">People Desk</span>
+                  </div>
+                  <div class="v2-dossier-head-actions">
+                    <button type="button" class="v2-btn-secondary xs" id="btnHeroClaim" style="display:none;" onclick="claimCurrentCase()">⚡ Claim</button>
+                    <button type="button" class="v2-btn-secondary xs" onclick="openReassignModalForCurrent()">Reassign</button>
+                    <button type="button" class="v2-btn-teal xs" onclick="openResolveModalForCurrent()">✓ Resolve</button>
+                    <a id="dossierFullPageLink" href="/agent/case-details" class="v2-icon-btn sm" title="Open Full-Page Dossier" target="_blank">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                    <button type="button" class="v2-icon-btn sm" onclick="closeAgentCaseDossier()" title="Close Dossier (Esc)">✕</button>
+                  </div>
+                </div>
+
+                <h2 class="v2-dossier-title" id="heroCaseTitle">Case Title</h2>
+                <div class="v2-dossier-sub">
+                  <span>Logged <strong id="heroCreatedTime">—</strong></span>
+                  <span>·</span>
+                  <span>SLA <strong id="tileSlaCountdown">—</strong></span>
+                  <span>·</span>
+                  <span>Owner: <strong id="tileSpecialistName">Unassigned</strong></span>
+                </div>
+
+                <!-- Interactive Lifecycle Pipeline -->
+                <div class="v2-pipeline" id="dossierLifecyclePipeline">
+                  <button type="button" class="v2-pipe-step" data-status="OPEN" onclick="transitionDossierStatus('OPEN')">1. Open</button>
+                  <button type="button" class="v2-pipe-step" data-status="IN_PROGRESS" onclick="transitionDossierStatus('IN_PROGRESS')">2. In Progress</button>
+                  <button type="button" class="v2-pipe-step" data-status="WAITING_ON_EMPLOYEE" onclick="transitionDossierStatus('WAITING_ON_EMPLOYEE')">3. Waiting</button>
+                  <button type="button" class="v2-pipe-step" data-status="RESOLVED" onclick="transitionDossierStatus('RESOLVED')">4. Resolved</button>
+                </div>
+
+                <!-- Dossier Sub-Tabs -->
+                <div class="v2-dossier-tabs">
+                  <button type="button" class="v2-dtab active" onclick="switchDossierTab('thread', this)">Thread &amp; Reply</button>
+                  <button type="button" class="v2-dtab" onclick="switchDossierTab('ai', this)">✦ AI Studio</button>
+                  <button type="button" class="v2-dtab" onclick="switchDossierTab('hrms', this)">HRMS &amp; SLA</button>
+                </div>
+              </div>
+
+              <!-- Dossier Body -->
+              <div class="v2-dossier-body">
+                <!-- TAB 1: THREAD & COMPOSER -->
+                <div class="v2-dtab-panel active" id="dtabThread">
+                  <div class="v2-dossier-scroll" id="dossierThreadScroll">
+                    <div class="v2-inquiry-box">
+                      <div class="v2-inquiry-meta">
+                        <strong id="dossierMetaFrom">Employee</strong>
+                        <span id="dossierMetaReceived"></span>
+                      </div>
+                      <div class="v2-inquiry-content" id="dossierInquiryBody"></div>
+                    </div>
+                    <div class="v2-timeline" id="dossierTimelineList"></div>
+                  </div>
+
+                  <!-- Composer -->
+                  <div class="v2-dossier-composer">
+                    <div class="v2-composer-mode-bar">
+                      <div class="v2-mode-group">
+                        <button type="button" class="v2-mode-btn active" id="dossierModePublic" onclick="setDossierComposerMode('PUBLIC_REPLY')">Public Reply</button>
+                        <button type="button" class="v2-mode-btn internal" id="dossierModeInternal" onclick="setDossierComposerMode('INTERNAL_NOTE')">🔒 Internal Note</button>
+                      </div>
+                      <div class="v2-mode-helpers">
+                        <select class="v2-select-mini" onchange="insertDossierPreset(this.value); this.selectedIndex=0;">
+                          <option value="">Macros...</option>
+                          <option value="attendance_reg">Regularize Punch</option>
+                          <option value="attendance_shift">Shift Approved</option>
+                          <option value="payroll_tds">TDS Verified</option>
+                          <option value="info_needed">Request Info</option>
+                          <option value="resolved">Resolved Notice</option>
+                        </select>
+                        <button type="button" class="v2-btn-ai-sm" onclick="insertDossierAiDraft()">✦ AI Draft</button>
+                      </div>
+                    </div>
+                    <textarea id="dossierReplyInput" class="v2-composer-textarea" rows="3" placeholder="Type reply to employee..."></textarea>
+                    <div class="v2-composer-bottom">
+                      <div class="v2-status-on-send">
+                        <label>On send:</label>
+                        <select id="dossierReplyStatusSelect" class="v2-select-mini">
+                          <option value="IN_PROGRESS">Keep In Progress</option>
+                          <option value="WAITING_ON_EMPLOYEE">Waiting on Employee</option>
+                          <option value="RESOLVED" selected>Resolve &amp; Close</option>
+                        </select>
+                      </div>
+                      <button type="button" id="btnSendDossierReply" class="v2-btn-primary sm" onclick="sendDossierReply()">
+                        <span id="btnSendDossierReplyLabel">Send Reply</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TAB 2: AI STUDIO -->
+                <div class="v2-dtab-panel" id="dtabAi">
+                  <div class="v2-dossier-scroll pad">
+                    <div class="v2-ai-summary-card">
+                      <div class="v2-ai-badge-row">
+                        <span class="v2-id-chip mono" id="tileAiCode">AI01</span>
+                        <span class="v2-conf-badge" id="tileAiConfidence">98% Match</span>
+                        <span class="v2-urgency-tag" id="tileAiUrgency">NORMAL</span>
+                      </div>
+                      <h4 id="tileAiIntentTitle">Automated Classification</h4>
+                      <p class="v2-ai-rec" id="dossierAiRecommendation">AI copilot recommendations appear here.</p>
+                    </div>
+
+                    <div class="v2-copilot-card studio">
+                      <div class="v2-cc-header"><span class="v2-cc-title">Multi-Tone Response Studio</span></div>
+                      <div class="v2-tone-tabs">
+                        <button type="button" class="v2-tone-btn active" onclick="switchDossierTone('empathetic', this)">Empathetic</button>
+                        <button type="button" class="v2-tone-btn" onclick="switchDossierTone('concise', this)">Concise</button>
+                        <button type="button" class="v2-tone-btn" onclick="switchDossierTone('verify_docs', this)">Policy &amp; Docs</button>
+                      </div>
+                      <div class="v2-draft-preview" id="dossierAiDraftBox">Loading AI draft...</div>
+                      <div class="v2-studio-btns">
+                        <button type="button" class="v2-btn-secondary sm" onclick="insertDossierAiDraft()">Insert to Composer</button>
+                        <button type="button" class="v2-btn-ai sm" onclick="sendDossierAiDraftDirectly()">Send &amp; Resolve</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TAB 3: HRMS & SLA -->
+                <div class="v2-dtab-panel" id="dtabHrms">
+                  <div class="v2-dossier-scroll pad">
+                    <div class="v2-hrms-card">
+                      <div class="v2-hrms-profile-top">
+                        <div class="v2-mail-avatar lg" id="sideEmpAvatar">E</div>
+                        <div>
+                          <div class="v2-hrms-name" id="sideEmpName">Tata 1mg Staff</div>
+                          <div class="v2-hrms-desig" id="sideEmpDesig">Employee</div>
+                          <span class="v2-verified-pill ok" id="sideEmpVerifiedChip">✓ Verified Directory</span>
+                        </div>
+                      </div>
+                      <div class="v2-hrms-kv-grid">
+                        <div><span>Emp Code</span><strong class="mono" id="sideBentoCode">—</strong></div>
+                        <div><span>Grade</span><strong id="sideBentoGrade">—</strong></div>
+                        <div><span>Location</span><strong id="sideBentoLocation">—</strong></div>
+                        <div><span>Manager</span><strong id="sideEmpManager">—</strong></div>
+                        <div><span>Email</span><strong id="sideEmpEmail">—</strong></div>
+                        <div><span>Shift</span><strong id="sideEmpShift">General</strong></div>
+                        <div><span>Employment</span><strong id="sideEmpType">Full-Time</strong></div>
+                        <div><span>SLA Policy</span><strong id="tileSlaPolicyText">24h Standard</strong></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 3: ACTIVE THREADS (MESSAGING & COMMUNICATION STUDIO)
+             =============================================================== -->
+        <section id="threadsView" class="v2-view">
+          <div class="v2-subbar">
+            <div class="v2-subbar-left">
+              <div class="v2-segmented-tabs">
+                <button type="button" class="v2-seg-tab active" id="replyFilterAll" onclick="setReplyFilter('ALL', this)">
+                  <span>All Active</span>
+                  <span class="v2-seg-count" id="replyFilterAllCount">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="replyFilterPending" onclick="setReplyFilter('PENDING', this)">
+                  <span>Needs Reply</span>
+                  <span class="v2-seg-count coral" id="replyFilterPendingCount">0</span>
+                </button>
+              </div>
+            </div>
+            <div class="v2-subbar-right">
+              <div class="v2-inline-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="replySearchInput" placeholder="Filter ticket or employee..." oninput="handleReplySearch(this.value)">
+              </div>
+              <button type="button" class="v2-btn-secondary sm" onclick="initReplyWorkspace()">Refresh</button>
+            </div>
+          </div>
+
+          <div class="v2-threads-grid">
+            <!-- Left: Ticket List -->
+            <aside class="v2-stream-pane">
+              <div class="v2-stream-head">
+                <span class="v2-stream-title">Active Tickets</span>
+                <span class="v2-stream-count" id="replyStreamTotalCount">0</span>
+              </div>
+              <div class="v2-stream-list" id="replyCasesList">
+                <div class="v2-loading-box">Loading tickets...</div>
+              </div>
+            </aside>
+
+            <!-- Center: Thread & Composer -->
+            <section class="v2-inspector-pane">
+              <div class="v2-ribbon" id="replyThreadHeaderBar">
+                <div class="v2-ribbon-left">
+                  <span class="v2-id-chip mono" id="replyHeaderCaseRef">1MG-—</span>
+                  <span class="v2-thread-title" id="replyHeaderCaseTitle">Select a ticket</span>
+                  <span class="v2-prio-chip" id="replyHeaderPriorityBadge" style="display: none;">MEDIUM</span>
+                  <span class="v2-status-chip" id="replyHeaderStatusBadge" style="display: none;">OPEN</span>
+                </div>
+                <div class="v2-ribbon-actions" id="replyHeaderActions" style="display: none;">
+                  <button type="button" class="v2-btn-secondary sm" onclick="openReassignModalForCurrent()">Reassign</button>
+                  <button type="button" class="v2-btn-teal sm" onclick="openResolveModalForCurrent()">✓ Resolve</button>
+                </div>
+              </div>
+
+              <div class="v2-thread-meta-bar" id="replyHeaderMeta">Select a case from the left queue to begin communication.</div>
+
+              <div class="v2-thread-scroll" id="replyThreadList">
+                <div class="v2-empty-state">
+                  <div class="v2-empty-icon">💬</div>
+                  <h3>Communication Studio</h3>
+                  <p>Select an active ticket to view conversation history, internal notes, and dispatch replies.</p>
+                </div>
+              </div>
+
+              <div class="v2-docked-composer" id="replyComposerPane" style="display: none;">
+                <div class="v2-composer-top">
+                  <div class="v2-mode-group">
+                    <button type="button" class="v2-mode-btn active" id="modePublicBtn" onclick="setReplyMode('PUBLIC_REPLY')">Public Reply</button>
+                    <button type="button" class="v2-mode-btn internal" id="modeInternalBtn" onclick="setReplyMode('INTERNAL_NOTE')">🔒 Internal Note</button>
+                  </div>
+                  <div class="v2-mode-helpers">
+                    <select id="replyCannedSelect" class="v2-select-mini" onchange="applyCannedTemplate(this.value)">
+                      <option value="">Snippets...</option>
+                      <option value="attendance_regularized">Biometric Punch Regularized</option>
+                      <option value="payroll_reconciled">Payroll Discrepancy</option>
+                      <option value="mediclaim_ecard">Mediclaim E-Card</option>
+                      <option value="request_more_info">Request More Info</option>
+                      <option value="resolved_standard">Resolved Notice</option>
+                    </select>
+                    <button type="button" class="v2-btn-ai-sm" onclick="generateAiReplyDraft()">✦ AI Draft</button>
+                  </div>
+                </div>
+                <input type="text" id="replySubjectInput" class="v2-subject-input" placeholder="Subject...">
+                <textarea id="replyMessageText" class="v2-composer-textarea" rows="3" placeholder="Compose response to employee..."></textarea>
+                <div class="v2-composer-bottom">
+                  <label class="v2-checkbox-label" id="replyResolveLabel">
+                    <input type="checkbox" id="replyAutoResolveCheck" checked>
+                    <span>Mark Resolved on dispatch</span>
+                  </label>
+                  <div class="v2-composer-btns">
+                    <button type="button" class="v2-btn-ghost xs" onclick="clearReplyDraft()">Clear</button>
+                    <button type="button" id="sendReplyBtn" class="v2-btn-primary sm" onclick="submitReply()">Send Response</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Right: Employee Dossier -->
+            <aside class="v2-copilot-pane" id="replyDossierPane">
+              <div class="v2-copilot-head">
+                <span class="v2-copilot-brand">Employee 360°</span>
+              </div>
+              <div class="v2-copilot-scroll">
+                <div class="v2-copilot-card">
+                  <div class="v2-hrms-profile-top">
+                    <div class="v2-mail-avatar" id="replyDossierAvatar">—</div>
+                    <div>
+                      <div class="v2-hrms-name" id="replyDossierName">—</div>
+                      <div class="v2-hrms-desig mono" id="replyDossierCode">ID: —</div>
+                    </div>
+                  </div>
+                  <div class="v2-verify-status" id="replyDossierVerifiedBadge" style="display: none;">
+                    ✓ HRMS Record Confirmed
+                  </div>
+                  <div class="v2-kv-list">
+                    <div><span>Department</span><strong id="replyDossierDept">—</strong></div>
+                    <div><span>Email</span><strong id="replyDossierEmail">—</strong></div>
+                    <div><span>Manager</span><strong id="replyDossierManager">—</strong></div>
+                  </div>
+                </div>
+
+                <div class="v2-copilot-card">
+                  <div class="v2-cc-header"><span class="v2-cc-title">SLA &amp; Operations</span></div>
+                  <div class="v2-kv-list">
+                    <div><span>Priority</span><strong id="replyDossierPriority">—</strong></div>
+                    <div><span>SLA Due</span><strong id="replyDossierSla">—</strong></div>
+                    <div><span>Opened</span><strong id="replyDossierCreated">—</strong></div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ===============================================================
+             VIEW 4: SLA RADAR & INTAKE COMMAND
+             =============================================================== -->
+        <section id="radarView" class="v2-view">
+          <div class="v2-subbar">
+            <div class="v2-subbar-left">
+              <div class="v2-segmented-tabs">
+                <button type="button" class="v2-seg-tab active" id="slaTabAll" onclick="setSlaFilter('ALL', this)">
+                  <span>All Open</span>
+                  <span class="v2-seg-count" id="slaFilterAllCount">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="slaTabWarning" onclick="setSlaFilter('WARNING', this)">
+                  <span>At Risk (&lt;4h)</span>
+                  <span class="v2-seg-count amber" id="slaFilterWarningCount">0</span>
+                </button>
+                <button type="button" class="v2-seg-tab" id="slaTabBreached" onclick="setSlaFilter('BREACHED', this)">
+                  <span>Breached</span>
+                  <span class="v2-seg-count red" id="slaFilterBreachedCount">0</span>
+                </button>
+              </div>
+            </div>
+            <div class="v2-subbar-right">
+              <div class="v2-inline-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="slaSearchInput" placeholder="Search ticket, employee, dept..." oninput="handleSlaSearch(this.value)">
+              </div>
+              <button type="button" class="v2-btn-secondary sm" onclick="loadSlaDashboard()">Refresh Radar</button>
+            </div>
+          </div>
+
+          <div class="v2-radar-scroll">
+            <!-- 4 KPI Cards -->
+            <div class="v2-radar-kpis">
+              <div class="v2-radar-kpi">
+                <span class="v2-rk-label">SLA Compliance</span>
+                <strong class="v2-rk-val teal" id="slaComplianceVal">100%</strong>
+                <span class="v2-rk-sub">Target &gt; 95.0%</span>
+              </div>
+              <div class="v2-radar-kpi">
+                <span class="v2-rk-label">Breached Tickets</span>
+                <strong class="v2-rk-val danger" id="slaBreachedVal">0</strong>
+                <span class="v2-rk-sub">Requires immediate escalation</span>
+              </div>
+              <div class="v2-radar-kpi">
+                <span class="v2-rk-label">At-Risk (&lt; 4h)</span>
+                <strong class="v2-rk-val amber" id="slaAtRiskVal">0</strong>
+                <span class="v2-rk-sub">Expiring in current shift</span>
+              </div>
+              <div class="v2-radar-kpi">
+                <span class="v2-rk-label">Avg Resolution</span>
+                <strong class="v2-rk-val" id="slaAvgTurnaroundVal">—</strong>
+                <span class="v2-rk-sub">Across resolved cases</span>
+              </div>
+            </div>
+
+            <div class="v2-radar-grid">
+              <!-- Priority SLA Countdown Table -->
+              <div class="v2-radar-card">
+                <div class="v2-card-head">
+                  <h3>Live SLA Countdown &amp; Priority Queue</h3>
+                  <span class="v2-muted-sm">Sorted by closest deadline</span>
+                </div>
+                <div class="v2-table-wrap">
+                  <table class="v2-table">
+                    <thead>
+                      <tr>
+                        <th>Case #</th>
+                        <th>Employee &amp; Desk</th>
+                        <th>Subject</th>
+                        <th>Priority</th>
+                        <th>SLA Countdown</th>
+                        <th>Status</th>
+                        <th class="right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="slaRadarTableBody">
+                      <tr><td colspan="7" class="v2-loading-cell">Loading SLA radar...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Right Column: Live Dept Compliance & Walk-In Intake -->
+              <aside class="v2-radar-side">
+                <div class="v2-radar-card pad">
+                  <div class="v2-card-head simple">
+                    <h3>Live Desk SLA Health</h3>
+                  </div>
+                  <div class="v2-dept-health-list" id="radarDeptBenchmarks">
+                    <div class="v2-muted-sm">Calculating desk metrics...</div>
+                  </div>
+                </div>
+
+                <div class="v2-radar-card pad">
+                  <div class="v2-card-head simple">
+                    <h3>Walk-in / Phone Intake</h3>
+                  </div>
+                  <form id="manualIntakeForm" onsubmit="handleManualIntake(event)" class="v2-intake-form">
+                    <input type="email" id="actionNewEmail" class="v2-input" placeholder="Employee Email *" required>
+                    <input type="text" id="actionNewName" class="v2-input" placeholder="Full Name">
+                    <input type="text" id="actionNewTitle" class="v2-input" placeholder="Subject *" required>
+                    <textarea id="actionNewDesc" class="v2-textarea" rows="3" placeholder="Query description *" required></textarea>
+                    <button type="submit" class="v2-btn-primary">+ Create &amp; Route Case</button>
+                  </form>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       COMMAND PALETTE (⌘K)
+       ===================================================================== -->
+  <div class="v2-modal-overlay" id="commandPaletteModal" style="display: none;" onclick="if(event.target===this) closeCommandPalette()">
+    <div class="v2-cmd-box">
+      <div class="v2-cmd-input-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="cmdPaletteInput" class="v2-cmd-input" placeholder="Type a command, Case # (1MG...), employee name, or email subject..." oninput="renderCommandPaletteResults(this.value)" onkeydown="handleCmdPaletteKeydown(event)">
+        <kbd class="v2-cmd-esc" onclick="closeCommandPalette()">ESC</kbd>
+      </div>
+      <div class="v2-cmd-results" id="cmdPaletteResults"></div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODALS
+       ===================================================================== -->
+  <!-- Transfer / Reassign Email Modal -->
+  <div class="v2-modal-overlay" id="transferEmailModal" style="display: none;" onclick="if(event.target===this) closeTransferDepartmentModal()">
+    <div class="v2-modal">
+      <div class="v2-modal-head">
+        <h3 id="transferModalTitle">Transfer Desk or Reassign Specialist</h3>
+        <button type="button" class="v2-modal-close" onclick="closeTransferDepartmentModal()">&times;</button>
+      </div>
+      <form id="transferEmailForm" onsubmit="handleTransferDepartmentSubmit(event)" class="v2-modal-form">
+        <input type="hidden" id="transferEmailId">
+        <div class="v2-field">
+          <label>Email Subject</label>
+          <div id="transferEmailSubjectDisplay" class="v2-readonly-box"></div>
+        </div>
+        <div class="v2-field">
+          <label>Department Desk *</label>
+          <select id="transferTargetDeptSelect" class="v2-input" onchange="handleTransferDeptChange()" required></select>
+        </div>
+        <div class="v2-field">
+          <label>Assign to Colleague / Specialist</label>
+          <select id="transferTargetAgentSelect" class="v2-input">
+            <option value="">Auto-assign or leave in desk pool</option>
+          </select>
+        </div>
+        <div class="v2-field">
+          <label>Handover Notes (Optional)</label>
+          <textarea id="transferRoutingNotes" class="v2-textarea" rows="2" placeholder="Add context for the receiving desk or specialist..."></textarea>
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeTransferDepartmentModal()">Cancel</button>
+          <button type="submit" class="v2-btn-primary" id="btnConfirmTransfer">Confirm Reassignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mailbox Status Modal -->
+  <div class="v2-modal-overlay" id="mailboxConfigModal" style="display: none;" onclick="if(event.target===this) closeMailboxConfigModal()">
+    <div class="v2-modal">
+      <div class="v2-modal-head">
+        <h3>Central Mailbox Integration</h3>
+        <button type="button" class="v2-modal-close" onclick="closeMailboxConfigModal()">&times;</button>
+      </div>
+      <div class="v2-modal-body-stack">
+        <div class="v2-info-banner success">
+          <strong>Centralized Service Active:</strong> Inbound mail sync is managed via <strong id="modalCentralMailEmail">peopledesk@1mg.com</strong>.
+        </div>
+        <div class="v2-kv-card">
+          <div><span>Mailbox</span><strong>peopledesk@1mg.com</strong></div>
+          <div><span>Protocol</span><strong>IMAP SSL (Port 993)</strong></div>
+          <div><span>AI Router</span><strong class="teal">Active · 3-Stage ML</strong></div>
+        </div>
+      </div>
+      <div class="v2-modal-foot">
+        <button type="button" class="v2-btn-secondary" onclick="closeMailboxConfigModal()">Close</button>
+        <button type="button" class="v2-btn-teal" onclick="closeMailboxConfigModal(); syncInboxMailbox();">Sync Mailbox Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="v2-modal-overlay" id="changePasswordModal" style="display: none;" onclick="if(event.target===this) closeChangePasswordModal()">
+    <div class="v2-modal sm">
+      <div class="v2-modal-head">
+        <h3>Change Portal Password</h3>
+        <button type="button" class="v2-modal-close" onclick="closeChangePasswordModal()">&times;</button>
+      </div>
+      <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)" class="v2-modal-form">
+        <div class="v2-field">
+          <label>Current Password *</label>
+          <input type="password" id="currentPasswordInput" class="v2-input" required autocomplete="current-password">
+        </div>
+        <div class="v2-field">
+          <label>New Password *</label>
+          <input type="password" id="newPasswordChangeInput" class="v2-input" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="v2-field">
+          <label>Confirm New Password *</label>
+          <input type="password" id="confirmPasswordChangeInput" class="v2-input" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="submit" class="v2-btn-primary" id="btnSubmitChangePassword">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ingest Inbound Email Modal -->
+  <div class="v2-modal-overlay" id="ingestEmailModal" style="display: none;" onclick="if(event.target===this) closeIngestEmailModal()">
+    <div class="v2-modal">
+      <div class="v2-modal-head">
+        <h3>Ingest Inbound Email</h3>
+        <button type="button" class="v2-modal-close" onclick="closeIngestEmailModal()">&times;</button>
+      </div>
+      <form id="ingestEmailForm" onsubmit="handleIngestEmailSubmit(event)" class="v2-modal-form">
+        <div class="v2-field-row">
+          <div class="v2-field">
+            <label>Sender Email *</label>
+            <input type="email" id="ingestSenderEmail" class="v2-input" placeholder="employee@1mg.com" required>
+          </div>
+          <div class="v2-field">
+            <label>Sender Name</label>
+            <input type="text" id="ingestSenderName" class="v2-input" placeholder="Rahul Sharma">
+          </div>
+        </div>
+        <div class="v2-field">
+          <label>Subject *</label>
+          <input type="text" id="ingestSubject" class="v2-input" placeholder="Attendance Regularization Request" required>
+        </div>
+        <div class="v2-field">
+          <label>Body *</label>
+          <textarea id="ingestBody" class="v2-textarea" rows="4" placeholder="Paste employee email content..." required></textarea>
+        </div>
+        <div class="v2-field-row">
+          <div class="v2-field">
+            <label>Category / Intent</label>
+            <select id="ingestCategory" class="v2-input">
+              <option value="">⚡ Auto-Detect with AI</option>
+              <option value="ATTENDANCE">Attendance &amp; Biometrics</option>
+              <option value="ONBOARDING">Onboarding &amp; BGV</option>
+              <option value="PAYROLL">Payroll &amp; TDS</option>
+              <option value="BENEFITS">Benefits &amp; Mediclaim</option>
+              <option value="LEAVE">Leave Reconciliation</option>
+              <option value="GENERAL_HR">General People Ops</option>
+            </select>
+          </div>
+          <div class="v2-field">
+            <label>Classification</label>
+            <select id="ingestActionable" class="v2-input">
+              <option value="1">Actionable HR Inquiry</option>
+              <option value="0">Noise / System Alert</option>
+            </select>
+          </div>
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeIngestEmailModal()">Cancel</button>
+          <button type="submit" class="v2-btn-primary" id="ingestSubmitBtn">Ingest to Mailbox</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Case Modal -->
+  <div class="v2-modal-overlay" id="newCaseModal" style="display: none;" onclick="if(event.target===this) closeNewCaseModal()">
+    <div class="v2-modal">
+      <div class="v2-modal-head">
+        <h3>Log New Employee Case</h3>
+        <button type="button" class="v2-modal-close" onclick="closeNewCaseModal()">&times;</button>
+      </div>
+      <form id="newCaseModalForm" onsubmit="handleNewCaseSubmit(event)" class="v2-modal-form">
+        <div class="v2-field-row">
+          <div class="v2-field">
+            <label>Employee Email *</label>
+            <input type="email" id="modalNewEmail" class="v2-input" placeholder="rahul.verma@1mg.com" required>
+          </div>
+          <div class="v2-field">
+            <label>Employee Name</label>
+            <input type="text" id="modalNewName" class="v2-input" placeholder="Rahul Verma">
+          </div>
+        </div>
+        <div class="v2-field">
+          <label>Subject / Summary *</label>
+          <input type="text" id="modalNewTitle" class="v2-input" placeholder="Attendance Regularization Request" required>
+        </div>
+        <div class="v2-field">
+          <label>Description *</label>
+          <textarea id="modalNewDesc" class="v2-textarea" rows="3" placeholder="Full inquiry details..." required></textarea>
+        </div>
+        <div class="v2-field-row">
+          <div class="v2-field">
+            <label>Priority</label>
+            <select id="modalNewPriority" class="v2-input">
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH (Urgent)</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+          <div class="v2-field">
+            <label>Department</label>
+            <select id="modalNewDept" class="v2-input">
+              <option value="">Auto-Route with AI</option>
+            </select>
+          </div>
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeNewCaseModal()">Cancel</button>
+          <button type="submit" class="v2-btn-primary">Create &amp; Route Case</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Resolve Case Modal -->
+  <div class="v2-modal-overlay" id="resolveModal" style="display: none;" onclick="if(event.target===this) closeResolveModal()">
+    <div class="v2-modal sm">
+      <div class="v2-modal-head">
+        <h3>Resolve Case <span class="mono coral" id="resolveCaseNumberDisplay"></span></h3>
+        <button type="button" class="v2-modal-close" onclick="closeResolveModal()">&times;</button>
+      </div>
+      <div class="v2-modal-form">
+        <div class="v2-field">
+          <label>Resolution Notes</label>
+          <textarea id="resolveNotesInput" class="v2-textarea" rows="3" placeholder="Summarize resolution actions taken..."></textarea>
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeResolveModal()">Cancel</button>
+          <button type="button" class="v2-btn-teal" onclick="confirmResolve()">Mark Resolved</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reassign Case Modal -->
+  <div class="v2-modal-overlay" id="reassignModal" style="display: none;" onclick="if(event.target===this) closeReassignModal()">
+    <div class="v2-modal sm">
+      <div class="v2-modal-head">
+        <h3>Reassign Case <span class="mono coral" id="reassignCaseNumberDisplay"></span></h3>
+        <button type="button" class="v2-modal-close" onclick="closeReassignModal()">&times;</button>
+      </div>
+      <div class="v2-modal-form">
+        <div class="v2-field">
+          <label>Department Desk</label>
+          <select id="reassignDeptSelect" class="v2-input" onchange="populateSpecialistsForDept()"></select>
+        </div>
+        <div class="v2-field">
+          <label>Assign to Specialist</label>
+          <select id="reassignUserSelect" class="v2-input"></select>
+        </div>
+        <div class="v2-modal-foot">
+          <button type="button" class="v2-btn-secondary" onclick="closeReassignModal()">Cancel</button>
+          <button type="button" id="btnSubmitReassign" class="v2-btn-primary" onclick="submitReassignAction()">Save Reassignment</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toastContainer" class="v2-toast-container"></div>
+
+  <script src="/js/agentv2.js?v=2.0"></script>
+</body>
+</html>

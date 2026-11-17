@@ -139,6 +139,17 @@ def serve_agent_case_details():
 def serve_agent():
     return FileResponse(os.path.join(frontend_dir, "agent.html"))
 
+@app.get("/agentv2.0")
+@app.get("/agentv2.0/")
+@app.get("/agentv2.0.html")
+@app.get("/agentv2")
+@app.get("/agent-v2")
+def serve_agent_v2():
+    agent_v2_file = os.path.join(frontend_dir, "agentv2.0.html")
+    if os.path.exists(agent_v2_file):
+        return FileResponse(agent_v2_file)
+    return FileResponse(os.path.join(frontend_dir, "agent.html"))
+
 @app.get("/api/health")
 def health_check():
     return {"status": "HEALTHY", "app": "Tata 1mg People Desk"}
