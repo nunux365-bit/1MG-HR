@@ -2,6 +2,7 @@
 Unified Case Routing, Thread Linking, HRMS Lookup & Auto-Case Assignment Service.
 Shared across IMAP mailbox sync, API email ingest, and manual email conversion.
 """
+import html as html_lib
 import json
 import logging
 import re
@@ -27,7 +28,7 @@ EMP_CODE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 LABELED_EMP_CODE_PATTERN = re.compile(
-    r"(?:Employee\s*(?:ID|Code|No\.?)|Emp\s*(?:ID|Code))\s*[:\-]+\s*([A-Z0-9][A-Z0-9\-]{3,19})",
+    r"(?:Employee\s*(?:ID|Code|No\.?)|Emp\s*(?:ID|Code))\*?\s*[:\-]+\*?\s*([A-Z0-9][A-Z0-9\-]{3,19})",
     re.IGNORECASE,
 )
 
@@ -312,6 +313,199 @@ def _extract_sender_name(body: str, sender_name: str, sender_email: str = "") ->
     return "Employee"
 
 
+def extract_mail_what_whom_why(
+    subject: str,
+    body: str,
+    sender_name: str,
+    sender_email: str,
+    detected_name: str,
+    detected_code: Optional[str],
+    matched_employee: Optional[Dict[str, Any]],
+    intent_label: str,
+    dept_name: str,
+    target_sla: str,
+    is_noise: bool = False,
+) -> Dict[str, str]:
+    """
+    Distills an inbound email into three clear operational signals:
+    - what: What request, event, or issue the mail is about.
+    - whom: Who the mail concerns and who sent/owns it.
+    - why:  Why it was sent (root cause, trigger, or urgency).
+    """
+    clean_subj = re.sub(r"^(?:re|fwd?)\s*:\s*", "", (subject or "").strip(), flags=re.IGNORECASE).strip()
+
+    raw_text = html_lib.unescape(body or "")
+    raw_text = raw_text.replace("\u00a0", " ").replace("\\r\\n", "\n").replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+    raw_text = re.sub(r"\[image:\s*[^\]]+\]", " ", raw_text, flags=re.IGNORECASE)
+    raw_text = re.sub(r"<https?://[^>]+>|https?://\S+", " ", raw_text)
+
+    # Strip quoted block only if top body has substantial text
+    quote_match = re.search(
+        r"(?:\n){2,}\s*(?:>{1,4}(?:\s|$)|On\s+[\s\S]{10,160}?\bwrote:|---+ Original Message ---+)",
+        raw_text,
+        flags=re.IGNORECASE,
+    )
+    if quote_match and quote_match.start() > 110:
+        raw_text = raw_text[: quote_match.start()]
+    else:
+        raw_text = re.sub(r"^\s*>+\s?", "", raw_text, flags=re.MULTILINE)
+
+    # Normalize markdown bullets/bold BEFORE collapsing newlines so key-value fields never bleed together
+    norm_lines = re.sub(r"(?:^|\n)\s*-\s*\n+\s*", "\n", raw_text)
+    norm_lines = re.sub(r"\*{1,2}([^*\n]+)\*{1,2}", r"\1", norm_lines)
+    norm_lines = re.sub(r"[ \t]+", " ", norm_lines)
+
+    body_emp_name_m = re.search(
+        r"Employee\s*Name\s*:\s*([A-Za-z]+(?:[ \t]+[A-Za-z]+){0,3})(?=\s*(?:\r?\n|$|Employee\s*(?:ID|Code)|Emp\s*ID))",
+        norm_lines,
+        re.IGNORECASE,
+    )
+    body_emp_code_m = re.search(
+        r"Employee\s*(?:ID|Code)\s*[:\-]+\s*([A-Z0-9][A-Z0-9\-]{3,19})",
+        norm_lines,
+        re.IGNORECASE,
+    )
+
+    flat_text = re.sub(r"\s+", " ", norm_lines).strip()
+
+    # Remove common salutations and sign-offs from leading/trailing text WITHOUT crossing into body sentences
+    body_clean = re.sub(
+        r"^(?:Dear|Hello|Hi|Hey)\s+(?:Sir\s*/\s*Ma['’]?am|Sir\s*/\s*Madam|HR\s*Team|People\s*Desk(?:\s*Team)?|Team|HR|All|Sir|Madam|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*(?:[,!.:;]+\s*|\r?\n+)",
+        "",
+        norm_lines.strip(),
+        flags=re.IGNORECASE,
+    ).strip()
+    body_clean = re.sub(
+        r"\bOn\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[\s\S]{5,180}?\bwrote:[\s\S]*$",
+        "",
+        body_clean,
+        flags=re.IGNORECASE,
+    ).strip()
+    body_clean = re.sub(
+        r"(?:Warm|Best|Sincere|Kind)?\s*(?:Regards|Thanks\s*(?:&|and)\s*Regards),?\s*(?:Team\s*HR|Tata\s*1mg.*)?$",
+        "",
+        body_clean,
+        flags=re.IGNORECASE,
+    ).strip()
+    body_clean = re.sub(r"\s+", " ", body_clean).strip()
+
+    sentences = [
+        re.sub(r"\s*\bEmployee\s*(?:ID|Code|Details|Name)\b\s*[:\-]+.*$", "", s, flags=re.IGNORECASE).strip(" .-\t")
+        for s in re.split(r"(?<=[.!?])\s+|\s*\n+\s*", body_clean)
+        if len(s.strip()) > 12
+    ]
+    sentences = [s for s in sentences if len(s) > 10]
+
+    # --- 1. WHOM ---
+    subject_person = None
+    m_verif = re.search(
+        r"(?:employment|background)?\s*verification\s+of\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,3})",
+        flat_text,
+        re.IGNORECASE,
+    )
+    if not m_verif:
+        m_verif = re.search(
+            r"Verification_([A-Za-z]+(?:\s+[A-Za-z]+){0,3})_",
+            clean_subj,
+            re.IGNORECASE,
+        )
+    if m_verif:
+        cand = re.sub(r"\b(?:who|we|is|was|employed)\b.*$", "", m_verif.group(1), flags=re.IGNORECASE).strip(" _,-")
+        if len(cand) >= 3:
+            subject_person = cand
+
+    cleaned_body_emp_name = (
+        re.sub(r"\b(?:Employee\s*ID|Emp\s*ID|Employee|ID|Code|Details)\b.*$", "", body_emp_name_m.group(1), flags=re.IGNORECASE).strip(" :-,*")
+        if body_emp_name_m
+        else None
+    )
+
+    primary_person = (
+        subject_person
+        or (cleaned_body_emp_name if cleaned_body_emp_name else None)
+        or (detected_name if detected_name and not str(detected_name).startswith("Vendor:") else None)
+        or sender_name
+        or "Employee"
+    )
+    primary_code = (body_emp_code_m.group(1).strip().upper() if body_emp_code_m else None) or detected_code
+    emp_dept = (matched_employee or {}).get("department")
+    emp_desig = (matched_employee or {}).get("designation")
+
+    if is_noise:
+        whom = f"Automated alert to People Desk (from {sender_name or sender_email or 'External System'})"
+    elif subject_person and sender_name and subject_person.lower() not in sender_name.lower():
+        code_part = f" ({primary_code})" if primary_code else ""
+        whom = f"{subject_person}{code_part} · Requested by {sender_name}"
+    else:
+        meta_bits = []
+        if primary_code:
+            meta_bits.append(primary_code)
+        if emp_desig and emp_desig not in ("External Inbound", "Automated Inbound / Vendor"):
+            meta_bits.append(emp_desig)
+        elif sender_email and "@" in sender_email:
+            meta_bits.append(sender_email)
+        if emp_dept and emp_dept != dept_name and "External" not in emp_dept:
+            meta_bits.append(emp_dept)
+        whom = f"{primary_person} ({' · '.join(meta_bits)})" if meta_bits else primary_person
+
+    # --- 2. WHAT ---
+    generic_intent = (intent_label or "").strip().lower() in ("general inquiry", "people desk support inquiry", "")
+    if is_noise:
+        what = f"Automated notification: {clean_subj or 'System / marketing alert'} (no HR action required)"
+    elif subject_person or "background" in (intent_label or "").lower() or "bgv" in (intent_label or "").lower():
+        what = f"Employment & background verification request for {subject_person or primary_person} ({dept_name})"
+    elif clean_subj and generic_intent:
+        what = clean_subj
+    elif clean_subj and intent_label:
+        what = intent_label if intent_label.lower() in clean_subj.lower() else f"{intent_label} — {clean_subj}"
+    else:
+        request_sentence = None
+        for s in sentences:
+            sl = s.lower()
+            if any(k in sl for k in ("writing to", "request", "issue", "problem", "waiting", "salary", "attendance", "absent", "punch", "leave", "mediclaim", "payslip", "form 16", "reimburse", "address", "help")):
+                request_sentence = s
+                break
+        if request_sentence:
+            snippet = request_sentence[:125].rstrip(" ,;:") + ("..." if len(request_sentence) > 125 else "")
+            what = f"{intent_label}: {snippet}" if intent_label and intent_label.lower() not in snippet.lower() else snippet
+        else:
+            what = intent_label or "HR support inquiry"
+
+    # --- 3. WHY ---
+    if is_noise:
+        why = sentences[0][:140] if sentences else "Automated account/vendor alert; filtered out of active HR queue."
+    else:
+        why_triggers = (
+            "because", "due to", "incorrectly", "marked as absent", "absent", "not received",
+            "only received", "waiting", "pending", "discrepancy", "failure", "couldn't",
+            "enclosing", "validate", "questionnaire", "correction", "issue", "problem",
+            "celebrating", "offer", "prevent", "urgent",
+        )
+        scored = []
+        for idx, s in enumerate(sentences):
+            sl = s.lower()
+            score = sum(2 if tok in sl else 0 for tok in why_triggers)
+            if 20 <= len(s) <= 220:
+                score += 1
+            if score > 0:
+                scored.append((score, -idx, s))
+        if scored:
+            scored.sort(reverse=True)
+            best_why = scored[0][2]
+            why = best_why[:145].rstrip(" ,;:") + ("..." if len(best_why) > 145 else "")
+        elif sentences:
+            s0 = sentences[0]
+            why = s0[:145].rstrip(" ,;:") + ("..." if len(s0) > 145 else "")
+        else:
+            why = f"Routed to {dept_name} for specialist review ({target_sla})."
+
+    return {
+        "what": what,
+        "whom": whom,
+        "why": why,
+    }
+
+
 def build_email_ai_insights(email_row: dict) -> dict:
     """
     Unified AI entity + department + intent extraction for incoming correspondence.
@@ -357,6 +551,19 @@ def build_email_ai_insights(email_row: dict) -> dict:
                 "is_verified": False,
                 "is_noise": True,
             },
+            "what_whom_why": extract_mail_what_whom_why(
+                subject=subject,
+                body=body,
+                sender_name=vendor_label,
+                sender_email=sender_email,
+                detected_name=vendor_label,
+                detected_code=None,
+                matched_employee=None,
+                intent_label="Automated Marketing / Vendor Newsletter (Noise)",
+                dept_name="People Desk",
+                target_sla="No SLA",
+                is_noise=True,
+            ),
             "drafts": {
                 "empathetic": "This email has been identified as an automated marketing newsletter or system notification. No employee response is required.",
                 "concise": "Automated external mailer. No action required.",
@@ -470,6 +677,19 @@ def build_email_ai_insights(email_row: dict) -> dict:
         "requires_emp_id": requires_emp_id,
         "emp_id_status": emp_id_status,
         "matched_employee": matched_employee,
+        "what_whom_why": extract_mail_what_whom_why(
+            subject=subject,
+            body=body,
+            sender_name=sender_name,
+            sender_email=sender_email,
+            detected_name=detected_name,
+            detected_code=detected_code,
+            matched_employee=matched_employee,
+            intent_label=intent_label,
+            dept_name=dept_name,
+            target_sla=target_sla,
+            is_noise=bool(email_row.get("is_noise")) or str(email_row.get("actionable_reason") or "").startswith("NOISE"),
+        ),
         "drafts": drafts,
     }
 

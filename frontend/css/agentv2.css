@@ -1632,6 +1632,89 @@ button, input, select, textarea {
   margin-top: 2px;
 }
 
+.v2-www-card {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.v2-www-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 7px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #E8EDF4;
+}
+
+.v2-www-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #0F766E;
+  letter-spacing: 0.01em;
+}
+
+.v2-www-head-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.v2-www-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.v2-www-row {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.v2-www-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  text-align: center;
+  display: inline-block;
+}
+
+.v2-www-badge.what {
+  background: #ECFDF5;
+  color: #0F766E;
+  border: 1px solid #CCFBF1;
+}
+
+.v2-www-badge.whom {
+  background: #EEF2FF;
+  color: #4338CA;
+  border: 1px solid #E0E7FF;
+}
+
+.v2-www-badge.why {
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid #FFEDD5;
+}
+
+.v2-www-val {
+  color: var(--text-1);
+  font-weight: 500;
+  word-break: break-word;
+}
+
 .v2-mail-divider {
   height: 1px;
   background: var(--border);

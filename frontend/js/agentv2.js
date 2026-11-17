@@ -14,7 +14,8 @@ let allInboxEmails = [];
 let currentViewId = 'inboxView';
 let isAiPanelOpen = true;
 let isInboxStreamCollapsed = false;
-let isAiHighlightsActive = true;
+let isAiHighlightsActive = false;
+let isMailBriefActive = true;
 
 // Inbox state
 let currentInboxTriageTab = 'unread';
@@ -994,6 +995,21 @@ async function selectInboxEmail(emailId) {
     }
   }
 
+  // What · Whom · Why Mail Understanding Brief
+  const www = ai.what_whom_why || {};
+  const fallbackName = ai.detected_name || email.sender_name || senderEmail || 'Employee';
+  const fallbackCode = ai.detected_code || matchedEmp.employee_id || '';
+  const fallbackDept = matchedEmp.department ? ` · ${matchedEmp.department}` : '';
+  const wwwWhat = www.what || ai.intent_label || email.subject || 'Employee HR inquiry';
+  const wwwWhom = www.whom || `${fallbackName}${fallbackCode ? ` (${fallbackCode})` : ''}${fallbackDept}`;
+  const wwwWhy = www.why || (email.is_noise ? 'Informational / non-actionable message (no HR action required)' : `Action needed by People Desk · ${ai.target_sla || '24h SLA'}`);
+  setText('inboxBriefWhat', wwwWhat);
+  setText('inboxBriefWhom', wwwWhom);
+  setText('inboxBriefWhy', wwwWhy);
+  const wwwBox = document.getElementById('inboxWhatWhomWhyBox');
+  if (wwwBox) wwwBox.style.display = isMailBriefActive ? '' : 'none';
+  document.getElementById('inboxToggleBriefBtn')?.classList.toggle('active', isMailBriefActive);
+
   // Body
   const bodyEl = document.getElementById('inboxEmailBody');
   if (bodyEl) {
@@ -1299,10 +1315,11 @@ async function toggleCurrentInboxNoise() {
   }
 }
 
-function toggleEmailAiHighlights() {
-  isAiHighlightsActive = !isAiHighlightsActive;
-  document.getElementById('inboxToggleAiHighlightsBtn')?.classList.toggle('active', isAiHighlightsActive);
-  if (currentSelectedEmailId) selectInboxEmail(currentSelectedEmailId);
+function toggleMailBrief() {
+  isMailBriefActive = !isMailBriefActive;
+  document.getElementById('inboxToggleBriefBtn')?.classList.toggle('active', isMailBriefActive);
+  const wwwBox = document.getElementById('inboxWhatWhomWhyBox');
+  if (wwwBox) wwwBox.style.display = isMailBriefActive ? '' : 'none';
 }
 
 function copyInboxEmailBody() {

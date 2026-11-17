@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/agentv2.css?v=2.5">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.6">
 </head>
 <body class="v2-body">
 
@@ -402,6 +402,31 @@
                       <button type="button" class="v2-btn-ghost xs" onclick="openTransferDepartmentModal()">Change</button>
                     </div>
 
+                    <!-- What · Whom · Why Mail Understanding Brief -->
+                    <div class="v2-www-card" id="inboxWhatWhomWhyBox">
+                      <div class="v2-www-head">
+                        <span class="v2-www-head-title">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L14.3 9.7L22 12L14.3 14.3L12 22L9.7 14.3L2 12L9.7 9.7L12 2Z"/></svg>
+                          <span>Mail Understanding</span>
+                        </span>
+                        <span class="v2-www-head-sub">What · Whom · Why</span>
+                      </div>
+                      <div class="v2-www-grid">
+                        <div class="v2-www-row">
+                          <span class="v2-www-badge what">WHAT</span>
+                          <span class="v2-www-val" id="inboxBriefWhat">—</span>
+                        </div>
+                        <div class="v2-www-row">
+                          <span class="v2-www-badge whom">WHOM</span>
+                          <span class="v2-www-val" id="inboxBriefWhom">—</span>
+                        </div>
+                        <div class="v2-www-row">
+                          <span class="v2-www-badge why">WHY</span>
+                          <span class="v2-www-val" id="inboxBriefWhy">—</span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div class="v2-mail-divider"></div>
 
                     <!-- Thread / Body Canvas -->
@@ -469,9 +494,9 @@
                   <span class="v2-copilot-live-dot" title="Engine Live"></span>
                 </div>
                 <div class="v2-copilot-head-actions">
-                  <button type="button" class="v2-highlight-toggle active" id="inboxToggleAiHighlightsBtn" onclick="toggleEmailAiHighlights()" title="Toggle in-text AI highlights">
+                  <button type="button" class="v2-highlight-toggle active" id="inboxToggleBriefBtn" onclick="toggleMailBrief()" title="Show or hide What · Whom · Why Mail Brief">
                     <span class="v2-ht-dot"></span>
-                    <span id="inboxToggleAiHighlightsLabel">Highlights</span>
+                    <span>Mail Brief</span>
                   </button>
                   <button type="button" class="v2-icon-btn sm" onclick="toggleAiPanel()" title="Close Copilot (⌘\)">✕</button>
                 </div>
@@ -1312,6 +1337,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.5"></script>
+  <script src="/js/agentv2.js?v=2.6"></script>
 </body>
 </html>
