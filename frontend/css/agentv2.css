@@ -108,24 +108,24 @@ button, input, select, textarea {
   overflow: hidden;
 }
 
-/* LEFT RAIL */
+/* LEFT RAIL (LIGHT CLINICAL DESIGN) */
 .v2-rail {
   width: var(--rail-w);
   flex-shrink: 0;
-  background: #0F172A;
-  color: #E2E8F0;
+  background: #FFFFFF;
+  color: var(--text-2);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
   overflow: hidden;
   z-index: 80;
-  border-right: 1px solid #1E293B;
+  border-right: 1px solid var(--border);
 }
 
 .v2-rail:hover {
   width: var(--rail-expanded-w);
-  box-shadow: 6px 0 24px rgba(15, 23, 42, 0.22);
+  box-shadow: 8px 0 28px rgba(15, 23, 42, 0.08);
 }
 
 .v2-rail-brand {
@@ -133,62 +133,101 @@ button, input, select, textarea {
   padding: 0 12px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border);
+  background: #FFFFFF;
 }
 
 .v2-brand-link {
   display: flex;
   align-items: center;
-  gap: 11px;
   text-decoration: none;
-  color: #FFFFFF;
-  min-width: 196px;
+  color: var(--text-1);
+  width: 100%;
+  overflow: hidden;
+}
+
+.v2-brand-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.v2-rail:hover .v2-brand-collapsed {
+  display: none;
 }
 
 .v2-brand-mark {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #FF6F61 0%, #E85446 100%);
+  background: #FFF2F0;
+  border: 1px solid #FFD5CE;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(255, 111, 97, 0.35);
 }
 
 .v2-brand-mark img {
-  width: 22px;
-  height: 22px;
-  filter: brightness(0) invert(1);
+  width: 24px;
+  height: 18px;
+  object-fit: contain;
 }
 
-.v2-brand-text {
-  display: flex;
+.v2-brand-expanded {
+  display: none;
   flex-direction: column;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  justify-content: center;
+  gap: 2px;
+  padding-left: 4px;
+  min-width: 184px;
   white-space: nowrap;
 }
 
-.v2-rail:hover .v2-brand-text {
-  opacity: 1;
-  transform: translateX(0);
+.v2-rail:hover .v2-brand-expanded {
+  display: flex;
+  animation: v2FadeBrand 0.16s ease;
+}
+
+@keyframes v2FadeBrand {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.v2-brand-full-logo {
+  height: 20px;
+  width: auto;
+  max-width: 148px;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
+
+.v2-brand-subrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .v2-brand-name {
   font-family: var(--font-display);
-  font-size: 13.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: -0.2px;
+  letter-spacing: 0.2px;
+  color: var(--text-3);
 }
 
 .v2-brand-ver {
+  font-family: var(--font-mono);
   font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.7px;
-  color: #FF8A7E;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--coral-soft);
+  color: var(--coral);
+  border: 1px solid var(--coral-border);
 }
 
 .v2-rail-nav {
@@ -206,7 +245,7 @@ button, input, select, textarea {
   border: none;
   border-radius: 9px;
   background: transparent;
-  color: #94A3B8;
+  color: var(--text-3);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -218,13 +257,13 @@ button, input, select, textarea {
 }
 
 .v2-nav-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #FFFFFF;
+  background: var(--bg-subtle);
+  color: var(--text-1);
 }
 
 .v2-nav-item.active {
-  background: rgba(255, 111, 97, 0.16);
-  color: #FFFFFF;
+  background: var(--coral-soft);
+  color: var(--coral-hover);
 }
 
 .v2-nav-item.active::before {
@@ -270,14 +309,23 @@ button, input, select, textarea {
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.14);
-  color: #FFFFFF;
+  background: #F1F5F9;
+  color: var(--text-2);
+  border: 1px solid var(--border);
   opacity: 0;
   transition: opacity 0.14s ease;
 }
 
+.v2-nav-item.active .v2-nav-badge {
+  background: var(--coral);
+  color: #FFFFFF;
+  border-color: var(--coral);
+}
+
 .v2-nav-badge.urgent {
-  background: rgba(220, 38, 38, 0.9);
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: var(--red-border);
 }
 
 .v2-rail:hover .v2-nav-badge {
@@ -293,7 +341,7 @@ button, input, select, textarea {
 
 .v2-rail-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
   margin: 4px 4px 6px;
 }
 
@@ -309,7 +357,8 @@ button, input, select, textarea {
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: #94A3B8;
+  font-weight: 600;
+  color: var(--text-3);
   white-space: nowrap;
 }
 
@@ -318,7 +367,7 @@ button, input, select, textarea {
   height: 8px;
   border-radius: 50%;
   background: #10B981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
   flex-shrink: 0;
 }
 
