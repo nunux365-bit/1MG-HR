@@ -1027,9 +1027,9 @@ button, input, select, textarea {
   overflow: hidden;
 }
 
-/* Stream Pane */
+/* Stream Pane (Apple Mail + Gmail Clean List) */
 .v2-stream-pane {
-  background: var(--bg-surface);
+  background: #FFFFFF;
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -1038,18 +1038,20 @@ button, input, select, textarea {
 }
 
 .v2-stream-head {
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
 }
 
 .v2-stream-title {
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.55px;
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -1057,24 +1059,27 @@ button, input, select, textarea {
 .v2-stream-count {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--bg-subtle);
   color: var(--text-3);
 }
 
 .v2-stream-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .v2-stream-mini-rail {
   display: none;
   flex-direction: column;
   align-items: center;
-  padding: 10px 4px;
+  padding: 12px 6px;
   gap: 10px;
   overflow-y: auto;
   height: 100%;
@@ -1092,146 +1097,211 @@ button, input, select, textarea {
 .v2-mini-expand-btn {
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: 50%;
   border: 1px solid var(--border);
-  background: var(--bg-subtle);
+  background: #FFFFFF;
   color: var(--text-2);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-xs);
+}
+
+.v2-mini-expand-btn:hover {
+  background: var(--bg-subtle);
+  border-color: #CBD5E1;
+  color: var(--text-1);
 }
 
 .v2-mini-avatars {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  align-items: center;
 }
 
 .v2-mini-avatar-btn {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
-  border: 2px solid transparent;
-  background: var(--bg-subtle);
-  color: var(--text-1);
-  font-weight: 800;
-  font-size: 12px;
+  border-radius: 50%;
+  border: none;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 13px;
   cursor: pointer;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.v2-mini-avatar-btn:hover {
+  transform: scale(1.06);
 }
 
 .v2-mini-avatar-btn.active {
-  border-color: var(--coral);
-  background: var(--coral-soft);
-  color: var(--coral);
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--coral);
 }
 
-/* Email Stream Card */
+.v2-mini-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+  border: 2px solid #FFFFFF;
+}
+
+/* Email Stream Row (Apple Mail + Gmail Style) */
 .v2-email-card {
-  padding: 11px 12px;
+  padding: 11px 12px 11px 6px;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #FFFFFF;
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.14s ease;
+  transition: background 0.14s ease, border-color 0.14s ease;
   position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.v2-email-card:hover {
-  border-color: #CBD5E1;
-  background: var(--bg-subtle);
-}
-
-.v2-email-card.active {
-  border-color: var(--coral);
-  background: #FFF9F8;
-  box-shadow: 0 0 0 2px rgba(255, 111, 97, 0.12);
-}
-
-.v2-email-card.unread::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--coral);
-}
-
-.v2-email-card.resolved {
-  background: #FAFCFB;
-}
-
-.v2-mini-tag.resolved {
-  background: var(--teal-soft);
-  color: var(--teal);
-  border-color: var(--teal-border);
-}
-
-.v2-ec-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
 }
 
-.v2-ec-sender {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
+.v2-email-card::after {
+  content: '';
+  position: absolute;
+  left: 52px;
+  right: 12px;
+  bottom: -1px;
+  height: 1px;
+  background: #F1F5F9;
+  pointer-events: none;
 }
 
-.v2-ec-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  color: #FFFFFF;
-  font-size: 11px;
-  font-weight: 800;
+.v2-email-card:last-child::after,
+.v2-email-card.active::after,
+.v2-email-card:hover::after {
+  opacity: 0;
+}
+
+.v2-email-card:hover {
+  background: #F8FAFC;
+}
+
+.v2-email-card.active {
+  background: #FFF4F2;
+  border-color: #FFDCD6;
+}
+
+.v2-email-card.resolved {
+  background: transparent;
+}
+
+.v2-email-card.resolved.active {
+  background: #F0FDF9;
+  border-color: #C2ECE3;
+}
+
+.v2-ec-unread-gutter {
+  width: 10px;
+  padding-top: 13px;
   display: flex;
-  align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.v2-ec-name {
-  font-size: 12.5px;
+.v2-ec-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.14s ease;
+}
+
+.v2-email-card.unread .v2-ec-unread-dot {
+  background: var(--coral);
+}
+
+.v2-ec-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #FFFFFF;
+  font-size: 13px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.v2-ec-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v2-ec-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.v2-ec-name {
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.v2-email-card.unread .v2-ec-name {
+  font-weight: 700;
+}
+
 .v2-ec-time {
-  font-size: 11px;
-  color: var(--text-4);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-3);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-email-card.unread .v2-ec-time {
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .v2-ec-subject {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.v2-email-card.unread .v2-ec-subject {
+  font-weight: 600;
+}
+
 .v2-ec-snippet {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  line-height: 1.38;
+  line-height: 1.4;
 }
 
 .v2-ec-tags {
@@ -1239,23 +1309,28 @@ button, input, select, textarea {
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .v2-mini-tag {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--bg-subtle);
-  color: var(--text-3);
-  border: 1px solid var(--border);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #F1F5F9;
+  color: var(--text-2);
+  border: none;
+  max-width: 175px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.v2-mini-tag.intent { background: var(--ai-soft); color: var(--ai); border-color: var(--ai-border); }
-.v2-mini-tag.case { background: var(--teal-soft); color: var(--teal); border-color: var(--teal-border); font-family: var(--font-mono); }
-.v2-mini-tag.urgent { background: var(--red-soft); color: var(--red); border-color: var(--red-border); }
-.v2-mini-tag.you { background: var(--blue-soft); color: var(--blue); border-color: var(--blue-border); }
+.v2-mini-tag.intent { background: #F1F5F9; color: #475569; }
+.v2-mini-tag.case { background: #ECFDF5; color: #0F766E; font-family: var(--font-mono); font-weight: 700; }
+.v2-mini-tag.resolved { background: #ECFDF5; color: #0F766E; font-weight: 700; }
+.v2-mini-tag.urgent { background: #FEF2F2; color: #DC2626; font-weight: 700; }
+.v2-mini-tag.you { background: #EFF6FF; color: #1D4ED8; font-weight: 700; }
 
 /* Center Inspector Pane */
 .v2-inspector-pane {

@@ -753,12 +753,13 @@ function renderInboxEmailStream() {
     return;
   }
 
-  const gradients = [
-    'linear-gradient(135deg, #FF6F61, #EE5A4C)',
-    'linear-gradient(135deg, #2563EB, #1D4ED8)',
-    'linear-gradient(135deg, #10B190, #059669)',
-    'linear-gradient(135deg, #7C3AED, #6D28D9)',
-    'linear-gradient(135deg, #D97706, #B45309)'
+  const avatars = [
+    '#FF6F61', // Tata 1mg Coral
+    '#10847E', // Medical Teal
+    '#2563EB', // Cobalt Blue
+    '#D97706', // Warm Amber
+    '#4F46E5', // Indigo
+    '#059669'  // Emerald
   ];
 
   listEl.innerHTML = filtered.map(email => {
@@ -768,9 +769,9 @@ function renderInboxEmailStream() {
     const isUnresolved = !isResolvedCase && (email.is_actionable !== 0);
     const sender = ai.detected_name || email.sender_name || 'Employee';
     const initial = sender.charAt(0).toUpperCase();
-    const grad = gradients[Math.abs(email.id || 0) % gradients.length];
+    const avatarBg = avatars[Math.abs(email.id || 0) % avatars.length];
     const timeStr = formatRelativeTime(email.last_activity_at || email.received_at);
-    const cleanSnippet = decodeHtmlEntities(email.snippet || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanSnippet = formatCleanPreviewSnippet(email.snippet || email.body || '');
     const isMine = (
       (email.assigned_user_id && currentUser?.id && email.assigned_user_id === currentUser.id) ||
       (email.assigned_user_email && currentUser?.email && email.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())
@@ -784,7 +785,7 @@ function renderInboxEmailStream() {
       tags.push(`<span class="v2-mini-tag resolved">✓ Resolved</span>`);
     }
     if (ai.intent_label) {
-      tags.push(`<span class="v2-mini-tag intent">${escapeHtml(ai.intent_label)}</span>`);
+      tags.push(`<span class="v2-mini-tag intent" title="${escapeHtml(ai.intent_label)}">${escapeHtml(ai.intent_label)}</span>`);
     }
     if (ai.is_urgent && !isResolvedCase) {
       tags.push(`<span class="v2-mini-tag urgent">Urgent</span>`);
@@ -797,16 +798,17 @@ function renderInboxEmailStream() {
 
     return `
       <div class="v2-email-card ${isActive ? 'active' : ''} ${isUnresolved ? 'unread' : 'resolved'}" onclick="selectInboxEmail(${email.id})">
-        <div class="v2-ec-top">
-          <div class="v2-ec-sender">
-            <span class="v2-ec-avatar" style="background: ${grad}">${initial}</span>
+        <div class="v2-ec-unread-gutter"><span class="v2-ec-unread-dot" aria-hidden="true"></span></div>
+        <span class="v2-ec-avatar" style="background: ${avatarBg}">${initial}</span>
+        <div class="v2-ec-content">
+          <div class="v2-ec-top">
             <span class="v2-ec-name">${escapeHtml(sender)}</span>
+            <span class="v2-ec-time">${escapeHtml(timeStr)}</span>
           </div>
-          <span class="v2-ec-time">${escapeHtml(timeStr)}</span>
+          <div class="v2-ec-subject">${escapeHtml(email.subject || 'Untitled Email')}</div>
+          <div class="v2-ec-snippet">${escapeHtml(cleanSnippet || 'No preview available')}</div>
+          ${tags.length ? `<div class="v2-ec-tags">${tags.join('')}</div>` : ''}
         </div>
-        <div class="v2-ec-subject">${escapeHtml(email.subject || 'Untitled Email')}</div>
-        <div class="v2-ec-snippet">${escapeHtml(cleanSnippet)}</div>
-        ${tags.length ? `<div class="v2-ec-tags">${tags.join('')}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -814,9 +816,29 @@ function renderInboxEmailStream() {
   if (miniEl) {
     miniEl.innerHTML = filtered.slice(0, 14).map(email => {
       const sender = email.ai_insights?.detected_name || email.sender_name || 'E';
-      return `<button type="button" class="v2-mini-avatar-btn ${email.id === currentSelectedEmailId ? 'active' : ''}" title="${escapeHtml(email.subject || sender)}" onclick="selectInboxEmail(${email.id})">${sender.charAt(0).toUpperCase()}</button>`;
+      const avatarBg = avatars[Math.abs(email.id || 0) % avatars.length];
+      const isResolvedCase = email.case_status === 'RESOLVED' || email.case_status === 'CLOSED';
+      const isUnresolved = !isResolvedCase && (email.is_actionable !== 0);
+      return `
+        <button type="button" class="v2-mini-avatar-btn ${email.id === currentSelectedEmailId ? 'active' : ''}" style="background:${avatarBg};" title="${escapeHtml(sender + ' · ' + (email.subject || ''))}" onclick="selectInboxEmail(${email.id})">
+          ${sender.charAt(0).toUpperCase()}
+          ${isUnresolved ? '<span class="v2-mini-dot"></span>' : ''}
+        </button>
+      `;
     }).join('');
   }
+}
+
+function formatCleanPreviewSnippet(raw) {
+  if (!raw) return '';
+  return decodeHtmlEntities(String(raw))
+    .replace(/\u00A0/g, ' ')
+    .replace(/\[image:\s*[^\]]+\]/gi, '')
+    .replace(/<https?:\/\/[^>]+>/gi, '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\bOn\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[^:]*:\s*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function renderEmptyInboxCockpit() {
