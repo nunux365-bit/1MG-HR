@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   currentCaseId = params.get('id') || params.get('case_id');
 
   if (!currentCaseId) {
-    alert('No Case ID specified. Returning to Workbench Queue.');
-    window.location.href = '/agent.html?view=casesView';
+    alert('No Case ID specified. Returning to Cases Workbench.');
+    window.location.href = '/agentv2.0';
     return;
   }
 
@@ -267,7 +267,7 @@ async function loadCaseDetails(caseId) {
 
     if (!data.success || !data.case) {
       alert('Case dossier not found.');
-      window.location.href = '/agent.html?view=casesView';
+      window.location.href = '/agentv2.0';
       return;
     }
 
@@ -292,26 +292,31 @@ async function loadCaseDetails(caseId) {
  * Renders the top ribbon and hero card.
  */
 function renderHeaderRibbon(c) {
-  document.title = `Case #${c.case_number} · Tata 1mg People Desk`;
+  const formattedCaseNum = formatCaseNumber(c.case_number);
+  const cleanTitle = (c.title || 'Untitled Case').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  document.title = `${formattedCaseNum} · ${cleanTitle} · Tata 1mg People Desk`;
 
   const bcDept = document.getElementById('breadcrumbDept');
   if (bcDept) {
     bcDept.innerHTML = `
-      <span class="dept-dot-accent" style="background: ${c.color_accent || '#2563EB'}; width: 7px; height: 7px; border-radius: 50%; display: inline-block;"></span>
+      <span class="dept-dot-accent" style="background: ${c.color_accent || '#10847E'}; width: 7px; height: 7px; border-radius: 50%; display: inline-block;"></span>
       <span>${escapeHtml(c.department_name || 'People Desk')}</span>
     `;
   }
 
   const heroNum = document.getElementById('heroCaseNumber');
-  if (heroNum) heroNum.innerText = c.case_number;
+  if (heroNum) heroNum.innerText = formattedCaseNum;
 
   const heroTitle = document.getElementById('heroCaseTitle');
-  if (heroTitle) heroTitle.innerText = c.title;
+  if (heroTitle) {
+    heroTitle.innerText = cleanTitle;
+    heroTitle.title = c.title || cleanTitle;
+  }
 
   const heroDept = document.getElementById('heroDeptPill');
   if (heroDept) {
     heroDept.innerHTML = `
-      <span class="dept-dot-accent" style="background: ${c.color_accent || '#2563EB'}; width: 6px; height: 6px; border-radius: 50%; display: inline-block;"></span>
+      <span class="dept-dot-accent" style="background: ${c.color_accent || '#10847E'}; width: 6px; height: 6px; border-radius: 50%; display: inline-block;"></span>
       <span>${escapeHtml(c.department_name || 'People Desk')}</span>
     `;
   }
@@ -339,17 +344,17 @@ function renderHeaderRibbon(c) {
     }) : 'No SLA set';
   }
 
-  // Turnaround telemetry badge
+  // Turnaround telemetry badge (clean typography, no emojis)
   const turnaroundEl = document.getElementById('heroTurnaroundBadge');
   if (turnaroundEl) {
     if (c.status === 'RESOLVED' || c.status === 'CLOSED') {
-      turnaroundEl.innerHTML = `<span style="color: #059669; font-weight: 700; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 6px; font-size: 11.5px;">✅ SLA Met</span>`;
+      turnaroundEl.innerHTML = `<span style="color: #059669; font-weight: 700; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 2px 9px; border-radius: 6px; font-size: 11.5px;">SLA Met</span>`;
     } else if (due && new Date() > due) {
       const diffHours = Math.round((new Date() - due) / (1000 * 60 * 60));
-      turnaroundEl.innerHTML = `<span style="color: #DC2626; font-weight: 800; background: #FEF2F2; border: 1px solid #FECACA; padding: 2px 8px; border-radius: 6px; font-size: 11.5px;">🚨 Breached by ${diffHours}h</span>`;
+      turnaroundEl.innerHTML = `<span style="color: #BE123C; font-weight: 700; background: #FFF1F2; border: 1px solid #FECDD3; padding: 2px 9px; border-radius: 6px; font-size: 11.5px;">Breached by ${diffHours}h</span>`;
     } else if (due) {
       const remainingHours = Math.max(0, Math.round((due - new Date()) / (1000 * 60 * 60)));
-      turnaroundEl.innerHTML = `<span style="color: #059669; font-weight: 700; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 6px; font-size: 11.5px;">⏱️ ${remainingHours}h remaining</span>`;
+      turnaroundEl.innerHTML = `<span style="color: #0F766E; font-weight: 700; background: #ECFDF5; border: 1px solid #CCFBF1; padding: 2px 9px; border-radius: 6px; font-size: 11.5px;">${remainingHours}h remaining</span>`;
     } else {
       turnaroundEl.innerHTML = `<span style="color: #64748B; font-size: 11.5px;">Standard Queue</span>`;
     }
@@ -954,10 +959,15 @@ function renderInboundInquiry(c) {
   const catPillEl = document.getElementById('inquiryCategoryPill');
   const ingestPillEl = document.getElementById('inquiryVerifiedIngestPill');
 
-  const senderEmail = c.personal_email || c.employee_email || 'staff@1mg.com';
-  const senderName = c.employee_name || 'Tata 1mg Staff';
+  const p = c.hrms_profile || {};
+  const ai = c.ai || c.ai_badge || {};
+  const senderEmail = c.company_email || c.personal_email || c.employee_email || 'staff@1mg.com';
+  const senderName = c.employee_name || p.employee_name || 'Employee';
+  const initials = senderName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
+  const empCode = (p.employee_code && p.employee_code !== '—') ? p.employee_code : (c.employee_code || '');
+  const isCorp = senderEmail.toLowerCase().endsWith('@1mg.com') || Boolean(c.company_email && c.company_email.toLowerCase().endsWith('@1mg.com'));
 
-  if (avatarEl) avatarEl.innerText = (senderName[0] || 'V').toUpperCase();
+  if (avatarEl) avatarEl.innerText = initials;
   if (nameEl) nameEl.innerText = senderName;
   if (emailEl) emailEl.innerText = senderEmail;
   if (toAddrEl) toAddrEl.innerText = `${c.assigned_team || 'People Desk'} <peopledesk@1mg.com>`;
@@ -971,23 +981,44 @@ function renderInboundInquiry(c) {
   if (catEl) catEl.innerText = `Category: ${c.department_name || 'People Desk'}`;
 
   if (ingestPillEl) {
-    if (c.is_profile_verified) {
-      ingestPillEl.innerHTML = '✓ Verified Corporate Ingest';
+    if (isCorp) {
+      ingestPillEl.innerText = '1mg Directory';
       ingestPillEl.style.background = '#ECFDF5';
       ingestPillEl.style.color = '#059669';
       ingestPillEl.style.borderColor = '#A7F3D0';
+    } else if (c.is_profile_verified && empCode) {
+      ingestPillEl.innerText = `Emp ID Verified (${empCode})`;
+      ingestPillEl.style.background = '#F0FDFA';
+      ingestPillEl.style.color = '#0F766E';
+      ingestPillEl.style.borderColor = '#CCFBF1';
     } else {
-      ingestPillEl.innerHTML = '⚠️ External Inbound Ingest';
+      ingestPillEl.innerText = 'External Inbound';
       ingestPillEl.style.background = '#FFFBEB';
-      ingestPillEl.style.color = '#D97706';
+      ingestPillEl.style.color = '#B45309';
       ingestPillEl.style.borderColor = '#FDE68A';
     }
   }
 
+  const cleanSubj = (c.title || 'Inbound Inquiry').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
   if (fromEl) fromEl.innerText = `${senderName} <${senderEmail}>`;
   if (toEl) toEl.innerText = `${c.assigned_team || 'People Desk'} <peopledesk@1mg.com>`;
-  if (subjEl) subjEl.innerText = c.title || 'Inbound Inquiry';
-  if (bodyEl) bodyEl.innerText = c.description || 'No description provided in message.';
+  if (subjEl) {
+    subjEl.innerText = cleanSubj;
+    subjEl.title = c.title || cleanSubj;
+  }
+
+  // What · Whom · Why Brief Card
+  const www = ai.what_whom_why || {};
+  const whatEl = document.getElementById('caseBriefWhat');
+  const whomEl = document.getElementById('caseBriefWhom');
+  const whyEl = document.getElementById('caseBriefWhy');
+  if (whatEl) whatEl.innerText = www.what || ai.summary?.core_issue || cleanSubj;
+  if (whomEl) whomEl.innerText = www.whom || `${senderName}${empCode ? ` (${empCode})` : ''}`;
+  if (whyEl) whyEl.innerText = www.why || ai.summary?.employee_request || `Routed to ${c.department_name || 'People Desk'} for review.`;
+
+  if (bodyEl) {
+    bodyEl.innerHTML = formatCaseEmailBodyHtml(c.description || 'No description provided in message.');
+  }
 }
 
 /**
@@ -1052,10 +1083,13 @@ function renderConversationThread(c, logs) {
       ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B190" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>'
       : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
 
-    const label = isEmployee ? 'Inbound Query (Corporate Ingest)' : isReply ? 'Dispatched Response to Employee' : 'Internal Desk Note';
+    const isCorpChannel = (item.email || '').toLowerCase().endsWith('@1mg.com');
+    const label = isEmployee ? (isCorpChannel ? 'Inbound Email (1mg Directory)' : 'Inbound Email (External)') : isReply ? 'Official Reply to Employee' : 'Internal Desk Note';
     const timeFormatted = item.time ? new Date(item.time).toLocaleString('en-IN', {
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
     }) : 'Recent';
+
+    const cleanBubbleTitle = item.title ? item.title.replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim() : '';
 
     return `
       <div class="thread-bubble ${bubbleClass}">
@@ -1067,8 +1101,8 @@ function renderConversationThread(c, logs) {
           </div>
           <div class="thread-time">${timeFormatted}</div>
         </div>
-        ${item.title ? `<div style="font-weight: 700; color: #0F172A; margin-bottom: 4px;">${escapeHtml(item.title)}</div>` : ''}
-        <div style="white-space: pre-wrap; color: #334155;">${escapeHtml(item.message || '')}</div>
+        ${cleanBubbleTitle ? `<div style="font-weight: 700; color: #0F172A; margin-bottom: 6px;">${escapeHtml(cleanBubbleTitle)}</div>` : ''}
+        <div class="formatted-email-body" style="color: #334155;">${formatCaseEmailBodyHtml(item.message || '')}</div>
       </div>
     `;
   }).join('');
@@ -1229,8 +1263,9 @@ function renderAiIntelligence(c) {
   }
   if (slaEl) slaEl.innerText = `${ai.sla_target_hours || c.sla_hours || 24} Hours`;
 
-  if (issueEl) issueEl.innerText = ai.summary?.core_issue || c.title || 'Inbound employee inquiry.';
-  if (reqEl) reqEl.innerText = ai.summary?.employee_request || 'Verify records in HRMS and assist employee.';
+  const www = ai.what_whom_why || {};
+  if (issueEl) issueEl.innerText = www.what || ai.summary?.core_issue || (c.title || '').replace(/_/g, ' ') || 'Inbound employee inquiry.';
+  if (reqEl) reqEl.innerText = www.why || ai.summary?.employee_request || 'Verify records in HRMS and assist employee.';
 
   if (guideEl) {
     guideEl.innerText = ai.recommended_action || `Cross-reference inquiry with Darwinbox ${c.department_name || 'HR'} register and validate transaction records.`;
@@ -1391,14 +1426,16 @@ function renderDarwinboxProfile(c) {
   const dirEl = document.getElementById('sideEmpDirectory');
 
   const empName = c.employee_name || p.employee_name || 'Tata 1mg Staff';
+  const empInitials = empName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
   if (nameEl) nameEl.innerText = empName;
-  if (avatarEl) avatarEl.innerText = (empName[0] || 'V').toUpperCase();
+  if (avatarEl) avatarEl.innerText = empInitials;
 
   if (deptBadgeEl) {
     deptBadgeEl.innerText = `${c.department_name || p.department_name || 'People Desk'} · Tata 1mg`;
   }
 
-  const isVerified = Boolean(c.is_profile_verified);
+  const isCorpEmail = Boolean((c.company_email && c.company_email.includes('@1mg.com')) || (c.employee_email && c.employee_email.toLowerCase().endsWith('@1mg.com')));
+  const isVerified = Boolean(c.is_profile_verified && (isCorpEmail || c.employee_code));
 
   if (typeBadgeEl) {
     typeBadgeEl.innerText = p.employment_type || (isVerified ? 'Permanent (Full-Time)' : 'External Inbound');
@@ -1406,13 +1443,13 @@ function renderDarwinboxProfile(c) {
 
   if (statusBadgeEl) {
     if (isVerified) {
-      statusBadgeEl.innerHTML = '✓ Verified Active';
+      statusBadgeEl.innerText = 'Verified';
       statusBadgeEl.style.color = '#059669';
       statusBadgeEl.style.background = '#ECFDF5';
       statusBadgeEl.style.borderColor = '#A7F3D0';
     } else {
-      statusBadgeEl.innerHTML = '⚠️ Intake Pending';
-      statusBadgeEl.style.color = '#D97706';
+      statusBadgeEl.innerText = 'Intake Pending';
+      statusBadgeEl.style.color = '#B45309';
       statusBadgeEl.style.background = '#FFFBEB';
       statusBadgeEl.style.borderColor = '#FDE68A';
     }
@@ -1818,6 +1855,133 @@ function formatAuditAction(log) {
     default:
       return log.action;
   }
+}
+
+function tryCloseOrReturnToCases(e) {
+  if (window.history.length <= 1) {
+    // Allow link href="/agentv2.0" when no opener or history; navigate directly
+    return true;
+  }
+  return true;
+}
+
+function copyCaseAiDraft() {
+  const box = document.getElementById('aiToneDraftBox');
+  const txt = box?.innerText?.trim();
+  if (!txt) return;
+  navigator.clipboard?.writeText(txt).then(() => {
+    showToast('AI draft copied to clipboard', 'success');
+  });
+}
+
+function formatCaseNumber(raw) {
+  if (!raw) return '1MG-00000';
+  const s = String(raw).trim();
+  const m = s.match(/^1MG-?(\d+)$/i);
+  if (m) return `1MG-${m[1].padStart(5, '0')}`;
+  return s;
+}
+
+function decodeHtmlEntities(str) {
+  if (!str) return '';
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = String(str);
+  return textarea.value;
+}
+
+function formatCaseEmailBodyHtml(rawBody) {
+  if (!rawBody) return '<p style="color:#64748B;">No message content provided.</p>';
+
+  let text = decodeHtmlEntities(String(rawBody))
+    .replace(/\u00A0/g, ' ')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+
+  text = text
+    .replace(/(?:^|\n)\s*-\s*\n+\s*/g, '\n- ')
+    .replace(/(\*{1,2}[^*\n]{2,50}:\*{1,2})\s*\n{2,}(?=\s*[-•*]\s+)/g, '$1\n');
+
+  const quoteSplitRegex = /(?:\n){2,}\s*(?:>{1,4}(?:\s|$)|On\s+[\s\S]{10,180}?\bwrote:|---+ Original Message ---+|From:\s+[^\n]+(?:<[^\n]+>|@))/i;
+  const fallbackQuoteRegex = /\n\s*(?:>{2,}(?:\s|$)|On\s+[^\n]{12,140}\bwrote:|---+ Original Message ---+)/i;
+  const quoteMatch = text.match(quoteSplitRegex) || text.match(fallbackQuoteRegex);
+
+  let mainBody = text;
+  let quotedHistory = '';
+  if (quoteMatch && quoteMatch.index > 0) {
+    mainBody = text.substring(0, quoteMatch.index).trim();
+    quotedHistory = text.substring(quoteMatch.index).trim();
+  }
+
+  const mainVisibleChars = mainBody
+    .replace(/\[image:\s*[^\]]+\]/gi, '')
+    .replace(/<https?:\/\/[^>]+>|https?:\/\/\S+/gi, '')
+    .replace(/(?:Warm|Best|Kind)?\s*Regards,?|Team\s*HR|Thanks(?:\s*&\s*Regards)?/gi, '')
+    .replace(/[\s,.\-_]/g, '').length;
+  const keepQuotedOpen = Boolean(quotedHistory && mainVisibleChars < 45);
+
+  const lines = mainBody.split('\n');
+  let html = '';
+  let kvBuffer = [];
+
+  const flushKv = () => {
+    if (!kvBuffer.length) return;
+    html += `<div class="mail-kv-card">${kvBuffer.map(item =>
+      `<div class="mail-kv-row"><span class="mail-kv-key">${escapeHtml(item.key)}</span><span class="mail-kv-val">${escapeHtml(item.val)}</span></div>`
+    ).join('')}</div>`;
+    kvBuffer = [];
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) {
+      flushKv();
+      continue;
+    }
+
+    const kvMatch = trimmed.match(/^(?:[-•*]\s*)?\*{0,2}([A-Za-z][A-Za-z0-9 /\-]{1,42})\*{0,2}\s*:\*{0,2}\s*(.+)$/);
+    if (kvMatch && !/^https?$/i.test(kvMatch[1].trim())) {
+      const k = kvMatch[1].replace(/\*/g, '').trim();
+      const v = kvMatch[2].replace(/^\*+|\*+$/g, '').trim();
+      if (v && v !== '-' && !/^<https?:/i.test(v)) {
+        kvBuffer.push({ key: k, val: v });
+        continue;
+      }
+    }
+
+    flushKv();
+
+    const imgOnlyMatch = trimmed.match(/^\[image:\s*([^\]]+)\]$/i);
+    if (imgOnlyMatch) {
+      html += `<span class="mail-inline-chip">Image: ${escapeHtml(imgOnlyMatch[1].trim())}</span>`;
+      continue;
+    }
+
+    let safeLine = escapeHtml(trimmed)
+      .replace(/\[image:\s*([^\]]+)\]/gi, (_, imgName) => `<span class="mail-inline-chip">${escapeHtml(imgName.trim())}</span>`)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(?:&lt;|<)?(https?:\/\/[^\s<>\]"']+)(?:&gt;|>)?/gi, (__, url) => {
+        const cleanUrl = decodeHtmlEntities(url).replace(/[.,;)]+$/, '');
+        return `<a href="${escapeHtml(cleanUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(cleanUrl)}</a>`;
+      });
+
+    html += `<p>${safeLine}</p>`;
+  }
+  flushKv();
+
+  if (quotedHistory) {
+    html += `
+      <details class="mail-quote-details"${keepQuotedOpen ? ' open' : ''}>
+        <summary>${keepQuotedOpen ? 'Forwarded / Quoted Message' : 'Show quoted message history'}</summary>
+        <div class="mail-quote-body">${escapeHtml(quotedHistory)}</div>
+      </details>
+    `;
+  }
+
+  return html || '<p style="color:#64748B;">No message content provided.</p>';
 }
 
 function escapeHtml(str) {

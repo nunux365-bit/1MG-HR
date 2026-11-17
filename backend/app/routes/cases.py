@@ -13,9 +13,12 @@ from backend.app.config import ADMIN_EMAIL
 from backend.app.database import execute_query
 from backend.app.services.classifier_service import classify_inbound_email_ai
 from backend.app.services.case_routing_service import (
+    _extract_sender_name,
     attach_reply_to_existing_case,
     build_email_ai_insights,
     create_case_from_email_record,
+    detect_employee_code,
+    extract_mail_what_whom_why,
     find_department_assignee,
     generate_case_number,
     is_automated_newsletter_or_noise,
@@ -139,35 +142,11 @@ def extract_employee_entities(title: str, description: str, employee_email: str,
     """
     full_text = f"{title}\n{description}"
     
-    # 1. Employee Code detection from text
-    emp_code = None
-    code_match = re.search(r"(?:Employee Code|Emp Code|Emp ID|Token|Badge ID|ID)[:\s]+([A-Za-z0-9_-]+)", full_text, re.IGNORECASE)
-    if code_match:
-        emp_code = code_match.group(1).strip()
-    if not emp_code:
-        code_token_match = re.search(r"\b(1MG\d{3,6}|EMP\d{3,6}|NUNUX\d+)\b", full_text)
-        if code_token_match:
-            emp_code = code_token_match.group(1).strip()
+    # 1. Employee Code detection from text via unified extractor
+    emp_code = detect_employee_code(full_text)
 
-    # 2. Employee Full Name detection from sign-off, greetings or text
-    extracted_name = None
-    signoff_match = re.search(r"(?:Thank you|Thanks|Warm regards|Regards|Sincerely|Thanks & Regards)[\s,\n]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)", full_text)
-    if signoff_match:
-        extracted_name = signoff_match.group(1).strip()
-    
-    if not extracted_name:
-        name_match = re.search(r"(?:Name|Employee Name)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)", full_text, re.IGNORECASE)
-        if name_match:
-            extracted_name = name_match.group(1).strip()
-            
-    if not extracted_name:
-        if employee_name and employee_name.lower() not in ["gitguardian", "unknown", "system", "employee", "tata 1mg employee"]:
-            extracted_name = employee_name.strip()
-        elif employee_email and "@" in employee_email:
-            username = employee_email.split("@")[0].replace(".", " ").title()
-            extracted_name = username
-        else:
-            extracted_name = "Tata 1mg Employee"
+    # 2. Employee Full Name detection via unified extractor
+    extracted_name = _extract_sender_name(description, employee_name, employee_email)
 
     # 3. Shift detection
     shift = "General Day Shift"
@@ -298,9 +277,23 @@ def analyze_case_ai(c: dict) -> dict:
     intent_name = cls_res.get("intent_label") or "General HR & Workplace Inquiry"
     confidence = float(cls_res.get("confidence") or 94.0)
     sla_target_hours = 4 if has_urgency else int(cls_res.get("sla_hours") or c.get("sla_hours") or 24)
-    summary_issue = f"Employee inquiry routed to {cls_res.get('team_name') or dept_name} regarding: {title}."
-    summary_request = f"Process '{intent_name}' ({intent_code}) for {emp_name} within {sla_target_hours}h SLA."
-    recommended_action = f"Review query in {cls_res.get('team_name') or dept_name} desk ({intent_code}), verify HRMS details, and respond within target SLA."
+    target_dept = cls_res.get('team_name') or dept_name
+    what_whom_why = extract_mail_what_whom_why(
+        subject=title,
+        body=desc,
+        sender_name=raw_name,
+        sender_email=raw_email,
+        detected_name=emp_name,
+        detected_code=entities.get("employee_code") if entities.get("employee_code") != "—" else None,
+        matched_employee=entities,
+        intent_label=intent_name,
+        dept_name=target_dept,
+        target_sla=f"{sla_target_hours}h SLA",
+        is_noise=False,
+    )
+    summary_issue = what_whom_why["what"]
+    summary_request = what_whom_why["why"]
+    recommended_action = f"Review query in {target_dept} desk ({intent_code}) for {what_whom_why['whom']}, verify HRMS records, and respond within {sla_target_hours}h SLA."
 
     # 4. Multi-Tone Response Studio (Empathetic / Professional, Concise, Verify Docs)
     tones = {
@@ -335,6 +328,7 @@ def analyze_case_ai(c: dict) -> dict:
             "core_issue": summary_issue,
             "employee_request": summary_request
         },
+        "what_whom_why": what_whom_why,
         "recommended_action": recommended_action,
         "ai_draft_reply": tones["empathetic"],
         "tones": tones,
