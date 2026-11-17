@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/agentv2.css?v=2.6">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.7">
 </head>
 <body class="v2-body">
 
@@ -489,24 +489,36 @@
             <aside class="v2-copilot-pane" id="inboxAiCopilotPanel">
               <div class="v2-copilot-head">
                 <div class="v2-copilot-brand">
-                  <span class="v2-copilot-spark">✦</span>
-                  <span>AI Copilot</span>
-                  <span class="v2-copilot-live-dot" title="Engine Live"></span>
+                  <span class="v2-copilot-badge-icon" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/><path d="M19 3v3"/><path d="M20.5 4.5h-3"/></svg>
+                  </span>
+                  <div class="v2-copilot-brand-text">
+                    <span>AI Copilot</span>
+                    <span class="v2-copilot-live-pill">
+                      <span class="v2-copilot-live-dot"></span>
+                      <span>Live</span>
+                    </span>
+                  </div>
                 </div>
                 <div class="v2-copilot-head-actions">
                   <button type="button" class="v2-highlight-toggle active" id="inboxToggleBriefBtn" onclick="toggleMailBrief()" title="Show or hide What · Whom · Why Mail Brief">
                     <span class="v2-ht-dot"></span>
                     <span>Mail Brief</span>
                   </button>
-                  <button type="button" class="v2-icon-btn sm" onclick="toggleAiPanel()" title="Close Copilot (⌘\)">✕</button>
+                  <button type="button" class="v2-icon-btn sm" onclick="toggleAiPanel()" title="Close Copilot (⌘\)" aria-label="Close Copilot">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
                 </div>
               </div>
 
               <div class="v2-copilot-scroll">
-                <!-- Card 1: Intent & Triage -->
+                <!-- Card 1: Intent & Routing -->
                 <div class="v2-copilot-card">
                   <div class="v2-cc-header">
-                    <span class="v2-cc-title">AI Intent &amp; Triage</span>
+                    <span class="v2-cc-title">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                      <span>Intent &amp; Routing</span>
+                    </span>
                     <span class="v2-conf-badge" id="inboxCopilotConfidence">—</span>
                   </div>
                   <div class="v2-intent-pill" id="inboxCopilotIntentPill">
@@ -514,36 +526,56 @@
                     <span>Awaiting selection</span>
                   </div>
                   <div class="v2-signals-wrap">
-                    <span class="v2-signals-label">Extracted Signals</span>
+                    <span class="v2-signals-label">Detected Signals</span>
                     <div class="v2-signals-row" id="inboxAiDigestPills"></div>
                   </div>
                   <div class="v2-sla-meta" id="inboxCopilotSlaInfo">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <span>Target SLA: <strong>Pending</strong></span>
                   </div>
                 </div>
 
-                <!-- Card 2: HRMS Entity Matching -->
+                <!-- Card 2: Employee Identity -->
                 <div class="v2-copilot-card">
                   <div class="v2-cc-header">
-                    <span class="v2-cc-title">HRMS Entity Match</span>
+                    <span class="v2-cc-title">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                      <span>Employee Identity</span>
+                    </span>
+                    <button type="button" class="v2-mini-copy-btn" id="inboxCopyEmpCodeBtn" onclick="copyCopilotEmpCode()" title="Copy Employee Code" style="display:none;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      <span>Copy ID</span>
+                    </button>
+                  </div>
+                  <div class="v2-emp-profile-row">
+                    <div class="v2-emp-avatar" id="inboxCopilotEmpAvatar">EM</div>
+                    <div class="v2-emp-profile-meta">
+                      <strong id="inboxCopilotExtractedName">—</strong>
+                      <span id="inboxCopilotExtractedDesig">Employee</span>
+                    </div>
                   </div>
                   <div class="v2-hrms-grid">
-                    <div class="v2-hrms-cell"><span>Employee</span><strong id="inboxCopilotExtractedName">—</strong></div>
                     <div class="v2-hrms-cell"><span>Emp Code</span><strong class="mono" id="inboxCopilotExtractedCode">—</strong></div>
                     <div class="v2-hrms-cell"><span>Location</span><strong id="inboxCopilotExtractedLocation">—</strong></div>
-                    <div class="v2-hrms-cell"><span>Designation</span><strong id="inboxCopilotExtractedDesig">—</strong></div>
                   </div>
                   <div class="v2-verify-status" id="inboxCopilotHrmsStatus">
                     <span>Select an email to verify HRMS identity</span>
                   </div>
                 </div>
 
-                <!-- Card 3: Response Studio & Conversion -->
+                <!-- Card 3: Reply Studio & Next Action -->
                 <div class="v2-copilot-card studio">
                   <div class="v2-cc-header">
-                    <span class="v2-cc-title">Response Studio</span>
+                    <span class="v2-cc-title">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      <span>Reply Studio</span>
+                    </span>
+                    <button type="button" class="v2-mini-copy-btn" onclick="copyInboxCopilotDraft()" title="Copy AI Draft">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      <span>Copy</span>
+                    </button>
                   </div>
-                  <div class="v2-tone-tabs">
+                  <div class="v2-tone-tabs" role="tablist">
                     <button type="button" class="v2-tone-btn active" id="inboxToneEmpathetic" onclick="switchInboxTone('empathetic', this)">Empathetic</button>
                     <button type="button" class="v2-tone-btn" id="inboxToneConcise" onclick="switchInboxTone('concise', this)">Concise</button>
                     <button type="button" class="v2-tone-btn" id="inboxToneVerify" onclick="switchInboxTone('verify_docs', this)">Verify Docs</button>
@@ -552,16 +584,22 @@
                     Select an email from the stream to synthesize contextual AI draft replies.
                   </div>
                   <div class="v2-studio-btns">
-                    <button type="button" class="v2-btn-secondary sm" onclick="insertInboxDraftToReply()">Insert Draft</button>
-                    <button type="button" class="v2-btn-ai sm" onclick="sendInboxAiReplyDirectly()">Send &amp; Convert</button>
+                    <button type="button" class="v2-btn-secondary sm" onclick="insertInboxDraftToReply()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
+                      <span>Insert Draft</span>
+                    </button>
+                    <button type="button" class="v2-btn-teal sm" onclick="sendInboxAiReplyDirectly()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      <span>Send &amp; Convert</span>
+                    </button>
                   </div>
 
                   <div class="v2-convert-box">
                     <div class="v2-convert-desc" id="inboxCopilotUrgencyDesc">
                       Select an email to see case conversion recommendation.
                     </div>
-                    <button type="button" class="v2-btn-convert" id="inboxCopilotConvertBtn" onclick="convertCurrentInboxEmail()">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <button type="button" class="v2-btn-convert is-ready" id="inboxCopilotConvertBtn" onclick="convertCurrentInboxEmail()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                       <span>Claim &amp; Convert to Case</span>
                     </button>
                   </div>
@@ -1337,6 +1375,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.6"></script>
+  <script src="/js/agentv2.js?v=2.7"></script>
 </body>
 </html>

@@ -1026,36 +1026,55 @@ async function selectInboxEmail(emailId) {
     copilotIntent.innerHTML = `<span class="v2-intent-dot"></span><span>${escapeHtml(ai.intent_code || 'AI01')}: ${escapeHtml(ai.intent_label || 'General Inquiry')}</span>`;
   }
   setText('inboxCopilotConfidence', `${ai.confidence || 98.4}% Match`);
-  document.getElementById('inboxCopilotSlaInfo').innerHTML = `<span>Target SLA: <strong>${escapeHtml(ai.target_sla || '24h Target SLA')}</strong></span>`;
-
-  // Signals
-  const digestEl = document.getElementById('inboxAiDigestPills');
-  if (digestEl) {
-    const pills = [];
-    const empId = ai.detected_code || matchedEmp.employee_id;
-    if (empId) pills.push(`<span class="digest-pill">🆔 ${escapeHtml(empId)}</span>`);
-    if (ai.intent_label) pills.push(`<span class="digest-pill">🏷 ${escapeHtml(ai.intent_label)}</span>`);
-    if (ai.is_urgent) pills.push(`<span class="digest-pill">⚡ Urgent SLA</span>`);
-    digestEl.innerHTML = pills.length ? pills.join('') : `<span class="v2-muted-sm">No extra signals extracted</span>`;
+  const slaEl = document.getElementById('inboxCopilotSlaInfo');
+  if (slaEl) {
+    slaEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Target SLA: <strong>${escapeHtml(ai.target_sla || '24h Target SLA')}</strong></span>`;
   }
 
-  setText('inboxCopilotExtractedName', ai.detected_name || email.sender_name || 'Employee');
-  setText('inboxCopilotExtractedCode', ai.detected_code || matchedEmp.employee_id || '—');
+  // Distinct Operational Signals (no duplicate intent label or raw emojis)
+  const digestEl = document.getElementById('inboxAiDigestPills');
+  const empId = ai.detected_code || matchedEmp.employee_id || '';
+  const isCorpSender = senderEmail.toLowerCase().endsWith('@1mg.com');
+  if (digestEl) {
+    const pills = [];
+    const queueLabel = ai.team_name || email.department_name || 'People Desk';
+    pills.push(`<span class="digest-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>${escapeHtml(queueLabel)}</span></span>`);
+    if (empId) {
+      pills.push(`<span class="digest-pill code"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg><span>${escapeHtml(empId)}</span></span>`);
+    }
+    pills.push(`<span class="digest-pill">${isCorpSender ? '1mg Directory' : 'External Inbound'}</span>`);
+    if (ai.is_urgent) {
+      pills.push(`<span class="digest-pill urgent"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Urgent SLA</span></span>`);
+    }
+    digestEl.innerHTML = pills.join('');
+  }
+
+  const displayEmpName = ai.detected_name || email.sender_name || 'Employee';
+  const empInitials = displayEmpName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
+  setText('inboxCopilotEmpAvatar', empInitials);
+  setText('inboxCopilotExtractedName', displayEmpName);
+  setText('inboxCopilotExtractedCode', empId || '—');
   setText('inboxCopilotExtractedLocation', matchedEmp.location || '—');
   setText('inboxCopilotExtractedDesig', matchedEmp.designation || 'Employee');
+  const copyEmpBtn = document.getElementById('inboxCopyEmpCodeBtn');
+  if (copyEmpBtn) copyEmpBtn.style.display = empId ? 'inline-flex' : 'none';
 
   const isAwaitingEmpId = Boolean((email.actionable_reason === 'AWAITING_EMP_ID' || ai.requires_emp_id) && email.actionable_reason !== 'VERIFIED_BY_REPLY');
-  const isVerifiedByReply = Boolean(email.actionable_reason === 'VERIFIED_BY_REPLY' || (ai.detected_code && !senderEmail.toLowerCase().endsWith('@1mg.com')));
+  const isVerifiedByReply = Boolean(email.actionable_reason === 'VERIFIED_BY_REPLY' || (ai.detected_code && !isCorpSender));
   const copilotStatus = document.getElementById('inboxCopilotHrmsStatus');
   if (copilotStatus) {
     if (isAwaitingEmpId) {
-      copilotStatus.innerHTML = `<span style="color:#B45309;">⚠️ External · Emp ID Requested</span>`;
+      copilotStatus.className = 'v2-verify-status is-warning';
+      copilotStatus.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>External · Employee ID requested</span>`;
     } else if (isVerifiedByReply) {
-      copilotStatus.innerHTML = `<span style="color:#065F46;">✓ Verified via Reply (${escapeHtml(ai.detected_code || matchedEmp.employee_id || '')})</span>`;
-    } else if (matchedEmp.is_verified) {
-      copilotStatus.innerHTML = `<span style="color:#065F46;">✓ Verified against Central HRMS</span>`;
+      copilotStatus.className = 'v2-verify-status is-verified';
+      copilotStatus.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg><span>Verified via Reply (${escapeHtml(empId)})</span>`;
+    } else if (matchedEmp.is_verified || isCorpSender) {
+      copilotStatus.className = 'v2-verify-status is-verified';
+      copilotStatus.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg><span>Verified against Central HRMS</span>`;
     } else {
-      copilotStatus.innerHTML = `<span style="color:#64748B;">Unverified External Ingest</span>`;
+      copilotStatus.className = 'v2-verify-status is-muted';
+      copilotStatus.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>External inbound sender</span>`;
     }
   }
 
@@ -1065,35 +1084,47 @@ async function selectInboxEmail(emailId) {
   const isNoise = !email.is_actionable || email.category === 'SYSTEM_ALERT' || email.category === 'NEWSLETTER' || email.category === 'SPAM' || Boolean(ai.is_noise);
 
   if (email.is_converted && email.case_number) {
-    if (copilotDesc) copilotDesc.innerHTML = `<strong style="color:#065F46;">✓ Active Case ${escapeHtml(formatCaseNumber(email.case_number))}</strong>`;
+    if (copilotDesc) copilotDesc.innerHTML = `<strong style="color:#065F46;">Linked to Active Case ${escapeHtml(formatCaseNumber(email.case_number))}</strong>`;
     if (copilotBtn) {
-      copilotBtn.style.background = '#10B190';
-      copilotBtn.innerHTML = `<span>Open Case ${escapeHtml(formatCaseNumber(email.case_number))}</span>`;
+      copilotBtn.className = 'v2-btn-convert is-open-case';
+      copilotBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><span>Open Case ${escapeHtml(formatCaseNumber(email.case_number))}</span>`;
       copilotBtn.onclick = () => openConvertedCaseInWorkspace(email.case_number);
     }
   } else if (isNoise) {
     if (copilotDesc) copilotDesc.innerHTML = `<span style="color:#64748B;">Filtered as non-actionable noise.</span>`;
     if (copilotBtn) {
-      copilotBtn.style.background = '#64748B';
-      copilotBtn.innerHTML = `<span>Move Back to Useful</span>`;
+      copilotBtn.className = 'v2-btn-convert is-noise';
+      copilotBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg><span>Move Back to Unread</span>`;
       copilotBtn.onclick = () => toggleCurrentInboxNoise();
     }
   } else {
     if (copilotDesc) {
       if (isAwaitingEmpId) {
-        copilotDesc.innerHTML = `<div>⚠️ Missing Employee ID. <button type="button" class="v2-btn-ghost xs" onclick="requestCurrentEmailEmpId()">Re-send ID Request</button></div>`;
+        copilotDesc.innerHTML = `<div>Missing Employee ID. <button type="button" class="v2-btn-ghost xs" onclick="requestCurrentEmailEmpId()">Re-send ID Request</button></div>`;
       } else {
-        copilotDesc.innerText = `${ai.urgency || 'HIGH'}: Recommended to claim & track as an active HR case.`;
+        copilotDesc.innerText = `${ai.urgency || 'HIGH'} Priority · Recommended to claim & track as an HR case.`;
       }
     }
     if (copilotBtn) {
-      copilotBtn.style.background = '#EA580C';
-      copilotBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Claim &amp; Convert to Case</span>`;
+      copilotBtn.className = 'v2-btn-convert is-ready';
+      copilotBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Claim &amp; Convert to Case</span>`;
       copilotBtn.onclick = () => convertCurrentInboxEmail();
     }
   }
 
   renderInboxDraft();
+}
+
+function copyCopilotEmpCode() {
+  const code = document.getElementById('inboxCopilotExtractedCode')?.innerText?.trim();
+  if (!code || code === '—') return;
+  navigator.clipboard?.writeText(code).then(() => showToast(`Copied Employee ID ${code}`, 'success'));
+}
+
+function copyInboxCopilotDraft() {
+  const draft = document.getElementById('inboxCopilotDraft')?.innerText?.trim();
+  if (!draft) return;
+  navigator.clipboard?.writeText(draft).then(() => showToast('AI draft copied to clipboard', 'success'));
 }
 
 function renderInboxDraft() {
