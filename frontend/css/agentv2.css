@@ -235,34 +235,35 @@ button, input, select, textarea {
   padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .v2-nav-item {
   width: 100%;
   height: 40px;
-  padding: 0 11px;
-  border: none;
-  border-radius: 9px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
-  color: var(--text-3);
+  color: #64748B;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
   white-space: nowrap;
   position: relative;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
   text-align: left;
 }
 
 .v2-nav-item:hover {
-  background: var(--bg-subtle);
+  background: #F8FAFC;
   color: var(--text-1);
 }
 
 .v2-nav-item.active {
-  background: var(--coral-soft);
+  background: #FFF3F1;
+  border-color: #FFE1DC;
   color: var(--coral-hover);
 }
 
@@ -270,25 +271,37 @@ button, input, select, textarea {
   content: '';
   position: absolute;
   left: -10px;
-  top: 8px;
-  bottom: 8px;
+  top: 9px;
+  bottom: 9px;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: var(--coral);
 }
 
 .v2-nav-icon {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.v2-nav-item:hover .v2-nav-icon {
+  background: #F1F5F9;
+  color: var(--text-1);
+}
+
+.v2-nav-item.active .v2-nav-icon {
+  background: #FFE4E0;
+  color: var(--coral-hover);
 }
 
 .v2-nav-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .v2-nav-label {
@@ -336,26 +349,27 @@ button, input, select, textarea {
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .v2-rail-divider {
   height: 1px;
-  background: var(--border);
+  background: var(--border-soft);
   margin: 4px 4px 6px;
 }
 
 .v2-nav-item.subtle {
   height: 36px;
   font-size: 12.5px;
+  color: #64748B;
 }
 
 .v2-rail-status {
   margin-top: 6px;
-  padding: 8px 13px;
+  padding: 7px 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-3);
@@ -363,11 +377,11 @@ button, input, select, textarea {
 }
 
 .v2-pulse-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #10B981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  background: var(--teal-bright);
+  box-shadow: 0 0 0 3px rgba(16, 177, 144, 0.18);
   flex-shrink: 0;
 }
 
@@ -381,7 +395,7 @@ button, input, select, textarea {
 }
 
 /* ==========================================================================
-   MAIN COLUMN & TOPBAR
+   MAIN COLUMN & TOPBAR (COHESIVE CORAL + MEDICAL TEAL + SLATE)
    ========================================================================== */
 .v2-main {
   flex: 1;
@@ -395,13 +409,13 @@ button, input, select, textarea {
 .v2-topbar {
   height: var(--topbar-h);
   flex-shrink: 0;
-  background: var(--bg-surface);
+  background: #FFFFFF;
   border-bottom: 1px solid var(--border);
   padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   z-index: 50;
 }
 
@@ -410,6 +424,7 @@ button, input, select, textarea {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .v2-view-heading {
@@ -440,36 +455,38 @@ button, input, select, textarea {
 .v2-desk-pill {
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--bg-subtle);
-  color: var(--text-2);
-  border: 1px solid var(--border);
+  letter-spacing: 0.45px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  border: 1px solid var(--teal-border);
   white-space: nowrap;
 }
 
 .v2-topbar-center {
   flex: 1;
-  max-width: 440px;
+  max-width: 420px;
+  min-width: 220px;
 }
 
 .v2-omni-search {
   position: relative;
   display: flex;
   align-items: center;
-  background: var(--bg-subtle);
+  gap: 8px;
+  background: #F8FAFC;
   border: 1px solid var(--border);
   border-radius: 9px;
   height: 34px;
-  padding: 0 8px 0 32px;
+  padding: 0 7px 0 32px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .v2-omni-search:focus-within {
   background: #FFFFFF;
   border-color: var(--coral);
-  box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.15);
+  box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.14);
 }
 
 .v2-omni-icon {
@@ -482,12 +499,14 @@ button, input, select, textarea {
 }
 
 .v2-omni-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
   outline: none;
   font-size: 12.5px;
   color: var(--text-1);
+  text-overflow: ellipsis;
 }
 
 .v2-omni-input::placeholder {
@@ -516,15 +535,16 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .v2-sync-pill,
 .v2-mailbox-pill {
-  height: 30px;
+  height: 31px;
   padding: 0 10px;
-  border-radius: 7px;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg-surface);
+  background: #FFFFFF;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
@@ -537,37 +557,46 @@ button, input, select, textarea {
 
 .v2-sync-pill:hover,
 .v2-mailbox-pill:hover {
-  background: var(--bg-subtle);
+  background: #F8FAFC;
   border-color: #CBD5E1;
+  color: var(--text-1);
 }
 
 .v2-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #10B981;
+  background: var(--teal-bright);
+  box-shadow: 0 0 0 2px rgba(16, 177, 144, 0.2);
 }
 
+/* Harmonized Medical Teal / Slate Copilot Toggle */
 .v2-copilot-toggle {
-  height: 30px;
-  padding: 0 10px;
+  height: 31px;
+  padding: 0 11px;
   border-radius: 99px;
-  border: 1px solid var(--ai-border);
-  background: var(--ai-soft);
-  color: var(--ai);
+  border: 1px solid var(--border);
+  background: #F8FAFC;
+  color: var(--text-2);
   font-size: 12px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.16s ease;
+}
+
+.v2-copilot-toggle:hover {
+  border-color: #CBD5E1;
+  color: var(--text-1);
 }
 
 .v2-copilot-toggle.active {
-  background: var(--ai);
-  border-color: var(--ai);
+  background: var(--teal);
+  border-color: var(--teal);
   color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(16, 132, 126, 0.22);
 }
 
 .v2-toggle-indicator {
@@ -586,21 +615,23 @@ button, input, select, textarea {
 .v2-avatar-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 6px 2px 2px;
+  gap: 5px;
+  padding: 2px 7px 2px 2px;
   border-radius: 99px;
   border: 1px solid var(--border);
   background: #FFFFFF;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .v2-avatar-btn:hover {
   border-color: #CBD5E1;
+  background: #F8FAFC;
 }
 
 .v2-avatar-circle {
-  width: 28px;
-  height: 28px;
+  width: 27px;
+  height: 27px;
   border-radius: 50%;
   background: linear-gradient(135deg, #FF6F61 0%, #EE5A4C 100%);
   color: #FFFFFF;
@@ -612,8 +643,8 @@ button, input, select, textarea {
 }
 
 .v2-avatar-caret {
-  font-size: 10px;
   color: var(--text-3);
+  flex-shrink: 0;
 }
 
 .v2-profile-popover {
