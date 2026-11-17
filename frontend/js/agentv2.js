@@ -883,14 +883,16 @@ async function selectInboxEmail(emailId) {
   const deptTitle = formatCategoryTitle(resolvedCategory);
 
   // Ribbon
+  const deskLabel = /desk$/i.test(deptTitle) ? deptTitle : `${deptTitle} Desk`;
   setText('inboxRibbonEmailId', `#EML-${String(email.id).padStart(3, '0')}`);
-  setText('inboxRibbonDesk', `${deptTitle} Desk`);
+  setText('inboxRibbonDesk', deskLabel);
   setText('inboxRibbonSlaText', ai.target_sla ? ai.target_sla.replace('Target SLA', 'SLA') : '48h SLA');
 
   const ribRead = document.getElementById('inboxRibbonReadStatus');
   if (ribRead) {
     const rName = email.read_by_name || currentUser?.name || 'Agent';
-    ribRead.innerText = `✓ Read by ${rName}`;
+    ribRead.innerText = `✓ ${rName}`;
+    ribRead.title = `Read by ${rName}`;
   }
 
   const ribAssignee = document.getElementById('inboxRibbonAssignee');
@@ -952,12 +954,20 @@ async function selectInboxEmail(emailId) {
   setText('inboxSubjectTitle', email.subject || 'Untitled Email');
   setText('inboxHeaderSenderName', senderName);
   setText('inboxHeaderSenderEmail', senderEmail);
-  setText('inboxHeaderRecipientDesk', `To: ${accountEmail} · ${deptTitle} Desk`);
+  setText('inboxHeaderRecipientDesk', `To: ${accountEmail} · ${deskLabel}`);
   setText('inboxHeaderTimestamp', formattedTime);
   setText('inboxReplyTargetName', senderName);
+  setText('inboxReplyCompactName', senderName);
 
+  const avatars = ['#FF6F61', '#10847E', '#2563EB', '#D97706', '#4F46E5', '#059669'];
   const avatarEl = document.getElementById('inboxSenderAvatar');
-  if (avatarEl) avatarEl.innerText = senderName.charAt(0).toUpperCase();
+  if (avatarEl) {
+    avatarEl.innerText = senderName.charAt(0).toUpperCase();
+    avatarEl.style.background = avatars[Math.abs(email.id || 0) % avatars.length];
+  }
+
+  // Collapse reply composer by default so email content gets maximum vertical room
+  collapseInboxComposer();
 
   const intentTag = document.getElementById('inboxHeaderIntentTag');
   if (intentTag) {
@@ -1085,9 +1095,27 @@ function switchInboxTone(tone, btnEl) {
   renderInboxDraft();
 }
 
+function expandInboxComposer(shouldFocus = true) {
+  const compactBar = document.getElementById('inboxReplyCompactBar');
+  const composer = document.getElementById('inboxReplyComposer');
+  if (compactBar) compactBar.style.display = 'none';
+  if (composer) composer.style.display = 'flex';
+  if (shouldFocus) {
+    setTimeout(() => document.getElementById('inboxQuickReplyInput')?.focus(), 20);
+  }
+}
+
+function collapseInboxComposer() {
+  const compactBar = document.getElementById('inboxReplyCompactBar');
+  const composer = document.getElementById('inboxReplyComposer');
+  if (composer) composer.style.display = 'none';
+  if (compactBar) compactBar.style.display = 'flex';
+}
+
 function insertInboxDraftToReply() {
   const draft = document.getElementById('inboxCopilotDraft')?.innerText?.trim();
   const input = document.getElementById('inboxQuickReplyInput');
+  expandInboxComposer(true);
   if (draft && input) {
     input.value = draft;
     input.focus();
@@ -1098,6 +1126,7 @@ function insertInboxDraftToReply() {
 function insertInboxPreset(key) {
   if (!key || !CANNED_RESPONSES[key]) return;
   const input = document.getElementById('inboxQuickReplyInput');
+  expandInboxComposer(true);
   if (input) {
     input.value = CANNED_RESPONSES[key].text;
     input.focus();
@@ -2747,15 +2776,26 @@ function formatThreadConversationHtml(email) {
 function formatEmailBodyHtml(rawBody) {
   if (!rawBody) return '<p class="mail-para" style="color:#64748B;">No message content provided.</p>';
 
+  // 1. Decode HTML entities & normalize line endings
   let text = decodeHtmlEntities(String(rawBody))
     .replace(/\u00A0/g, ' ')
     .replace(/\\r\\n/g, '\n')
     .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n')
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .trim();
 
-  const quoteMatch = text.match(/(?:\n){2,}\s*(?:>{1,4}(?:\s|$)|On\s+[\s\S]{10,160}?\bwrote:|---+ Original Message ---+)/i);
+  // 2. Fix broken markdown bullets ("-\n\n*Employee Name:* Vaibhav" -> "- *Employee Name:* Vaibhav")
+  text = text
+    .replace(/(?:^|\n)\s*-\s*\n+\s*/g, '\n- ')
+    .replace(/(\*{1,2}[^*\n]{2,50}:\*{1,2})\s*\n{2,}(?=\s*[-•*]\s+)/g, '$1\n');
+
+  // 3. Separate fresh message from quoted thread history
+  const quoteSplitRegex = /(?:\n){2,}\s*(?:>{1,4}(?:\s|$)|On\s+[\s\S]{10,180}?\bwrote:|---+ Original Message ---+|From:\s+[^\n]+(?:<[^\n]+>|@))/i;
+  const fallbackQuoteRegex = /\n\s*(?:>{2,}(?:\s|$)|On\s+[^\n]{12,140}\bwrote:|---+ Original Message ---+)/i;
+  const quoteMatch = text.match(quoteSplitRegex) || text.match(fallbackQuoteRegex);
+
   let mainBody = text;
   let quotedHistory = '';
   if (quoteMatch && quoteMatch.index > 0) {
@@ -2763,48 +2803,160 @@ function formatEmailBodyHtml(rawBody) {
     quotedHistory = text.substring(quoteMatch.index).trim();
   }
 
+  // Auto-keep quoted/forwarded section open when mainBody is tiny (e.g., only an image tag or sign-off)
+  const mainBodyVisibleChars = mainBody
+    .replace(/\[image:\s*[^\]]+\]/gi, '')
+    .replace(/(?:Warm|Best|Sincere)?\s*Regards,?\s*Team\s*HR/gi, '')
+    .trim().length;
+  const shouldAutoExpandQuote = Boolean(quotedHistory && mainBodyVisibleChars < 100);
+
+  function structureCollapsedText(content, isQuoted) {
+    if (isQuoted) return content;
+    let out = content.replace(/[ \t]{2,}/g, ' ');
+    if (!out.includes('\n\n')) {
+      out = out
+        .replace(/^(Dear\s+(?:Sir\/Ma['’]?am|Sir\/Madam|HR\s*Team|Team|HR|All)[^,\n]*,)\s+/i, '$1\n\n')
+        .replace(/\s+(Details as Mentioned by the Applicant[^.]*?\s+Details Confirmed by[^\n]*?)\s+(?=1\s+Employee Code)/i, '\n\n**$1**\n')
+        .replace(/\s+(\d{1,2})\s+(Employee Code|Tenure|Designation|Cost to Company|Reason for Leaving|Exit Formalities|Is the candidate\/Applicant eligible for rehire\s*\??|UAN|PAN of the Employee|Certificate number as on Form 16|TAN of the Employer|Feedback on account of[^0-9]*|TDS Status|Date of Verification|Time of Verification)\b/gi, '\n$1. $2:')
+        .replace(/\s+(\(If Applicable\)\s*\*\*Important:)/gi, '\n\n$1')
+        .replace(/\s+(We thank you in advance for your time and support\.)/gi, '\n\n$1')
+        .replace(/\s+(Note:\s+This specific correspondence)/gi, '\n\n$1')
+        .replace(/\s+((?:Sincere|Warm|Best)\s+Regards,|Regards,|Thanks\s*(?:&|and)\s*Regards,)/gi, '\n\n$1\n');
+    }
+    return out;
+  }
+
   function applyHighlights(safe) {
     if (!isAiHighlightsActive) return safe;
     return safe
-      .replace(/\b(CON1MG-?\d+|1MG[A-Z]{0,4}-?\d+|EMP[A-Z]{0,3}-?\d+)\b/gi, m => `<mark class="ai-mark ai-mark-code">${m}</mark>`)
-      .replace(/\b(AuthBridge|HireRight|Darwinbox|MediBuddy|Tata 1mg|ESIC|EPFO)\b/gi, m => `<mark class="ai-mark ai-mark-org">${m}</mark>`)
-      .replace(/\b(pending|missing|urgent|discrepancy|hold|rejected|incorrect)\b/gi, m => `<mark class="ai-mark ai-mark-status">${m}</mark>`)
-      .replace(/\b(background verification|biometric punch|punch regularization|salary slip|payslip|mediclaim)\b/gi, m => `<mark class="ai-mark ai-mark-topic">${m}</mark>`);
+      .replace(/\b(CON1MG-?\d+|1MG[A-Z]{0,4}-?\d+|EMP[A-Z]{0,3}-?\d+|APRT\d+|NUNUX-?\d+)\b/gi, m => `<mark class="ai-mark ai-mark-code">${m}</mark>`)
+      .replace(/\b(AuthBridge|HireRight|First Advantage|FADV|Darwinbox|PeopleStrong|Truein|MediBuddy|Tata 1mg|ESIC|EPFO)\b/gi, m => `<mark class="ai-mark ai-mark-org">${m}</mark>`)
+      .replace(/\b(pending|absent|failure|missing|urgent|denied|discrepancy|hold|rejected|incorrect)\b/gi, m => `<mark class="ai-mark ai-mark-status">${m}</mark>`)
+      .replace(/\b(background verification|employment verification|biometric punch|punch regularization|salary slip|payslip|mediclaim)\b/gi, m => `<mark class="ai-mark ai-mark-topic">${m}</mark>`);
+  }
+
+  function formatInlineContent(rawLine, allowHighlights) {
+    const tokens = [];
+    let tokenized = rawLine
+      .replace(/\[image:\s*([^\]]+)\]/gi, (_, imgName) => {
+        const idx = tokens.length;
+        tokens.push(`<span class="mail-inline-asset-chip" title="Embedded inline image"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>${escapeHtml(imgName.trim())}</span></span>`);
+        return `__MAIL_TOK_${idx}__`;
+      })
+      .replace(/<(https?:\/\/[^>\s]+)>|\b(https?:\/\/[^\s<>()]+[^\s<>().,;!?])/gi, (_, bracketUrl, bareUrl) => {
+        const rawUrl = bracketUrl || bareUrl;
+        const idx = tokens.length;
+        let label = rawUrl;
+        try {
+          const u = new URL(rawUrl);
+          const pathShort = u.pathname && u.pathname !== '/' ? u.pathname.slice(0, 32) + (u.pathname.length > 32 ? '…' : '') : '';
+          label = `${u.hostname.replace(/^www\./, '')}${pathShort}`;
+        } catch (e) {
+          label = rawUrl.length > 52 ? rawUrl.slice(0, 49) + '…' : rawUrl;
+        }
+        tokens.push(`<a class="mail-inline-link" href="${escapeHtml(rawUrl)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(rawUrl)}">${escapeHtml(label)}</a>`);
+        return `__MAIL_TOK_${idx}__`;
+      });
+
+    const boldTokens = [];
+    tokenized = tokenized.replace(/\*\*([^*\n]{1,140})\*\*|\*([^*\n]{1,90})\*/g, (_, b1, b2) => {
+      const idx = boldTokens.length;
+      const inner = escapeHtml((b1 || b2 || '').trim());
+      boldTokens.push(`<strong>${allowHighlights ? applyHighlights(inner) : inner}</strong>`);
+      return `__BOLD_TOK_${idx}__`;
+    });
+
+    let safe = escapeHtml(tokenized);
+    if (allowHighlights) safe = applyHighlights(safe);
+    safe = safe.replace(/__BOLD_TOK_(\d+)__/g, (_, i) => boldTokens[Number(i)] || '');
+    safe = safe.replace(/__MAIL_TOK_(\d+)__/g, (_, i) => tokens[Number(i)] || '');
+    return safe;
+  }
+
+  function renderStructuredBlock(trimmed, allowHighlights) {
+    const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+
+    const kvRows = [];
+    let heading = '';
+    let nonKv = 0;
+
+    lines.forEach((line, idx) => {
+      const c = line.replace(/^[-•*]\s+/, '').trim();
+      const numberedMatch = c.match(/^(\d{1,2})\.\s+([^:]{2,75}):\s*(.*)$/);
+      const boldKvMatch = c.match(/^\*{1,2}([^*:]{2,55}):\*{1,2}\s*(.+)$/);
+      const plainKvMatch = c.match(/^([A-Za-z][A-Za-z0-9\s\/()]{1,42}):\s+(.+)$/);
+
+      if (idx === 0 && c.match(/^\*{1,2}[^*]+:\*{1,2}$/) && !c.match(/:\*{1,2}\s+\S/)) {
+        heading = c.replace(/^\*{1,2}|\*{1,2}$/g, '').replace(/:$/, '').trim();
+      } else if (idx === 0 && c.match(/^\*\*Details as Mentioned/i)) {
+        heading = c.replace(/^\*{1,2}|\*{1,2}$/g, '').trim();
+      } else if (numberedMatch) {
+        kvRows.push({ k: `${numberedMatch[1]}. ${numberedMatch[2].trim()}`, v: numberedMatch[3].trim() || '—' });
+      } else if (boldKvMatch) {
+        kvRows.push({ k: boldKvMatch[1].trim(), v: boldKvMatch[2].trim() });
+      } else if (plainKvMatch && !/^https?$/i.test(plainKvMatch[1])) {
+        kvRows.push({ k: plainKvMatch[1].trim(), v: plainKvMatch[2].trim() });
+      } else {
+        nonKv++;
+      }
+    });
+
+    if (kvRows.length >= 2 && nonKv <= 1) {
+      const titleHtml = heading ? `<div class="mail-kv-title">${escapeHtml(heading)}</div>` : '';
+      const rowsHtml = kvRows.map(r =>
+        `<div class="mail-kv-row"><div class="mail-kv-label">${escapeHtml(r.k)}</div><div class="mail-kv-value">${formatInlineContent(r.v, allowHighlights)}</div></div>`
+      ).join('');
+      return `<div class="mail-kv-card">${titleHtml}<div class="mail-kv-grid">${rowsHtml}</div></div>`;
+    }
+    return null;
   }
 
   const renderPara = (content, isQuoted = false) => {
-    return content.split(/\n\s*\n/).map(block => {
-      const clean = block.trim();
-      if (!clean) return '';
-      const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
-      const kvRows = [];
-      let nonKv = 0;
-      lines.forEach(l => {
-        const c = l.replace(/^[-•*]\s+/, '');
-        const m = c.match(/^([A-Za-z0-9\s\/()]{2,40}):\s+(.+)$/);
-        if (m && !/^https?$/i.test(m[1])) kvRows.push({ k: m[1].trim(), v: m[2].trim() });
-        else nonKv++;
-      });
+    const prepared = structureCollapsedText(content, isQuoted);
+    const allowHighlights = isAiHighlightsActive && !isQuoted;
 
-      if (!isQuoted && kvRows.length >= 2 && nonKv <= 1) {
-        return `<div class="mail-kv-card"><div class="mail-kv-grid">${kvRows.map(r =>
-          `<div class="mail-kv-row"><div class="mail-kv-label">${escapeHtml(r.k)}</div><div class="mail-kv-value">${applyHighlights(escapeHtml(r.v))}</div></div>`
-        ).join('')}</div></div>`;
+    return prepared.split(/\n\s*\n/).map(block => {
+      let clean = block.trim();
+      if (!clean) return '';
+      if (isQuoted) {
+        clean = clean.split('\n').map(l => l.replace(/^\s*>+\s?/, '')).join('\n').trim();
+        if (!clean) return '';
       }
 
-      const rendered = lines.map(l => isQuoted ? escapeHtml(l) : applyHighlights(escapeHtml(l))).join('<br>');
+      if (!isQuoted) {
+        const kvHtml = renderStructuredBlock(clean, allowHighlights);
+        if (kvHtml) return kvHtml;
+
+        const firstLine = clean.split('\n')[0].trim();
+        if (firstLine.match(/^(?:Regards|Warm regards|Best regards|Sincere regards|Thanks\s*(?:&|and)\s*regards|Sincerely|Kind regards|Team HR)[,!.]?$/i)) {
+          return `<div class="mail-signoff-block">${clean.split('\n').map(l => formatInlineContent(l, false)).join('<br>')}</div>`;
+        }
+        if (clean.match(/(?:©\s*\d{4}|All rights reserved|You received this email to let you know)/i)) {
+          return `<div class="mail-footer-block">${clean.split('\n').map(l => formatInlineContent(l, false)).join('<br>')}</div>`;
+        }
+      }
+
+      const rendered = clean.split('\n').map(l => formatInlineContent(l.trim(), allowHighlights)).join('<br>');
       return `<p class="mail-para">${rendered}</p>`;
     }).filter(Boolean).join('');
   };
 
   let html = renderPara(mainBody, false);
   if (quotedHistory) {
-    html += `
-      <details class="mail-quoted-details">
-        <summary class="mail-quoted-summary">••• Show quoted history</summary>
-        <div class="mail-quoted-content">${renderPara(quotedHistory, true)}</div>
-      </details>
-    `;
+    const cleanQuote = quotedHistory
+      .split('\n')
+      .map(l => l.replace(/^\s*>+\s?/, ''))
+      .filter(l => l.trim().length > 0)
+      .join('\n');
+    if (cleanQuote.trim()) {
+      html += `
+        <details class="mail-quoted-details" ${shouldAutoExpandQuote ? 'open' : ''}>
+          <summary class="mail-quoted-summary">${shouldAutoExpandQuote ? 'Forwarded / Previous Message' : '••• Show quoted history'}</summary>
+          <div class="mail-quoted-content">${renderPara(cleanQuote, !shouldAutoExpandQuote)}</div>
+        </details>
+      `;
+    }
   }
   return html;
 }

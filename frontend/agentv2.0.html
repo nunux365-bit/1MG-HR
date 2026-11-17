@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/agentv2.css?v=2.4">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.5">
 </head>
 <body class="v2-body">
 
@@ -317,7 +317,7 @@
 
               <!-- Active Email Content -->
               <div class="v2-inspector-active" id="inboxActiveContent" style="display: none;">
-                <!-- Sticky Action Ribbon -->
+                <!-- Single-Row Sleek Action Ribbon -->
                 <div class="v2-ribbon" id="inboxInspectorRibbon">
                   <div class="v2-ribbon-left">
                     <span class="v2-id-chip mono" id="inboxRibbonEmailId">#EML-000</span>
@@ -331,14 +331,14 @@
                   </div>
                   <div class="v2-ribbon-actions">
                     <button type="button" class="v2-btn-secondary sm" id="inboxTransferDeptBtn" onclick="openTransferDepartmentModal()" title="Transfer desk or reassign teammate">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                       <span>Reassign</span>
                     </button>
                     <button type="button" class="v2-btn-secondary sm" id="inboxToggleNoiseBtn" onclick="toggleCurrentInboxNoise()">
                       <span>Mark Noise</span>
                     </button>
                     <button type="button" class="v2-btn-primary sm" id="inboxConvertCaseBtn" onclick="convertCurrentInboxEmail()">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                       <span>Convert to Case</span>
                     </button>
                   </div>
@@ -348,18 +348,21 @@
                 <div class="v2-mail-scroll" id="inboxMailScroll">
                   <div class="v2-mail-card">
                     <div class="v2-mail-header">
-                      <h2 class="v2-mail-subject" id="inboxSubjectTitle">Loading...</h2>
+                      <div class="v2-mail-subject-wrap">
+                        <h2 class="v2-mail-subject" id="inboxSubjectTitle">Loading...</h2>
+                        <span class="v2-intent-tag" id="inboxHeaderIntentTag" style="display: none;">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2L14.3 9.7L22 12L14.3 14.3L12 22L9.7 14.3L2 12L9.7 9.7L12 2Z"/></svg>
+                          <span id="inboxHeaderIntentLabel"></span>
+                        </span>
+                      </div>
+
                       <div class="v2-mail-sender-bar">
                         <div class="v2-mail-sender-left">
                           <div class="v2-mail-avatar" id="inboxSenderAvatar">E</div>
-                          <div>
+                          <div class="v2-mail-sender-info">
                             <div class="v2-sender-name-row">
                               <span class="v2-sender-name" id="inboxHeaderSenderName">Employee</span>
                               <span class="v2-verified-pill" id="inboxHeaderVerifiedTag" style="display: none;"></span>
-                              <span class="v2-intent-tag" id="inboxHeaderIntentTag" style="display: none;">
-                                <span>✦</span>
-                                <span id="inboxHeaderIntentLabel"></span>
-                              </span>
                             </div>
                             <div class="v2-sender-sub-row">
                               <span id="inboxHeaderSenderEmail"></span>
@@ -371,8 +374,12 @@
                         <div class="v2-mail-sender-right">
                           <span class="v2-mail-time" id="inboxHeaderTimestamp"></span>
                           <div class="v2-mail-tools">
-                            <button type="button" class="v2-tool-mini" onclick="copyInboxEmailBody()" title="Copy body">Copy</button>
-                            <button type="button" class="v2-tool-mini" onclick="window.print()" title="Print">Print</button>
+                            <button type="button" class="v2-tool-icon-btn" onclick="copyInboxEmailBody()" title="Copy email text">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                            <button type="button" class="v2-tool-icon-btn" onclick="window.print()" title="Print email">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -381,7 +388,7 @@
                     <!-- Handover Banner -->
                     <div class="v2-handover-banner" id="inboxAssignmentBanner" style="display: none;">
                       <div class="v2-handover-left">
-                        <span class="v2-handover-icon">👤</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4338CA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <div>
                           <div class="v2-handover-title">
                             Assigned Specialist: <strong id="inboxHandoverName">Unassigned</strong>
@@ -402,11 +409,23 @@
                   </div>
                 </div>
 
-                <!-- Docked Quick Reply Composer -->
-                <div class="v2-docked-composer" id="inboxReplyComposer">
+                <!-- Compact Reply Bar (Default Apple/Gmail Reading Mode) -->
+                <div class="v2-reply-compact-bar" id="inboxReplyCompactBar">
+                  <button type="button" class="v2-reply-trigger" onclick="expandInboxComposer(true)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                    <span>Reply to <strong id="inboxReplyCompactName">Employee</strong>...</span>
+                  </button>
+                  <div class="v2-reply-compact-actions">
+                    <button type="button" class="v2-btn-ai-sm" onclick="insertInboxDraftToReply()">✦ AI Draft</button>
+                    <button type="button" class="v2-btn-primary sm" onclick="expandInboxComposer(true)">Reply</button>
+                  </div>
+                </div>
+
+                <!-- Expanded Quick Reply Composer -->
+                <div class="v2-docked-composer" id="inboxReplyComposer" style="display: none;">
                   <div class="v2-composer-top">
                     <div class="v2-composer-to">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.4"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FF6F61" stroke-width="2.2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
                       <span>Reply to <strong id="inboxReplyTargetName">Employee</strong></span>
                       <span class="v2-smtp-tag"><span class="v2-smtp-dot"></span> peopledesk@1mg.com</span>
                     </div>
@@ -420,14 +439,16 @@
                         <option value="info_needed">Request Details</option>
                       </select>
                       <button type="button" class="v2-btn-ai-sm" onclick="insertInboxDraftToReply()">✦ AI Draft</button>
+                      <button type="button" class="v2-icon-btn sm" onclick="collapseInboxComposer()" title="Minimize reply box">✕</button>
                     </div>
                   </div>
                   <textarea id="inboxQuickReplyInput" class="v2-composer-textarea" rows="3" placeholder="Write your reply (⌘+Enter to send via People Desk SMTP)..."></textarea>
                   <div class="v2-composer-bottom">
                     <span class="v2-composer-hint">Replies float to top of thread &amp; dispatch via corporate SMTP</span>
                     <div class="v2-composer-btns">
+                      <button type="button" class="v2-btn-secondary sm" onclick="collapseInboxComposer()">Cancel</button>
                       <button type="button" class="v2-btn-primary sm" id="inboxSendReplyBtn" onclick="sendInboxReply()">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         <span>Send Reply</span>
                       </button>
                     </div>
@@ -1291,6 +1312,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.4"></script>
+  <script src="/js/agentv2.js?v=2.5"></script>
 </body>
 </html>
