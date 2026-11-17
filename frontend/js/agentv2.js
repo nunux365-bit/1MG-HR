@@ -17,7 +17,7 @@ let isInboxStreamCollapsed = false;
 let isAiHighlightsActive = true;
 
 // Inbox state
-let currentInboxTriageTab = 'useful';
+let currentInboxTriageTab = 'unread';
 let currentSelectedEmailId = null;
 let currentInboxTone = 'empathetic';
 let lastInboxEmailCounts = {};
@@ -556,7 +556,7 @@ async function fetchCasesData() {
 }
 
 function updateRailBadges() {
-  const inboxCount = lastInboxEmailCounts?.actionable ?? lastInboxEmailCounts?.useful ??
+  const inboxCount = lastInboxEmailCounts?.unread ?? lastInboxEmailCounts?.useful ??
     allInboxEmails.filter(e => !e.is_converted && e.is_actionable === 1).length;
   setBadge('navInboxBadge', inboxCount);
 
@@ -683,10 +683,9 @@ async function loadInboxEmails(options = {}) {
 
       if (data.counts) {
         lastInboxEmailCounts = data.counts;
-        setText('countUsefulBadge', data.counts.useful ?? 0);
-        setText('countActionableBadge', data.counts.actionable ?? 0);
+        setText('countUnreadBadge', data.counts.unread ?? data.counts.useful ?? 0);
+        setText('countReadBadge', data.counts.read ?? 0);
         setText('countAssignedMeBadge', data.counts.assigned_to_me ?? 0);
-        setText('countUnclaimedMailBadge', data.counts.unclaimed ?? 0);
         setText('countNoiseBadge', data.counts.noise ?? 0);
         updateRailBadges();
       }
@@ -765,11 +764,13 @@ function renderInboxEmailStream() {
   listEl.innerHTML = filtered.map(email => {
     const ai = email.ai_insights || {};
     const isActive = email.id === currentSelectedEmailId;
-    const isUnread = !email.is_read;
+    const isResolvedCase = email.case_status === 'RESOLVED' || email.case_status === 'CLOSED';
+    const isUnresolved = !isResolvedCase && (email.is_actionable !== 0);
     const sender = ai.detected_name || email.sender_name || 'Employee';
     const initial = sender.charAt(0).toUpperCase();
     const grad = gradients[Math.abs(email.id || 0) % gradients.length];
     const timeStr = formatRelativeTime(email.last_activity_at || email.received_at);
+    const cleanSnippet = decodeHtmlEntities(email.snippet || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
     const isMine = (
       (email.assigned_user_id && currentUser?.id && email.assigned_user_id === currentUser.id) ||
       (email.assigned_user_email && currentUser?.email && email.assigned_user_email.toLowerCase() === currentUser.email.toLowerCase())
@@ -779,10 +780,13 @@ function renderInboxEmailStream() {
     if (email.is_converted && email.case_number) {
       tags.push(`<span class="v2-mini-tag case">${escapeHtml(formatCaseNumber(email.case_number))}</span>`);
     }
+    if (isResolvedCase) {
+      tags.push(`<span class="v2-mini-tag resolved">✓ Resolved</span>`);
+    }
     if (ai.intent_label) {
       tags.push(`<span class="v2-mini-tag intent">${escapeHtml(ai.intent_label)}</span>`);
     }
-    if (ai.is_urgent) {
+    if (ai.is_urgent && !isResolvedCase) {
       tags.push(`<span class="v2-mini-tag urgent">Urgent</span>`);
     }
     if (isMine) {
@@ -792,7 +796,7 @@ function renderInboxEmailStream() {
     }
 
     return `
-      <div class="v2-email-card ${isActive ? 'active' : ''} ${isUnread ? 'unread' : ''}" onclick="selectInboxEmail(${email.id})">
+      <div class="v2-email-card ${isActive ? 'active' : ''} ${isUnresolved ? 'unread' : 'resolved'}" onclick="selectInboxEmail(${email.id})">
         <div class="v2-ec-top">
           <div class="v2-ec-sender">
             <span class="v2-ec-avatar" style="background: ${grad}">${initial}</span>
@@ -801,7 +805,7 @@ function renderInboxEmailStream() {
           <span class="v2-ec-time">${escapeHtml(timeStr)}</span>
         </div>
         <div class="v2-ec-subject">${escapeHtml(email.subject || 'Untitled Email')}</div>
-        <div class="v2-ec-snippet">${escapeHtml(email.snippet || '')}</div>
+        <div class="v2-ec-snippet">${escapeHtml(cleanSnippet)}</div>
         ${tags.length ? `<div class="v2-ec-tags">${tags.join('')}</div>` : ''}
       </div>
     `;
@@ -1790,7 +1794,7 @@ async function transitionDossierStatus(newStatus) {
     const data = await res.json();
     if (data.success) {
       showToast(`Case moved to ${newStatus.replace(/_/g, ' ')}`, 'success');
-      await fetchCasesData();
+      await Promise.all([fetchCasesData(), loadInboxEmails({ silent: true })]);
       loadAgentCasesKPIs();
       openAgentCaseDossier(activeDossierCase.id);
     }
@@ -2517,7 +2521,7 @@ async function confirmResolve() {
     if (data.success) {
       showToast('Case marked as resolved!', 'success');
       closeResolveModal();
-      await fetchCasesData();
+      await Promise.all([fetchCasesData(), loadInboxEmails({ silent: true })]);
       if (currentViewId === 'casesView') {
         loadAgentCasesKPIs();
         renderAgentCasesTable();

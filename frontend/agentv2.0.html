@@ -236,27 +236,27 @@
           <div class="v2-subbar">
             <div class="v2-subbar-left">
               <button type="button" class="v2-icon-btn" onclick="toggleInboxCollapse()" title="Toggle Queue Sidebar ([)">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
               </button>
 
               <div class="v2-segmented-tabs" role="tablist">
-                <button type="button" class="v2-seg-tab active" id="tabUsefulMail" onclick="setInboxTriageTab('useful', this)">
-                  <span>Useful</span>
-                  <span class="v2-seg-count" id="countUsefulBadge">0</span>
+                <button type="button" class="v2-seg-tab active" id="tabUnreadMail" onclick="setInboxTriageTab('unread', this)" title="Unresolved cases">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+                  <span>Unread</span>
+                  <span class="v2-seg-count coral" id="countUnreadBadge">0</span>
                 </button>
-                <button type="button" class="v2-seg-tab" id="tabActionableMail" onclick="setInboxTriageTab('actionable', this)">
-                  <span>Actionable</span>
-                  <span class="v2-seg-count coral" id="countActionableBadge">0</span>
+                <button type="button" class="v2-seg-tab" id="tabReadMail" onclick="setInboxTriageTab('read', this)" title="Resolved &amp; closed cases">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  <span>Read</span>
+                  <span class="v2-seg-count teal" id="countReadBadge">0</span>
                 </button>
-                <button type="button" class="v2-seg-tab" id="tabAssignedMe" onclick="setInboxTriageTab('assigned_to_me', this)">
+                <button type="button" class="v2-seg-tab" id="tabAssignedMe" onclick="setInboxTriageTab('assigned_to_me', this)" title="Assigned to you">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   <span>Assigned to Me</span>
                   <span class="v2-seg-count blue" id="countAssignedMeBadge">0</span>
                 </button>
-                <button type="button" class="v2-seg-tab" id="tabUnclaimedMail" onclick="setInboxTriageTab('unclaimed', this)">
-                  <span>Unclaimed</span>
-                  <span class="v2-seg-count amber" id="countUnclaimedMailBadge">0</span>
-                </button>
-                <button type="button" class="v2-seg-tab" id="tabNoiseMail" onclick="setInboxTriageTab('noise', this)">
+                <button type="button" class="v2-seg-tab" id="tabNoiseMail" onclick="setInboxTriageTab('noise', this)" title="System alerts &amp; non-actionable mail">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
                   <span>Noise</span>
                   <span class="v2-seg-count muted" id="countNoiseBadge">0</span>
                 </button>
@@ -265,11 +265,11 @@
 
             <div class="v2-subbar-right">
               <div class="v2-inline-search">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="inboxSearchInput" placeholder="Filter queue..." oninput="handleInboxSearch()">
               </div>
               <button type="button" class="v2-btn-secondary sm" onclick="openIngestEmailModal()">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 <span>Ingest Mail</span>
               </button>
             </div>
@@ -1291,6 +1291,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.0"></script>
+  <script src="/js/agentv2.js?v=2.2"></script>
 </body>
 </html>

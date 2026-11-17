@@ -2447,7 +2447,7 @@ def get_inbox_emails(
 
     # Multi-Department & Mailbox Isolation Filter:
     # If is_universal_dept (People Desk or All HR), allow seeing all company emails.
-    # Otherwise, restrict to agent's department desk or emails directly assigned to this agent.
+    # Otherwise, restrict to agent's department desk or emails/cases directly assigned to this agent.
     if not is_universal_dept and target_dept_ids:
         dept_placeholders = ", ".join(["%s"] * len(target_dept_ids))
         user_cond = ""
@@ -2455,60 +2455,72 @@ def get_inbox_emails(
         if user_id or user_email:
             u_checks = []
             if user_id:
-                u_checks.append("assigned_user_id = %s")
-                extra_dept_params.append(user_id)
+                u_checks.append("e.assigned_user_id = %s OR c.assigned_user_id = %s")
+                extra_dept_params.extend([user_id, user_id])
             if user_email:
-                u_checks.append("LOWER(assigned_user_email) = %s")
-                extra_dept_params.append(user_email.strip().lower())
+                u_email_clean = user_email.strip().lower()
+                u_checks.append("LOWER(e.assigned_user_email) = %s OR LOWER(c.assigned_user_email) = %s")
+                extra_dept_params.extend([u_email_clean, u_email_clean])
             user_cond = f" OR {' OR '.join(u_checks)}"
 
         if account_email and account_email.strip():
-            conditions.append(f"(department_id IN ({dept_placeholders}) OR LOWER(account_email) = %s{user_cond})")
+            conditions.append(f"(e.department_id IN ({dept_placeholders}) OR LOWER(e.account_email) = %s{user_cond})")
             params.extend(target_dept_ids)
             params.append(account_email.strip().lower())
             params.extend(extra_dept_params)
         else:
-            conditions.append(f"(department_id IN ({dept_placeholders}){user_cond})")
+            conditions.append(f"(e.department_id IN ({dept_placeholders}){user_cond})")
             params.extend(target_dept_ids)
             params.extend(extra_dept_params)
 
     # Search filter
     if search:
         s_term = f"%{search.strip().lower()}%"
-        conditions.append("(LOWER(sender_name) LIKE %s OR LOWER(sender_email) LIKE %s OR LOWER(subject) LIKE %s OR LOWER(body) LIKE %s)")
-        params.extend([s_term, s_term, s_term, s_term])
+        conditions.append("(LOWER(e.sender_name) LIKE %s OR LOWER(e.sender_email) LIKE %s OR LOWER(e.subject) LIKE %s OR LOWER(e.body) LIKE %s OR LOWER(COALESCE(e.case_number, '')) LIKE %s)")
+        params.extend([s_term, s_term, s_term, s_term, s_term])
+
+    useful_expr = "(e.is_actionable = 1 OR (e.is_actionable IS NULL AND (e.category NOT IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM') OR e.category IS NULL)))"
+    noise_expr = "(e.is_actionable = 0 OR e.category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM', 'UNKNOWN'))"
+    unresolved_expr = "(c.status IS NULL OR c.status NOT IN ('RESOLVED', 'CLOSED'))"
+    resolved_expr = "(c.status IN ('RESOLVED', 'CLOSED'))"
 
     # Tab Filter
     tab = (tab or "useful").lower()
-    if tab == "useful":
-        conditions.append("(is_actionable = 1 OR (is_actionable IS NULL AND (category NOT IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM') OR category IS NULL)))")
+    if tab == "unread":
+        conditions.append(f"{useful_expr} AND {unresolved_expr}")
+    elif tab == "read":
+        conditions.append(f"{useful_expr} AND {resolved_expr}")
+    elif tab == "useful":
+        conditions.append(useful_expr)
     elif tab == "actionable":
-        conditions.append("is_actionable = 1")
+        conditions.append("e.is_actionable = 1")
     elif tab == "unclaimed":
-        conditions.append("is_actionable = 1 AND (is_converted = 0 OR is_converted IS NULL) AND (assigned_user_id IS NULL AND (assigned_user_name IS NULL OR assigned_user_name = ''))")
+        conditions.append("e.is_actionable = 1 AND (e.is_converted = 0 OR e.is_converted IS NULL) AND (e.assigned_user_id IS NULL AND (e.assigned_user_name IS NULL OR e.assigned_user_name = ''))")
     elif tab == "noise":
-        conditions.append("(is_actionable = 0 OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM', 'UNKNOWN'))")
+        conditions.append(noise_expr)
     elif tab in ("assigned_to_me", "assigned_me", "assigned"):
         if user_id and user_email:
-            conditions.append("(assigned_user_id = %s OR LOWER(assigned_user_email) = %s)")
-            params.extend([user_id, user_email.strip().lower()])
+            u_email_clean = user_email.strip().lower()
+            conditions.append("(e.assigned_user_id = %s OR LOWER(e.assigned_user_email) = %s OR c.assigned_user_id = %s OR LOWER(c.assigned_user_email) = %s)")
+            params.extend([user_id, u_email_clean, user_id, u_email_clean])
         elif user_id:
-            conditions.append("assigned_user_id = %s")
-            params.append(user_id)
+            conditions.append("(e.assigned_user_id = %s OR c.assigned_user_id = %s)")
+            params.extend([user_id, user_id])
         elif user_email:
-            conditions.append("LOWER(assigned_user_email) = %s")
-            params.append(user_email.strip().lower())
+            u_email_clean = user_email.strip().lower()
+            conditions.append("(LOWER(e.assigned_user_email) = %s OR LOWER(c.assigned_user_email) = %s)")
+            params.extend([u_email_clean, u_email_clean])
         else:
-            conditions.append("assigned_user_id IS NOT NULL")
+            conditions.append("(e.assigned_user_id IS NOT NULL OR c.assigned_user_id IS NOT NULL)")
     # 'all' has no additional filter
 
     # Threading: only list root emails in stream queue
-    conditions.append("parent_id IS NULL")
+    conditions.append("e.parent_id IS NULL")
 
     where_clause = " AND ".join(conditions)
 
     # Fetch total counts for all tabs for tab badges (strictly scoped to departments & mailbox if set)
-    dept_conditions = ["parent_id IS NULL"]
+    dept_conditions = ["e.parent_id IS NULL"]
     dept_params = []
     if not is_universal_dept and target_dept_ids:
         dept_placeholders = ", ".join(["%s"] * len(target_dept_ids))
@@ -2517,20 +2529,21 @@ def get_inbox_emails(
         if user_id or user_email:
             u_checks = []
             if user_id:
-                u_checks.append("assigned_user_id = %s")
-                extra_dept_params.append(user_id)
+                u_checks.append("e.assigned_user_id = %s OR c.assigned_user_id = %s")
+                extra_dept_params.extend([user_id, user_id])
             if user_email:
-                u_checks.append("LOWER(assigned_user_email) = %s")
-                extra_dept_params.append(user_email.strip().lower())
+                u_email_clean = user_email.strip().lower()
+                u_checks.append("LOWER(e.assigned_user_email) = %s OR LOWER(c.assigned_user_email) = %s")
+                extra_dept_params.extend([u_email_clean, u_email_clean])
             user_cond = f" OR {' OR '.join(u_checks)}"
 
         if account_email and account_email.strip():
-            dept_conditions.append(f"(department_id IN ({dept_placeholders}) OR LOWER(account_email) = %s{user_cond})")
+            dept_conditions.append(f"(e.department_id IN ({dept_placeholders}) OR LOWER(e.account_email) = %s{user_cond})")
             dept_params.extend(target_dept_ids)
             dept_params.append(account_email.strip().lower())
             dept_params.extend(extra_dept_params)
         else:
-            dept_conditions.append(f"(department_id IN ({dept_placeholders}){user_cond})")
+            dept_conditions.append(f"(e.department_id IN ({dept_placeholders}){user_cond})")
             dept_params.extend(target_dept_ids)
             dept_params.extend(extra_dept_params)
 
@@ -2540,27 +2553,32 @@ def get_inbox_emails(
     assigned_cond = "1=0"
     if user_id and user_email:
         safe_email = user_email.strip().lower().replace("'", "''")
-        assigned_cond = f"(assigned_user_id = {int(user_id)} OR LOWER(assigned_user_email) = '{safe_email}')"
+        assigned_cond = f"(e.assigned_user_id = {int(user_id)} OR LOWER(e.assigned_user_email) = '{safe_email}' OR c.assigned_user_id = {int(user_id)} OR LOWER(c.assigned_user_email) = '{safe_email}')"
     elif user_id:
-        assigned_cond = f"assigned_user_id = {int(user_id)}"
+        assigned_cond = f"(e.assigned_user_id = {int(user_id)} OR c.assigned_user_id = {int(user_id)})"
     elif user_email:
         safe_email = user_email.strip().lower().replace("'", "''")
-        assigned_cond = f"LOWER(assigned_user_email) = '{safe_email}'"
+        assigned_cond = f"(LOWER(e.assigned_user_email) = '{safe_email}' OR LOWER(c.assigned_user_email) = '{safe_email}')"
 
     count_sql = f"""
         SELECT
-            COUNT(*) FILTER (WHERE is_actionable = 1 OR (is_actionable IS NULL AND (category NOT IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM') OR category IS NULL))) as useful_count,
-            COUNT(*) FILTER (WHERE is_actionable = 1) as actionable_count,
-            COUNT(*) FILTER (WHERE is_actionable = 1 AND (is_converted = 0 OR is_converted IS NULL) AND (assigned_user_id IS NULL AND (assigned_user_name IS NULL OR assigned_user_name = ''))) as unclaimed_count,
-            COUNT(*) FILTER (WHERE is_actionable = 0 OR category IN ('SYSTEM_ALERT', 'NEWSLETTER', 'SPAM', 'UNKNOWN')) as noise_count,
+            COUNT(*) FILTER (WHERE {useful_expr} AND {unresolved_expr}) as unread_count,
+            COUNT(*) FILTER (WHERE {useful_expr} AND {resolved_expr}) as read_count,
+            COUNT(*) FILTER (WHERE {useful_expr}) as useful_count,
+            COUNT(*) FILTER (WHERE e.is_actionable = 1) as actionable_count,
+            COUNT(*) FILTER (WHERE e.is_actionable = 1 AND (e.is_converted = 0 OR e.is_converted IS NULL) AND (e.assigned_user_id IS NULL AND (e.assigned_user_name IS NULL OR e.assigned_user_name = ''))) as unclaimed_count,
+            COUNT(*) FILTER (WHERE {noise_expr}) as noise_count,
             COUNT(*) FILTER (WHERE {assigned_cond}) as assigned_to_me_count,
             COUNT(*) as total_count
-        FROM emails
+        FROM emails e
+        LEFT JOIN cases c ON e.case_id = c.id
         {dept_where};
     """
     total_count_params = dept_params
     counts_row = execute_query(count_sql, tuple(total_count_params) if total_count_params else None, fetch_one=True) or {}
     counts = {
+        "unread": int(counts_row.get("unread_count") or 0),
+        "read": int(counts_row.get("read_count") or 0),
         "useful": int(counts_row.get("useful_count") or 0),
         "actionable": int(counts_row.get("actionable_count") or 0),
         "unclaimed": int(counts_row.get("unclaimed_count") or 0),
@@ -2572,17 +2590,22 @@ def get_inbox_emails(
     # Fetch emails with all essential metadata (float threads with actual replies to the top)
     query = f"""
         SELECT 
-            id, provider, account_email, sender_name, sender_email, subject, body,
-            received_at, updated_at, category, is_actionable, actionable_reason,
-            department_id, employee_id, case_id, case_number, is_converted, created_at,
-            is_read, read_by_user_id, read_by_name, read_at, thread_id, parent_id,
-            assigned_user_id, assigned_user_name, assigned_user_email, transfer_notes
-        FROM emails
+            e.id, e.provider, e.account_email, e.sender_name, e.sender_email, e.subject, e.body,
+            e.received_at, e.updated_at, e.category, e.is_actionable, e.actionable_reason,
+            e.department_id, e.employee_id, e.case_id, e.case_number, e.is_converted, e.created_at,
+            e.is_read, e.read_by_user_id, e.read_by_name, e.read_at, e.thread_id, e.parent_id,
+            COALESCE(e.assigned_user_id, c.assigned_user_id) as assigned_user_id,
+            COALESCE(NULLIF(e.assigned_user_name, ''), c.assigned_user) as assigned_user_name,
+            COALESCE(NULLIF(e.assigned_user_email, ''), c.assigned_user_email) as assigned_user_email,
+            e.transfer_notes,
+            c.status as case_status
+        FROM emails e
+        LEFT JOIN cases c ON e.case_id = c.id
         WHERE {where_clause}
         ORDER BY GREATEST(
-            COALESCE(received_at, created_at),
-            COALESCE((SELECT MAX(r.received_at) FROM emails r WHERE r.parent_id = emails.id), received_at, created_at)
-        ) DESC NULLS LAST, id DESC
+            COALESCE(e.received_at, e.created_at),
+            COALESCE((SELECT MAX(r.received_at) FROM emails r WHERE r.parent_id = e.id), e.received_at, e.created_at)
+        ) DESC NULLS LAST, e.id DESC
         LIMIT {int(limit)} OFFSET {int(offset)};
     """
     email_rows = execute_query(query, tuple(params) if params else None, fetch_all=True) or []

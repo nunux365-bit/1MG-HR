@@ -933,6 +933,16 @@ button, input, select, textarea {
   box-shadow: var(--shadow-xs);
 }
 
+.v2-seg-tab svg {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.v2-seg-tab.active svg {
+  opacity: 1;
+  color: var(--coral);
+}
+
 .v2-seg-count {
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -944,6 +954,7 @@ button, input, select, textarea {
 }
 
 .v2-seg-count.coral { background: var(--coral-soft); color: var(--coral); }
+.v2-seg-count.teal { background: var(--teal-soft); color: var(--teal); }
 .v2-seg-count.blue { background: var(--blue-soft); color: var(--blue); }
 .v2-seg-count.amber { background: var(--amber-soft); color: var(--amber); }
 .v2-seg-count.red { background: var(--red-soft); color: var(--red); }
@@ -1141,7 +1152,17 @@ button, input, select, textarea {
   bottom: 10px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--blue);
+  background: var(--coral);
+}
+
+.v2-email-card.resolved {
+  background: #FAFCFB;
+}
+
+.v2-mini-tag.resolved {
+  background: var(--teal-soft);
+  color: var(--teal);
+  border-color: var(--teal-border);
 }
 
 .v2-ec-top {
