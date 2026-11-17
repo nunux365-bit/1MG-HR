@@ -740,6 +740,19 @@ function getFilteredInboxEmails() {
   );
 }
 
+const V2_AVATAR_PALETTE = [
+  '#FF6F61', // Tata 1mg Coral
+  '#10847E', // Medical Teal
+  '#2563EB', // Cobalt Blue
+  '#D97706', // Warm Amber
+  '#4F46E5', // Indigo
+  '#059669'  // Emerald
+];
+
+function getV2AvatarColor(seed) {
+  return V2_AVATAR_PALETTE[Math.abs(Number(seed) || 0) % V2_AVATAR_PALETTE.length];
+}
+
 function renderInboxEmailStream() {
   const listEl = document.getElementById('inboxEmailStreamList');
   const miniEl = document.getElementById('inboxCollapsedAvatars');
@@ -754,15 +767,6 @@ function renderInboxEmailStream() {
     return;
   }
 
-  const avatars = [
-    '#FF6F61', // Tata 1mg Coral
-    '#10847E', // Medical Teal
-    '#2563EB', // Cobalt Blue
-    '#D97706', // Warm Amber
-    '#4F46E5', // Indigo
-    '#059669'  // Emerald
-  ];
-
   listEl.innerHTML = filtered.map(email => {
     const ai = email.ai_insights || {};
     const isActive = email.id === currentSelectedEmailId;
@@ -770,7 +774,7 @@ function renderInboxEmailStream() {
     const isUnresolved = !isResolvedCase && (email.is_actionable !== 0);
     const sender = ai.detected_name || email.sender_name || 'Employee';
     const initial = sender.charAt(0).toUpperCase();
-    const avatarBg = avatars[Math.abs(email.id || 0) % avatars.length];
+    const avatarBg = getV2AvatarColor(email.id);
     const timeStr = formatRelativeTime(email.last_activity_at || email.received_at);
     const cleanSnippet = formatCleanPreviewSnippet(email.snippet || email.body || '');
     const isMine = (
@@ -817,7 +821,7 @@ function renderInboxEmailStream() {
   if (miniEl) {
     miniEl.innerHTML = filtered.slice(0, 14).map(email => {
       const sender = email.ai_insights?.detected_name || email.sender_name || 'E';
-      const avatarBg = avatars[Math.abs(email.id || 0) % avatars.length];
+      const avatarBg = getV2AvatarColor(email.id);
       const isResolvedCase = email.case_status === 'RESOLVED' || email.case_status === 'CLOSED';
       const isUnresolved = !isResolvedCase && (email.is_actionable !== 0);
       return `
@@ -1664,7 +1668,9 @@ function renderAgentCasesTable() {
   if (!filtered.length) {
     container.innerHTML = `
       <div class="v2-empty-state">
-        <div class="v2-empty-icon">📂</div>
+        <div class="v2-empty-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
         <h3>No Matching Cases</h3>
         <p>Try adjusting your active filters or log a new employee inquiry.</p>
         <div style="display:flex; gap:8px;">
@@ -1682,23 +1688,26 @@ function renderAgentCasesTable() {
     const statusCls = (c.status || 'OPEN').toLowerCase();
     const slaHtml = renderSlaBadge(c.due_at, c.status);
     const empCode = c.hrms_profile?.employee_code && c.hrms_profile.employee_code !== '—' ? c.hrms_profile.employee_code : c.employee_code;
+    const empDisplay = c.employee_name || c.employee_email || 'Employee';
+    const empInitials = empDisplay.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
+    const avatarBg = getV2AvatarColor(c.id);
 
     return `
       <div class="v2-case-row ${isSel ? 'selected' : ''}" onclick="openAgentCaseDossier(${c.id})">
+        <span class="v2-case-avatar" style="background: ${avatarBg};">${escapeHtml(empInitials)}</span>
         <div class="v2-cr-main">
-          <div class="v2-cr-top">
+          <div class="v2-cr-head">
+            <span class="v2-cr-title">${escapeHtml(c.title || 'Untitled Case')}</span>
             <span class="v2-id-chip mono">${escapeHtml(formatCaseNumber(c.case_number))}</span>
             <span class="v2-prio-chip prio-${prio}">${escapeHtml(c.priority || 'MEDIUM')}</span>
-            <span class="v2-desk-chip">${escapeHtml(c.department_name || 'Central Desk')}</span>
-            ${c.ai_badge?.intent_name ? `<span class="v2-mini-tag intent">${escapeHtml(c.ai_badge.intent_name)}</span>` : ''}
           </div>
-          <div class="v2-cr-title">${escapeHtml(c.title || 'Untitled Case')}</div>
           <div class="v2-cr-meta">
-            <span>👤 ${escapeHtml(c.employee_name || c.employee_email || 'Employee')}</span>
-            ${empCode ? `<span class="mono">(${escapeHtml(empCode)})</span>` : ''}
-            <span>·</span>
+            <span>${escapeHtml(empDisplay)}${empCode ? ` (${escapeHtml(empCode)})` : ''}</span>
+            <span class="v2-cr-meta-dot">·</span>
+            <span>${escapeHtml(c.department_name || 'Central Desk')}</span>
+            <span class="v2-cr-meta-dot">·</span>
             <span>Owner: <strong>${escapeHtml(c.assigned_user || 'Unassigned')}</strong></span>
-            <span>·</span>
+            <span class="v2-cr-meta-dot">·</span>
             <span>${formatRelativeTime(c.created_at)}</span>
           </div>
         </div>
@@ -1775,7 +1784,10 @@ async function openAgentCaseDossier(caseId) {
     // Inquiry + Timeline
     setText('dossierMetaFrom', `${c.employee_name || 'Employee'} <${c.employee_email || ''}>`);
     setText('dossierMetaReceived', formatDate(c.created_at));
-    setText('dossierInquiryBody', c.description || 'No description provided.');
+    const inqBodyEl = document.getElementById('dossierInquiryBody');
+    if (inqBodyEl) {
+      inqBodyEl.innerHTML = formatEmailBodyHtml(c.description || 'No description provided.');
+    }
     renderDossierTimeline(data.audit_logs || []);
 
     // AI Studio
@@ -1795,7 +1807,8 @@ async function openAgentCaseDossier(caseId) {
     // HRMS Profile
     const hp = c.hrms_profile || {};
     const empName = hp.employee_name || c.employee_name || 'Tata 1mg Staff';
-    setText('sideEmpAvatar', empName.charAt(0).toUpperCase());
+    const empInitials = empName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
+    setText('sideEmpAvatar', empInitials);
     setText('sideEmpName', empName);
     setText('sideEmpDesig', hp.designation || 'Employee');
     setText('sideBentoCode', hp.employee_code || c.employee_code || '—');
@@ -1852,7 +1865,10 @@ function renderDossierTimeline(logs) {
       return `
         <div class="v2-tl-item reply">
           <div class="v2-tl-head">
-            <span>✉️ Official Reply · ${escapeHtml(log.actor_name || 'Specialist')}</span>
+            <span class="v2-tl-head-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <span>Official Reply · ${escapeHtml(log.actor_name || 'Specialist')}</span>
+            </span>
             <span>${formatDate(log.created_at)}</span>
           </div>
           <div style="white-space:pre-wrap;">${escapeHtml(details.message || '')}</div>
@@ -1863,7 +1879,10 @@ function renderDossierTimeline(logs) {
       return `
         <div class="v2-tl-item note">
           <div class="v2-tl-head">
-            <span>🔒 Internal Note · ${escapeHtml(log.actor_name || 'Agent')}</span>
+            <span class="v2-tl-head-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Internal Note · ${escapeHtml(log.actor_name || 'Agent')}</span>
+            </span>
             <span>${formatDate(log.created_at)}</span>
           </div>
           <div style="white-space:pre-wrap;">${escapeHtml(details.message || '')}</div>
@@ -1920,6 +1939,12 @@ function setDossierComposerMode(mode) {
 function renderDossierAiDraft(toneKey = 'empathetic') {
   const box = document.getElementById('dossierAiDraftBox');
   if (box) box.innerText = dossierAiTones[toneKey] || dossierAiTones.empathetic || 'No draft available.';
+}
+
+function copyDossierAiDraft() {
+  const draft = document.getElementById('dossierAiDraftBox')?.innerText?.trim();
+  if (!draft) return;
+  navigator.clipboard?.writeText(draft).then(() => showToast('Case AI draft copied to clipboard', 'success'));
 }
 
 function switchDossierTone(toneKey, btnEl) {

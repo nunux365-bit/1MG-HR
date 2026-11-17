@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/agentv2.css?v=2.7">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.8">
 </head>
 <body class="v2-body">
 
@@ -618,6 +618,7 @@
           <div class="v2-cases-topbar">
             <div class="v2-kpi-strip">
               <button type="button" class="v2-kpi-pill active" data-bento-filter="ALL" onclick="filterCasesByBento('ALL', this)">
+                <svg class="v2-kpi-ico total" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
                 <span class="v2-kpi-label">Total</span>
                 <strong class="v2-kpi-val" id="caseKpiTotal">0</strong>
               </button>
@@ -641,34 +642,36 @@
 
             <div class="v2-cases-actions">
               <button type="button" class="v2-btn-secondary sm" onclick="exportCasesCsv()">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 <span>Export CSV</span>
               </button>
               <button type="button" class="v2-btn-secondary sm" onclick="loadCases()">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 <span>Refresh</span>
               </button>
               <button type="button" class="v2-btn-primary sm" onclick="openNewCaseModal()">
-                <span>+ Log Case</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Log Case</span>
               </button>
             </div>
           </div>
 
-          <!-- Queue Tabs & Filters -->
+          <!-- Queue Tabs & Filter Bar -->
           <div class="v2-cases-filters-bar">
-            <div class="v2-dept-tabs" id="caseQueueTabsBar">
-              <button type="button" class="v2-dept-tab active" onclick="selectAgentQueueTab('ALL', this)">
-                <span>All Queues</span>
-                <span class="v2-tab-badge" id="queueBadgeAll">0</span>
-              </button>
-            </div>
-
-            <div class="v2-filter-controls">
-              <div class="v2-inline-search wide">
+            <div class="v2-cases-filter-row">
+              <div class="v2-dept-tabs" id="caseQueueTabsBar">
+                <button type="button" class="v2-dept-tab active" onclick="selectAgentQueueTab('ALL', this)">
+                  <span>All Queues</span>
+                  <span class="v2-tab-badge" id="queueBadgeAll">0</span>
+                </button>
+              </div>
+              <div class="v2-inline-search case-search">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="caseSearchInput" placeholder="Search Case #, employee, title, specialist..." oninput="handleAgentCaseSearch()">
               </div>
+            </div>
 
+            <div class="v2-filter-controls">
               <div class="v2-status-pills" id="caseStatusPillsBar">
                 <button type="button" class="v2-pill-btn active" onclick="filterAgentCasesByStatus('ALL', this)">All</button>
                 <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('OPEN', this)">Open</button>
@@ -677,38 +680,40 @@
                 <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('RESOLVED', this)">Resolved</button>
               </div>
 
-              <select id="casePriorityFilter" class="v2-select-sm" onchange="filterAgentCasesByPriority()">
-                <option value="ALL">Priority: All</option>
-                <option value="CRITICAL">Critical</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
+              <div class="v2-filter-selects">
+                <select id="casePriorityFilter" class="v2-select-sm" onchange="filterAgentCasesByPriority()">
+                  <option value="ALL">Priority: All</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
 
-              <select id="caseSlaRiskFilter" class="v2-select-sm" onchange="filterAgentCasesBySlaRisk()">
-                <option value="ALL">SLA: All</option>
-                <option value="BREACHED">Breached</option>
-                <option value="AT_RISK">Urgent (&lt;2h)</option>
-                <option value="SAFE">On Track</option>
-              </select>
+                <select id="caseSlaRiskFilter" class="v2-select-sm" onchange="filterAgentCasesBySlaRisk()">
+                  <option value="ALL">SLA: All</option>
+                  <option value="BREACHED">Breached</option>
+                  <option value="AT_RISK">Urgent (&lt;2h)</option>
+                  <option value="SAFE">On Track</option>
+                </select>
 
-              <select id="caseSpecialistFilter" class="v2-select-sm" onchange="filterAgentCasesBySpecialist()">
-                <option value="ALL">All Specialists</option>
-                <option value="MINE">Assigned to Me</option>
-                <option value="UNASSIGNED">Unassigned</option>
-              </select>
+                <select id="caseSpecialistFilter" class="v2-select-sm" onchange="filterAgentCasesBySpecialist()">
+                  <option value="ALL">All Specialists</option>
+                  <option value="MINE">Assigned to Me</option>
+                  <option value="UNASSIGNED">Unassigned</option>
+                </select>
 
-              <button type="button" class="v2-btn-ghost xs" onclick="resetAgentCaseFilters()">Reset</button>
+                <button type="button" class="v2-btn-ghost xs" onclick="resetAgentCaseFilters()">Reset</button>
+              </div>
             </div>
           </div>
 
           <!-- Master-Detail Split Workspace -->
           <div class="v2-cases-workspace" id="casesMasterDetail">
-            <!-- Left: Clean Scannable Case Table/List (No horizontal scroll) -->
+            <!-- Left: Apple / Linear Clean Scannable Case List -->
             <div class="v2-cases-list-pane">
               <div class="v2-list-meta">
                 <span id="caseTableCountText">0 Cases</span>
-                <span class="v2-list-hint">Click any case to inspect 360° dossier</span>
+                <span class="v2-list-hint">Select a case to inspect 360° dossier</span>
               </div>
               <div class="v2-cases-scroll" id="agentCasesListContainer">
                 <div class="v2-loading-box">Loading cases...</div>
@@ -726,22 +731,30 @@
                     <span id="heroDeptBadge" class="v2-desk-chip">People Desk</span>
                   </div>
                   <div class="v2-dossier-head-actions">
-                    <button type="button" class="v2-btn-secondary xs" id="btnHeroClaim" style="display:none;" onclick="claimCurrentCase()">⚡ Claim</button>
+                    <button type="button" class="v2-btn-secondary xs" id="btnHeroClaim" style="display:none;" onclick="claimCurrentCase()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <span>Claim</span>
+                    </button>
                     <button type="button" class="v2-btn-secondary xs" onclick="openReassignModalForCurrent()">Reassign</button>
-                    <button type="button" class="v2-btn-teal xs" onclick="openResolveModalForCurrent()">✓ Resolve</button>
+                    <button type="button" class="v2-btn-teal xs" onclick="openResolveModalForCurrent()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span>Resolve</span>
+                    </button>
                     <a id="dossierFullPageLink" href="/agent/case-details" class="v2-icon-btn sm" title="Open Full-Page Dossier" target="_blank">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </a>
-                    <button type="button" class="v2-icon-btn sm" onclick="closeAgentCaseDossier()" title="Close Dossier (Esc)">✕</button>
+                    <button type="button" class="v2-icon-btn sm" onclick="closeAgentCaseDossier()" title="Close Dossier (Esc)" aria-label="Close Dossier">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
                 </div>
 
                 <h2 class="v2-dossier-title" id="heroCaseTitle">Case Title</h2>
                 <div class="v2-dossier-sub">
                   <span>Logged <strong id="heroCreatedTime">—</strong></span>
-                  <span>·</span>
+                  <span class="v2-sub-dot">·</span>
                   <span>SLA <strong id="tileSlaCountdown">—</strong></span>
-                  <span>·</span>
+                  <span class="v2-sub-dot">·</span>
                   <span>Owner: <strong id="tileSpecialistName">Unassigned</strong></span>
                 </div>
 
@@ -756,7 +769,10 @@
                 <!-- Dossier Sub-Tabs -->
                 <div class="v2-dossier-tabs">
                   <button type="button" class="v2-dtab active" onclick="switchDossierTab('thread', this)">Thread &amp; Reply</button>
-                  <button type="button" class="v2-dtab" onclick="switchDossierTab('ai', this)">✦ AI Studio</button>
+                  <button type="button" class="v2-dtab" onclick="switchDossierTab('ai', this)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                    <span>AI Studio</span>
+                  </button>
                   <button type="button" class="v2-dtab" onclick="switchDossierTab('hrms', this)">HRMS &amp; SLA</button>
                 </div>
               </div>
@@ -781,7 +797,10 @@
                     <div class="v2-composer-mode-bar">
                       <div class="v2-mode-group">
                         <button type="button" class="v2-mode-btn active" id="dossierModePublic" onclick="setDossierComposerMode('PUBLIC_REPLY')">Public Reply</button>
-                        <button type="button" class="v2-mode-btn internal" id="dossierModeInternal" onclick="setDossierComposerMode('INTERNAL_NOTE')">🔒 Internal Note</button>
+                        <button type="button" class="v2-mode-btn internal" id="dossierModeInternal" onclick="setDossierComposerMode('INTERNAL_NOTE')">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          <span>Internal Note</span>
+                        </button>
                       </div>
                       <div class="v2-mode-helpers">
                         <select class="v2-select-mini" onchange="insertDossierPreset(this.value); this.selectedIndex=0;">
@@ -792,7 +811,10 @@
                           <option value="info_needed">Request Info</option>
                           <option value="resolved">Resolved Notice</option>
                         </select>
-                        <button type="button" class="v2-btn-ai-sm" onclick="insertDossierAiDraft()">✦ AI Draft</button>
+                        <button type="button" class="v2-btn-ai-sm" onclick="insertDossierAiDraft()">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                          <span>AI Draft</span>
+                        </button>
                       </div>
                     </div>
                     <textarea id="dossierReplyInput" class="v2-composer-textarea" rows="3" placeholder="Type reply to employee..."></textarea>
@@ -826,7 +848,16 @@
                     </div>
 
                     <div class="v2-copilot-card studio">
-                      <div class="v2-cc-header"><span class="v2-cc-title">Multi-Tone Response Studio</span></div>
+                      <div class="v2-cc-header">
+                        <span class="v2-cc-title">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                          <span>Response Studio</span>
+                        </span>
+                        <button type="button" class="v2-mini-copy-btn" onclick="copyDossierAiDraft()" title="Copy AI Draft">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                          <span>Copy</span>
+                        </button>
+                      </div>
                       <div class="v2-tone-tabs">
                         <button type="button" class="v2-tone-btn active" onclick="switchDossierTone('empathetic', this)">Empathetic</button>
                         <button type="button" class="v2-tone-btn" onclick="switchDossierTone('concise', this)">Concise</button>
@@ -835,7 +866,7 @@
                       <div class="v2-draft-preview" id="dossierAiDraftBox">Loading AI draft...</div>
                       <div class="v2-studio-btns">
                         <button type="button" class="v2-btn-secondary sm" onclick="insertDossierAiDraft()">Insert to Composer</button>
-                        <button type="button" class="v2-btn-ai sm" onclick="sendDossierAiDraftDirectly()">Send &amp; Resolve</button>
+                        <button type="button" class="v2-btn-teal sm" onclick="sendDossierAiDraftDirectly()">Send &amp; Resolve</button>
                       </div>
                     </div>
                   </div>
@@ -1375,6 +1406,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.7"></script>
+  <script src="/js/agentv2.js?v=2.8"></script>
 </body>
 </html>
