@@ -1663,7 +1663,7 @@ function renderAgentCasesTable() {
   if (!container) return;
 
   const filtered = getFilteredCases();
-  setText('caseTableCountText', `${filtered.length} Case${filtered.length === 1 ? '' : 's'} In Queue`);
+  setText('caseTableCountText', `${filtered.length} Case${filtered.length === 1 ? '' : 's'}`);
 
   if (!filtered.length) {
     container.innerHTML = `
@@ -1684,36 +1684,43 @@ function renderAgentCasesTable() {
 
   container.innerHTML = filtered.map(c => {
     const isSel = activeDossierCase && activeDossierCase.id === c.id;
-    const prio = (c.priority || 'MEDIUM').toLowerCase();
+    const prioRaw = (c.priority || 'MEDIUM').toUpperCase();
+    const prioCls = prioRaw.toLowerCase();
+    const prioLabel = prioRaw.charAt(0) + prioRaw.slice(1).toLowerCase();
     const statusCls = (c.status || 'OPEN').toLowerCase();
+    const statusLabel = (c.status || 'OPEN').replace(/_/g, ' ');
     const slaHtml = renderSlaBadge(c.due_at, c.status);
+    const caseNum = formatCaseNumber(c.case_number);
     const empCode = c.hrms_profile?.employee_code && c.hrms_profile.employee_code !== '—' ? c.hrms_profile.employee_code : c.employee_code;
     const empDisplay = c.employee_name || c.employee_email || 'Employee';
     const empInitials = empDisplay.split(/\s+/).filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'EM';
     const avatarBg = getV2AvatarColor(c.id);
+    const cleanTitle = (c.title || 'Untitled Case').replace(/_/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const isUnassigned = !c.assigned_user || c.assigned_user === 'Unassigned' || c.assigned_user === 'Central Triage';
 
     return `
       <div class="v2-case-row ${isSel ? 'selected' : ''}" onclick="openAgentCaseDossier(${c.id})">
         <span class="v2-case-avatar" style="background: ${avatarBg};">${escapeHtml(empInitials)}</span>
+        <div class="v2-col-id"><span class="v2-id-chip mono">${escapeHtml(caseNum)}</span></div>
         <div class="v2-cr-main">
-          <div class="v2-cr-head">
-            <span class="v2-cr-title">${escapeHtml(c.title || 'Untitled Case')}</span>
-            <span class="v2-id-chip mono">${escapeHtml(formatCaseNumber(c.case_number))}</span>
-            <span class="v2-prio-chip prio-${prio}">${escapeHtml(c.priority || 'MEDIUM')}</span>
-          </div>
-          <div class="v2-cr-meta">
+          <div class="v2-cr-title" title="${escapeHtml(c.title || '')}">${escapeHtml(cleanTitle)}</div>
+          <div class="v2-cr-sub">
+            <span class="v2-cr-sub-id">${escapeHtml(caseNum)} · </span>
             <span>${escapeHtml(empDisplay)}${empCode ? ` (${escapeHtml(empCode)})` : ''}</span>
-            <span class="v2-cr-meta-dot">·</span>
-            <span>${escapeHtml(c.department_name || 'Central Desk')}</span>
-            <span class="v2-cr-meta-dot">·</span>
-            <span>Owner: <strong>${escapeHtml(c.assigned_user || 'Unassigned')}</strong></span>
-            <span class="v2-cr-meta-dot">·</span>
-            <span>${formatRelativeTime(c.created_at)}</span>
           </div>
         </div>
+        <div class="v2-col-desk">${escapeHtml(c.department_name || 'People Desk')}</div>
+        <div class="v2-col-prio"><span class="v2-prio-dot ${prioCls}"></span><span>${escapeHtml(prioLabel)}</span></div>
+        <div class="v2-col-owner">
+          ${isUnassigned
+            ? `<span class="v2-owner-unassigned">Unassigned</span><button type="button" class="v2-row-claim-btn" onclick="event.stopPropagation(); quickClaimCase(${c.id}, ${c.department_id || 'null'})">Claim</button>`
+            : `<span class="v2-owner-name">${escapeHtml(c.assigned_user)}</span>`}
+        </div>
+        <div class="v2-col-status"><span class="v2-status-chip status-${statusCls}">${escapeHtml(statusLabel)}</span></div>
         <div class="v2-cr-right">
-          <span class="v2-status-chip status-${statusCls}">${escapeHtml((c.status || 'OPEN').replace(/_/g, ' '))}</span>
+          <span class="v2-status-chip v2-split-status status-${statusCls}">${escapeHtml(statusLabel)}</span>
           ${slaHtml}
+          <span class="v2-cr-age">${formatRelativeTime(c.created_at)}</span>
         </div>
       </div>
     `;
@@ -2025,14 +2032,16 @@ async function sendDossierReply() {
   }
 }
 
-async function claimCurrentCase() {
-  if (!activeDossierCase || !currentUser.id) return;
+async function quickClaimCase(caseId, departmentId, shouldOpenDossier = false) {
+  if (!caseId || !currentUser.id) return;
   try {
-    const res = await fetch(`/api/v1/cases/${activeDossierCase.id}/reassign`, {
+    const targetCase = allCases.find(x => x.id === caseId);
+    const deptId = departmentId || targetCase?.department_id || currentUser.department_id || 11;
+    const res = await fetch(`/api/v1/cases/${caseId}/reassign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        department_id: activeDossierCase.department_id,
+        department_id: deptId,
         user_id: currentUser.id,
         actor_email: currentUser.email,
         actor_name: currentUser.name
@@ -2040,13 +2049,22 @@ async function claimCurrentCase() {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Case claimed!', 'success');
-      await fetchCasesData();
-      openAgentCaseDossier(activeDossierCase.id);
+      showToast('Case assigned to you', 'success');
+      await Promise.all([fetchCasesData(), loadInboxEmails({ silent: true })]);
+      loadAgentCasesKPIs();
+      renderAgentCasesTable();
+      if (shouldOpenDossier || activeDossierCase?.id === caseId) {
+        openAgentCaseDossier(caseId);
+      }
     }
   } catch (err) {
     showToast('Failed to claim case', 'error');
   }
+}
+
+async function claimCurrentCase() {
+  if (!activeDossierCase) return;
+  await quickClaimCase(activeDossierCase.id, activeDossierCase.department_id, true);
 }
 
 function exportCasesCsv() {

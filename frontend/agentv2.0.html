@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/agentv2.css?v=2.8">
+  <link rel="stylesheet" href="/css/agentv2.css?v=2.9">
 </head>
 <body class="v2-body">
 
@@ -614,29 +614,33 @@
              VIEW 2: CASES COMMAND (MASTER-DETAIL, NO HORIZONTAL SCROLL)
              =============================================================== -->
         <section id="casesView" class="v2-view">
-          <!-- Top KPI & Actions Strip -->
+          <!-- Bar 1: Bento KPI Cards & Actions -->
           <div class="v2-cases-topbar">
             <div class="v2-kpi-strip">
               <button type="button" class="v2-kpi-pill active" data-bento-filter="ALL" onclick="filterCasesByBento('ALL', this)">
-                <svg class="v2-kpi-ico total" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
-                <span class="v2-kpi-label">Total</span>
-                <strong class="v2-kpi-val" id="caseKpiTotal">0</strong>
+                <span class="v2-kpi-label">All Cases</span>
+                <div class="v2-kpi-num-row">
+                  <strong class="v2-kpi-val" id="caseKpiTotal">0</strong>
+                </div>
               </button>
               <button type="button" class="v2-kpi-pill" data-bento-filter="ACTIVE" onclick="filterCasesByBento('ACTIVE', this)">
-                <span class="v2-kpi-dot blue"></span>
-                <span class="v2-kpi-label">Active</span>
-                <strong class="v2-kpi-val" id="caseKpiActive">0</strong>
+                <span class="v2-kpi-label"><span class="v2-kpi-dot blue"></span> Active</span>
+                <div class="v2-kpi-num-row">
+                  <strong class="v2-kpi-val" id="caseKpiActive">0</strong>
+                </div>
               </button>
               <button type="button" class="v2-kpi-pill" data-bento-filter="BREACHED" onclick="filterCasesByBento('BREACHED', this)">
-                <span class="v2-kpi-dot red"></span>
-                <span class="v2-kpi-label">Breached</span>
-                <strong class="v2-kpi-val danger" id="caseKpiBreached">0</strong>
+                <span class="v2-kpi-label"><span class="v2-kpi-dot red"></span> Breached</span>
+                <div class="v2-kpi-num-row">
+                  <strong class="v2-kpi-val danger" id="caseKpiBreached">0</strong>
+                </div>
               </button>
               <button type="button" class="v2-kpi-pill" data-bento-filter="RESOLVED" onclick="filterCasesByBento('RESOLVED', this)">
-                <span class="v2-kpi-dot teal"></span>
-                <span class="v2-kpi-label">Resolved</span>
-                <strong class="v2-kpi-val" id="caseKpiResolved">0</strong>
-                <span class="v2-kpi-rate" id="caseKpiRate">100%</span>
+                <span class="v2-kpi-label"><span class="v2-kpi-dot teal"></span> Resolved</span>
+                <div class="v2-kpi-num-row">
+                  <strong class="v2-kpi-val" id="caseKpiResolved">0</strong>
+                  <span class="v2-kpi-rate" id="caseKpiRate">100%</span>
+                </div>
               </button>
             </div>
 
@@ -656,22 +660,16 @@
             </div>
           </div>
 
-          <!-- Queue Tabs & Filter Bar -->
+          <!-- Bar 2: Unified Single Filter Strip -->
           <div class="v2-cases-filters-bar">
-            <div class="v2-cases-filter-row">
+            <div class="v2-filter-left">
               <div class="v2-dept-tabs" id="caseQueueTabsBar">
                 <button type="button" class="v2-dept-tab active" onclick="selectAgentQueueTab('ALL', this)">
                   <span>All Queues</span>
                   <span class="v2-tab-badge" id="queueBadgeAll">0</span>
                 </button>
               </div>
-              <div class="v2-inline-search case-search">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="caseSearchInput" placeholder="Search Case #, employee, title, specialist..." oninput="handleAgentCaseSearch()">
-              </div>
-            </div>
-
-            <div class="v2-filter-controls">
+              <div class="v2-bar-sep"></div>
               <div class="v2-status-pills" id="caseStatusPillsBar">
                 <button type="button" class="v2-pill-btn active" onclick="filterAgentCasesByStatus('ALL', this)">All</button>
                 <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('OPEN', this)">Open</button>
@@ -679,41 +677,52 @@
                 <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('WAITING_ON_EMPLOYEE', this)">Waiting</button>
                 <button type="button" class="v2-pill-btn" onclick="filterAgentCasesByStatus('RESOLVED', this)">Resolved</button>
               </div>
+            </div>
 
-              <div class="v2-filter-selects">
-                <select id="casePriorityFilter" class="v2-select-sm" onchange="filterAgentCasesByPriority()">
-                  <option value="ALL">Priority: All</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-
-                <select id="caseSlaRiskFilter" class="v2-select-sm" onchange="filterAgentCasesBySlaRisk()">
-                  <option value="ALL">SLA: All</option>
-                  <option value="BREACHED">Breached</option>
-                  <option value="AT_RISK">Urgent (&lt;2h)</option>
-                  <option value="SAFE">On Track</option>
-                </select>
-
-                <select id="caseSpecialistFilter" class="v2-select-sm" onchange="filterAgentCasesBySpecialist()">
-                  <option value="ALL">All Specialists</option>
-                  <option value="MINE">Assigned to Me</option>
-                  <option value="UNASSIGNED">Unassigned</option>
-                </select>
-
-                <button type="button" class="v2-btn-ghost xs" onclick="resetAgentCaseFilters()">Reset</button>
+            <div class="v2-filter-selects">
+              <div class="v2-inline-search case-search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="caseSearchInput" placeholder="Search case #, name, title..." oninput="handleAgentCaseSearch()">
               </div>
+
+              <select id="casePriorityFilter" class="v2-select-sm" onchange="filterAgentCasesByPriority()">
+                <option value="ALL">Priority: All</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+
+              <select id="caseSlaRiskFilter" class="v2-select-sm" onchange="filterAgentCasesBySlaRisk()">
+                <option value="ALL">SLA: All</option>
+                <option value="BREACHED">Breached</option>
+                <option value="AT_RISK">Urgent (&lt;2h)</option>
+                <option value="SAFE">On Track</option>
+              </select>
+
+              <select id="caseSpecialistFilter" class="v2-select-sm" onchange="filterAgentCasesBySpecialist()">
+                <option value="ALL">All Owners</option>
+                <option value="MINE">Assigned to Me</option>
+                <option value="UNASSIGNED">Unassigned</option>
+              </select>
+
+              <button type="button" class="v2-btn-ghost xs" onclick="resetAgentCaseFilters()">Reset</button>
             </div>
           </div>
 
           <!-- Master-Detail Split Workspace -->
           <div class="v2-cases-workspace" id="casesMasterDetail">
-            <!-- Left: Apple / Linear Clean Scannable Case List -->
+            <!-- Left: Aligned Linear-Style Case Table -->
             <div class="v2-cases-list-pane">
-              <div class="v2-list-meta">
-                <span id="caseTableCountText">0 Cases</span>
-                <span class="v2-list-hint">Select a case to inspect 360° dossier</span>
+              <div class="v2-cases-colhead" id="casesTableColHead">
+                <span></span>
+                <span>CASE ID</span>
+                <span>SUBJECT &amp; EMPLOYEE · <strong id="caseTableCountText">0 Cases</strong></span>
+                <span>DESK</span>
+                <span>PRIORITY</span>
+                <span>OWNER</span>
+                <span>STATUS</span>
+                <span class="right">SLA · AGE</span>
               </div>
               <div class="v2-cases-scroll" id="agentCasesListContainer">
                 <div class="v2-loading-box">Loading cases...</div>
@@ -1406,6 +1415,6 @@
   <!-- TOASTS -->
   <div id="toastContainer" class="v2-toast-container"></div>
 
-  <script src="/js/agentv2.js?v=2.8"></script>
+  <script src="/js/agentv2.js?v=2.9"></script>
 </body>
 </html>
