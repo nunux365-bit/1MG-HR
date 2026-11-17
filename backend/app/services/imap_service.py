@@ -21,7 +21,7 @@ logger = logging.getLogger("backend.imap_service")
 _imap_sync_lock = threading.Lock()
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
-DEFAULT_IMAP_SYNC_START_DATE = "2026-11-12"
+DEFAULT_IMAP_SYNC_START_DATE = "2026-11-17"
 _IMAP_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 PLACEHOLDER_PASSWORDS = {"", "your_16_digit_app_password", "your_16_digit_google_app_password"}
