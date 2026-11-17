@@ -411,8 +411,7 @@ function renderCommandPaletteResults(query = '') {
       title: `${formatCaseNumber(c.case_number)} · ${c.title || 'Untitled'}`,
       sub: `${c.employee_name || c.employee_email} · ${c.status}`,
       run: () => {
-        switchView('casesView');
-        setTimeout(() => openAgentCaseDossier(c.id), 60);
+        openCaseInNewTab(c.id);
       }
     });
   });
@@ -1300,20 +1299,38 @@ async function convertCurrentInboxEmail() {
   }
 }
 
+function openCaseInNewTab(caseId) {
+  if (!caseId) return;
+  window.open(`/agent/case-details.html?id=${encodeURIComponent(caseId)}`, '_blank', 'noopener');
+}
+
 async function openConvertedCaseInWorkspace(caseNumber) {
   if (!caseNumber) return;
+  const localMatch = (allCases || []).find(
+    c => String(c.case_number).toLowerCase() === String(caseNumber).toLowerCase()
+  );
+  if (localMatch?.id) {
+    openCaseInNewTab(localMatch.id);
+    return;
+  }
+
+  const pendingTab = window.open('', '_blank');
   try {
     const res = await fetch(`/api/v1/cases?search=${encodeURIComponent(caseNumber)}&include_universal=true`);
     const data = await res.json();
     if (data.success && data.cases?.length) {
       const target = data.cases.find(c => String(c.case_number).toLowerCase() === String(caseNumber).toLowerCase()) || data.cases[0];
-      switchView('casesView');
-      setTimeout(() => openAgentCaseDossier(target.id), 80);
-      return;
+      if (target?.id) {
+        const destUrl = `/agent/case-details.html?id=${encodeURIComponent(target.id)}`;
+        if (pendingTab) pendingTab.location.href = destUrl;
+        else window.open(destUrl, '_blank', 'noopener');
+        return;
+      }
     }
   } catch (err) {
     console.error(err);
   }
+  if (pendingTab) pendingTab.close();
   switchView('casesView');
 }
 
@@ -1699,7 +1716,7 @@ function renderAgentCasesTable() {
     const isUnassigned = !c.assigned_user || c.assigned_user === 'Unassigned' || c.assigned_user === 'Central Triage';
 
     return `
-      <div class="v2-case-row ${isSel ? 'selected' : ''}" onclick="openAgentCaseDossier(${c.id})">
+      <div class="v2-case-row ${isSel ? 'selected' : ''}" onclick="openCaseInNewTab(${c.id})">
         <span class="v2-case-avatar" style="background: ${avatarBg};">${escapeHtml(empInitials)}</span>
         <div class="v2-col-id"><span class="v2-id-chip mono">${escapeHtml(caseNum)}</span></div>
         <div class="v2-cr-main">
@@ -2462,7 +2479,7 @@ async function loadSlaDashboard() {
 
   tbody.innerHTML = rows.map(c => `
     <tr>
-      <td><button type="button" class="v2-btn-ghost xs mono" onclick="switchView('casesView'); setTimeout(() => openAgentCaseDossier(${c.id}), 60);">${escapeHtml(formatCaseNumber(c.case_number))}</button></td>
+      <td><button type="button" class="v2-btn-ghost xs mono" onclick="openCaseInNewTab(${c.id})">${escapeHtml(formatCaseNumber(c.case_number))}</button></td>
       <td>
         <div style="font-weight:700;">${escapeHtml(c.employee_name || c.employee_email || 'Employee')}</div>
         <div class="v2-muted-sm">${escapeHtml(c.department_name || 'Central Desk')}</div>
