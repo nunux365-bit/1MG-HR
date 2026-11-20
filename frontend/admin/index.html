@@ -1431,15 +1431,26 @@
                 </p>
               </div>
             </div>
-            <button class="user-add-agent-btn" onclick="openAddAgentModal()">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="8.5" cy="7" r="4"/>
-                <line x1="20" y1="8" x2="20" y2="14"/>
-                <line x1="23" y1="11" x2="17" y2="11"/>
-              </svg>
-              <span>+ Add New Agent</span>
-            </button>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-secondary" style="height: 38px; padding: 0 14px; font-size: 12.5px; font-weight: 600;" onclick="openOrynConnectModal()">
+                <span>Oryn Bot Connect</span>
+              </button>
+              <button class="btn-secondary" style="height: 38px; padding: 0 14px; font-size: 12.5px; font-weight: 600;" onclick="openBulkUsersModal()">
+                <span>Bulk Add Joiners</span>
+              </button>
+              <button class="btn-secondary" style="height: 38px; padding: 0 14px; font-size: 12.5px; font-weight: 600; color: #B45309; border-color: #FDE68A; background: #FFFBEB;" onclick="triggerCleanupTestData()">
+                <span>Clean Test Data</span>
+              </button>
+              <button class="user-add-agent-btn" onclick="openAddAgentModal()">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <line x1="20" y1="8" x2="20" y2="14"/>
+                  <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>
+                <span>+ Add New Agent</span>
+              </button>
+            </div>
           </div>
 
           <!-- Dynamic Search & Filter Toolbar -->
@@ -2984,6 +2995,111 @@
   </div>
 
   <!-- ============================================================
+       MODAL: BULK ADD TODAY'S JOINERS / TESTERS
+       ============================================================ -->
+  <div id="bulkUsersModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 660px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 17px; font-weight: 700; color: var(--text-primary);">Bulk Add Today's Joiners &amp; Testers</h3>
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+            Add multiple joiners into HRMS Employees and/or provision People Desk Agent access at once
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeBulkUsersModal()">&times;</button>
+      </div>
+      <form onsubmit="submitBulkUsers(event)">
+        <div class="modal-body" style="padding: 20px 24px;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="form-label" style="margin-bottom:0;">Paste CSV Rows or Upload `.csv`</label>
+              <label style="font-size:12px;font-weight:600;color:#FF6F61;cursor:pointer;">
+                Upload CSV File
+                <input type="file" accept=".csv,text/csv" style="display:none;" onchange="handleBulkCsvFile(this)">
+              </label>
+            </div>
+            <textarea id="bulkUsersCsvInput" class="form-input" rows="6" placeholder="name,email,role,department,employee_id&#10;Aarav Mehta,aarav.mehta@1mg.com,HR_AGENT,People Desk,1MG-9001&#10;Priya Nair,priya.nair@1mg.com,DEPT_HEAD,Payroll & Compensation,1MG-9002"></textarea>
+            <p class="form-helper">Supported columns: <code>name, email, role (HR_AGENT/DEPT_HEAD/ADMIN), department, employee_id</code></p>
+          </div>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Default Department (if omitted in row)</label>
+            <select id="bulkDefaultDept" class="form-input"></select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:#F8FAFC;padding:10px;border-radius:8px;border:1px solid #E2E8F0;cursor:pointer;">
+              <input type="checkbox" id="bulkGrantPortalAccess" checked>
+              <span>Portal Login Access</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:#FFFBEB;padding:10px;border-radius:8px;border:1px solid #FDE68A;cursor:pointer;">
+              <input type="checkbox" id="bulkMarkAsTest" checked>
+              <span>Mark as Test Data</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;background:#F8FAFC;padding:10px;border-radius:8px;border:1px solid #E2E8F0;cursor:pointer;">
+              <input type="checkbox" id="bulkSendWelcomeEmail">
+              <span>Send Welcome Email</span>
+            </label>
+          </div>
+          <div id="bulkUsersResults" style="display:none;margin-top:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeBulkUsersModal()">Close</button>
+          <button type="submit" id="btnSubmitBulkUsers" class="btn-primary" style="width:auto;padding:0 20px;">
+            <span>Provision Joiners</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: ORYN BOT (RACM) CONNECTOR DETAILS
+       ============================================================ -->
+  <div id="orynConnectModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="font-size: 17px; font-weight: 700; color: var(--text-primary);">Connect People Desk to Oryn Bot (RACM)</h3>
+          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+            Use these live endpoints in Oryn Workspace &rarr; Connected Projects &rarr; Connect Test Project
+          </p>
+        </div>
+        <button class="modal-close-btn" onclick="closeOrynConnectModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px; font-size: 13px; color: #334155;">
+        <div style="margin-bottom: 14px;">
+          <div style="font-weight:700;margin-bottom:4px;">1. Connector Protocol: REST API (JSON)</div>
+          <div style="display:flex;gap:8px;align-items:center;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:10px 12px;">
+            <code id="orynRestEndpointUrl" style="flex:1;word-break:break-all;font-size:12.5px;"></code>
+            <button type="button" class="action-pill-btn edit" onclick="copyOrynEndpoint('orynRestEndpointUrl')">Copy</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 14px;">
+          <div style="font-weight:700;margin-bottom:4px;">2. Connector Protocol: SCIM 2.0 (Alternative)</div>
+          <div style="display:flex;gap:8px;align-items:center;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:8px;padding:10px 12px;">
+            <code id="orynScimEndpointUrl" style="flex:1;word-break:break-all;font-size:12.5px;"></code>
+            <button type="button" class="action-pill-btn edit" onclick="copyOrynEndpoint('orynScimEndpointUrl')">Copy</button>
+          </div>
+        </div>
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12.5px;">
+          <strong>Authentication:</strong> Set <code>ORYN_BOT_API_KEY</code> in your Render Environment Variables, then pass it from Oryn via header <code>X-API-Key: &lt;key&gt;</code>, <code>Authorization: Bearer &lt;key&gt;</code>, or query param <code>?api_key=&lt;key&gt;</code> in the Target URL.
+        </div>
+        <div style="font-weight:700;margin-bottom:6px;">Available Oryn REST Operations:</div>
+        <ul style="margin:0;padding-left:18px;line-height:1.7;font-size:12.5px;">
+          <li><code>POST /api/access</code> (or <code>/api/access/provision</code>) — Provision joiner / tester account + employee record</li>
+          <li><code>POST /api/access/bulk</code> — Bulk provision array or CSV of today's joiners</li>
+          <li><code>POST /api/access/grant-role</code> — Grant/switch role (<code>HR_AGENT</code>, <code>DEPT_HEAD</code>, <code>ADMIN</code>)</li>
+          <li><code>POST /api/access/revoke</code> or <code>DELETE /api/access/users/{email}</code> — Live revoke &amp; terminate active sessions</li>
+          <li><code>GET /api/access/verify?email=...</code> — Verify active role &amp; live revocation state</li>
+          <li><code>POST /api/access/cases</code> — Raise a People Desk test case for a joiner</li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" style="width:auto;padding:0 20px;" onclick="closeOrynConnectModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
        MODAL: CREATE NEW DEPARTMENT
        ============================================================ -->
   <div id="createDeptModal" class="modal-backdrop" style="display: none;">
@@ -4059,6 +4175,7 @@
   <!-- DYNAMIC TATA 1MG TOAST CONTAINER -->
   <div id="toastContainer" style="position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
-  <script src="/admin-static/js/admin.js?v=7.3"></script>
+  <script src="/js/auth-fetch.js?v=1.0"></script>
+  <script src="/admin-static/js/admin.js?v=7.4"></script>
 </body>
 </html>

@@ -1,12 +1,19 @@
 import json
-from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Request, Query
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel, EmailStr
 from backend.app.database import execute_query
+from backend.app.dependencies import require_admin, revoke_user_sessions
+from backend.app.routes.oryn_access import _bulk_provision_items, _parse_csv_joiners, _resolve_base_url
+from backend.app.services.access_provisioning_service import cleanup_test_data
 from backend.app.services.email_service import send_welcome_email
 from backend.app.config import ADMIN_EMAIL
 
-router = APIRouter(prefix="/api/v1/admin", tags=["Admin User Management"])
+router = APIRouter(
+    prefix="/api/v1/admin",
+    tags=["Admin User Management"],
+    dependencies=[Depends(require_admin)],
+)
 
 # Pydantic Request Models
 class CreateUserRequest(BaseModel):
@@ -18,6 +25,15 @@ class CreateUserRequest(BaseModel):
     is_dept_head: Optional[bool] = False
     send_welcome_email: Optional[bool] = True
     role: Optional[str] = "HR_AGENT"
+    is_test: Optional[bool] = False
+
+class BulkUsersRequest(BaseModel):
+    users: Optional[List[Dict[str, Any]]] = None
+    csv_text: Optional[str] = None
+    department_id: Optional[int] = None
+    grant_portal_access: Optional[bool] = True
+    send_welcome_email: Optional[bool] = False
+    is_test: Optional[bool] = True
 
 class UpdateUserRequest(BaseModel):
     name: Optional[str] = None
@@ -165,7 +181,7 @@ def get_users(
     # Fetch paginated rows with primary department join
     users_query = f"""
         SELECT u.id, u.name, u.email, u.role, u.is_dept_head, u.department_id,
-               u.designation, u.status, u.created_at,
+               u.designation, u.status, u.is_test, u.source, u.revoked_at, u.created_at,
                (u.password_hash IS NOT NULL) as has_password,
                d.team_name as primary_department_name, d.dept_code as primary_dept_code, d.dept_gmail as primary_dept_gmail
         FROM users u
@@ -311,9 +327,9 @@ def create_agent(payload: CreateUserRequest, request: Request):
     # 3. Insert new user
     new_user = execute_query(
         """
-        INSERT INTO users (name, email, role, is_dept_head, department_id, designation, status, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, 'ACTIVE', NOW(), NOW())
-        RETURNING id, name, email, role, is_dept_head, department_id, designation, status, created_at;
+        INSERT INTO users (name, email, role, is_dept_head, department_id, designation, status, is_test, source, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, 'ACTIVE', %s, 'ADMIN_PORTAL', NOW(), NOW())
+        RETURNING id, name, email, role, is_dept_head, department_id, designation, status, is_test, source, created_at;
         """,
         (
             payload.name.strip(),
@@ -321,7 +337,8 @@ def create_agent(payload: CreateUserRequest, request: Request):
             role_clean,
             is_dept_head,
             primary_dept_id,
-            desig
+            desig,
+            bool(payload.is_test),
         ),
         fetch_one=True,
         commit=True
@@ -387,9 +404,37 @@ def create_agent(payload: CreateUserRequest, request: Request):
         "success": True,
         "message": msg,
         "user": new_user,
+        "activation_link": f"{base_url.rstrip('/')}/?email={email_clean}",
         "email_details": email_result,
         "email_sent": email_sent
     }
+
+
+@router.post("/users/bulk")
+def bulk_create_users(payload: BulkUsersRequest, request: Request, admin_user: dict = Depends(require_admin)):
+    """Bulk-adds today's joiners / test users via JSON array or CSV paste."""
+    items = payload.users or _parse_csv_joiners(payload.csv_text or "")
+    if not items:
+        raise HTTPException(status_code=400, detail="Provide either 'users' array or 'csv_text' with at least one valid row.")
+    return _bulk_provision_items(
+        items,
+        base_url=_resolve_base_url(request),
+        default_grant_portal=bool(payload.grant_portal_access),
+        default_send_email=bool(payload.send_welcome_email),
+        default_is_test=bool(payload.is_test),
+        default_department_id=payload.department_id,
+        actor=admin_user,
+    )
+
+
+@router.post("/test-data/cleanup")
+def admin_cleanup_test_data(admin_user: dict = Depends(require_admin)):
+    """Deletes test cases, test portal users, and test employee rows flagged with is_test=TRUE."""
+    summary = cleanup_test_data(
+        actor_email=admin_user.get("email", ADMIN_EMAIL),
+        actor_name=admin_user.get("name", "Administrator"),
+    )
+    return {"success": True, "message": "Test data cleaned up successfully.", **summary}
 
 @router.put("/users/{user_id}")
 def update_user(user_id: int, payload: UpdateUserRequest):
@@ -445,8 +490,14 @@ def update_user(user_id: int, payload: UpdateUserRequest):
         updates.append("is_dept_head = %s")
         params.append(payload.is_dept_head)
     if payload.status is not None:
+        status_clean = payload.status.strip().upper()
         updates.append("status = %s")
-        params.append(payload.status)
+        params.append(status_clean)
+        if status_clean == "INACTIVE":
+            updates.append("revoked_at = NOW()")
+            revoke_user_sessions(user_id)
+        elif status_clean == "ACTIVE":
+            updates.append("revoked_at = NULL")
         
     if not updates:
         return {"success": True, "message": "No changes specified."}
@@ -657,6 +708,7 @@ def remove_user(user_id: int):
         raise HTTPException(status_code=400, detail="Cannot remove root Primary System Administrator account.")
         
     # 1. Clean up references
+    revoke_user_sessions(user_id)
     execute_query("DELETE FROM user_departments WHERE user_id = %s;", (user_id,), commit=True)
     execute_query("UPDATE cases SET assigned_user_id = 1, assigned_user = 'Vaibhav Yadav' WHERE assigned_user_id = %s;", (user_id,), commit=True)
     execute_query("UPDATE emails SET assigned_user_id = NULL, assigned_user_name = NULL, assigned_user_email = NULL WHERE assigned_user_id = %s;", (user_id,), commit=True)

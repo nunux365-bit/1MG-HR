@@ -7,10 +7,11 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger("backend.cases")
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, EmailStr
 from backend.app.config import ADMIN_EMAIL
 from backend.app.database import execute_query
+from backend.app.dependencies import require_admin, require_authenticated_actor
 from backend.app.services.classifier_service import classify_inbound_email_ai
 from backend.app.services.case_routing_service import (
     _extract_sender_name,
@@ -25,7 +26,11 @@ from backend.app.services.case_routing_service import (
     lookup_hrms_employee,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["Cases & Operations"])
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["Cases & Operations"],
+    dependencies=[Depends(require_authenticated_actor)],
+)
 
 class CaseCreateRequest(BaseModel):
     employee_email: EmailStr
@@ -799,7 +804,7 @@ def reassign_case(case_id: int, req: CaseReassignRequest):
         "case": updated
     }
 
-@router.delete("/cases/{case_id}")
+@router.delete("/cases/{case_id}", dependencies=[Depends(require_admin)])
 def delete_single_case(case_id: int):
     """Deletes a single case and cascades audit logs."""
     case = execute_query("SELECT id, case_number FROM cases WHERE id = %s;", (case_id,), fetch_one=True)
@@ -980,7 +985,7 @@ def batch_update_priority(req: BatchPriorityRequest):
         "updated_count": len(updated_rows)
     }
 
-@router.post("/cases/batch-delete")
+@router.post("/cases/batch-delete", dependencies=[Depends(require_admin)])
 def batch_delete_cases(req: BatchDeleteRequest):
     """Bulk purges selected cases and cascades audit logs."""
     if not req.case_ids:
@@ -1655,7 +1660,7 @@ def get_dashboard_stats(timeframe: Optional[str] = "7d"):
         "recent_cases": recent_cases
     }
 
-@router.get("/admin/audit-logs")
+@router.get("/admin/audit-logs", dependencies=[Depends(require_admin)])
 def get_audit_logs(limit: int = 50):
     """Fetch immutable forensic audit trail records."""
     logs = execute_query(
@@ -1716,7 +1721,7 @@ def build_report_where_clause(
     return " AND ".join(where_clauses), params
 
 
-@router.get("/admin/reports/analytics")
+@router.get("/admin/reports/analytics", dependencies=[Depends(require_admin)])
 def get_report_analytics(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
@@ -1850,7 +1855,7 @@ def get_report_analytics(
     }
 
 
-@router.get("/admin/reports/data")
+@router.get("/admin/reports/data", dependencies=[Depends(require_admin)])
 def get_report_data(
     tab: str = "cases",
     date_from: Optional[str] = None,
@@ -1990,8 +1995,8 @@ def get_report_data(
         return {"success": True, "tab": tab, "rows": rows, "total": total_rows, "page": page, "limit": limit}
 
 
-@router.get("/admin/reports/export.csv")
-@router.get("/admin/reports/cases.csv")
+@router.get("/admin/reports/export.csv", dependencies=[Depends(require_admin)])
+@router.get("/admin/reports/cases.csv", dependencies=[Depends(require_admin)])
 def export_cases_report_csv(
     report_type: str = "cases",
     date_from: Optional[str] = None,
@@ -2165,7 +2170,7 @@ class ActionBroadcastRequest(BaseModel):
     actor_email: Optional[str] = "admin@1mg.com"
     actor_name: Optional[str] = "Administrator"
 
-@router.get("/admin/actions/overview")
+@router.get("/admin/actions/overview", dependencies=[Depends(require_admin)])
 def get_actions_overview():
     """Returns real-time KPI metrics and telemetry for the Action Center."""
     # 1. Active SLA Monitors & Breaches
@@ -2225,7 +2230,7 @@ def get_actions_overview():
         "broadcasts": broadcasts
     }
 
-@router.post("/admin/actions/sla-audit")
+@router.post("/admin/actions/sla-audit", dependencies=[Depends(require_admin)])
 def run_sla_compliance_audit():
     """
     Runs a live forensic SLA scan across all active non-resolved cases.
@@ -2280,7 +2285,7 @@ def run_sla_compliance_audit():
         "timestamp": now_utc.strftime("%Y-%m-%d %H:%M:%S UTC")
     }
 
-@router.post("/admin/actions/escalate-case")
+@router.post("/admin/actions/escalate-case", dependencies=[Depends(require_admin)])
 def escalate_case_priority(req: ActionEscalateRequest):
     """Escalates a case priority to CRITICAL and logs administrative escalation."""
     case = execute_query("SELECT id, case_number, title, priority, status FROM cases WHERE id = %s;", (req.case_id,), fetch_one=True)
@@ -2308,7 +2313,7 @@ def escalate_case_priority(req: ActionEscalateRequest):
         "case_id": req.case_id
     }
 
-@router.post("/admin/actions/broadcast")
+@router.post("/admin/actions/broadcast", dependencies=[Depends(require_admin)])
 def dispatch_system_broadcast(req: ActionBroadcastRequest):
     """Dispatches an enterprise broadcast announcement to People Desk staff."""
     execute_query("""
@@ -2349,7 +2354,7 @@ def dispatch_system_broadcast(req: ActionBroadcastRequest):
         "message": "Broadcast notice dispatched successfully."
     }
 
-@router.post("/admin/actions/sync-hrms")
+@router.post("/admin/actions/sync-hrms", dependencies=[Depends(require_admin)])
 def sync_hrms_directory():
     """Simulates real-time synchronization with Central Darwinbox HRMS Directory."""
     execute_query("UPDATE cases SET is_profile_verified = TRUE WHERE is_profile_verified IS NOT TRUE;")

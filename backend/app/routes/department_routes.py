@@ -1,9 +1,10 @@
 import json
 import logging
 from typing import Optional, List, Any, Dict
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from pydantic import BaseModel, EmailStr
 from backend.app.database import execute_query
+from backend.app.dependencies import get_current_user, require_admin
 from backend.app.services.classifier_service import (
     run_live_classification_sandbox,
     train_department_model,
@@ -19,7 +20,11 @@ from backend.app.classification.starter_datasets import (
 
 logger = logging.getLogger("backend.routes.departments")
 
-router = APIRouter(prefix="/api/v1/departments", tags=["Departments & AI Routing"])
+router = APIRouter(
+    prefix="/api/v1/departments",
+    tags=["Departments & AI Routing"],
+    dependencies=[Depends(get_current_user)],
+)
 
 # Pydantic Schemas
 class DepartmentCreatePayload(BaseModel):
@@ -160,7 +165,7 @@ def get_departments_kpis():
         }
     }
 
-@router.post("")
+@router.post("", dependencies=[Depends(require_admin)])
 def create_department(payload: DepartmentCreatePayload):
     """Dynamically creates a new HR department with auto code, routing Gmail, and defaults."""
     code = payload.dept_code.strip().upper()
@@ -215,7 +220,7 @@ def create_department(payload: DepartmentCreatePayload):
         "department": new_dept
     }
 
-@router.put("/{dept_id}")
+@router.put("/{dept_id}", dependencies=[Depends(require_admin)])
 def update_department(dept_id: int, payload: DepartmentUpdatePayload):
     """Updates department core configuration."""
     dept = execute_query("SELECT id FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True)
@@ -265,7 +270,7 @@ def update_department(dept_id: int, payload: DepartmentUpdatePayload):
     
     return {"success": True, "message": "Department updated successfully", "department": updated}
 
-@router.delete("/{dept_id}")
+@router.delete("/{dept_id}", dependencies=[Depends(require_admin)])
 def delete_department(dept_id: int):
     """Safely removes a department if no users or cases are attached."""
     users_count = execute_query("SELECT COUNT(*) as count FROM users WHERE department_id = %s;", (dept_id,), fetch_one=True).get("count", 0)
@@ -302,7 +307,7 @@ def get_stage1_prompt(dept_id: int):
         "prompt": prompt
     }
 
-@router.post("/{dept_id}/keywords")
+@router.post("/{dept_id}/keywords", dependencies=[Depends(require_admin)])
 def save_stage1_keywords(dept_id: int, payload: SaveKeywordsPayload):
     """Saves Stage 1 Strong Phrases and Weak Keywords to the department."""
     dept = execute_query("SELECT id, team_name FROM hr_departments WHERE id = %s;", (dept_id,), fetch_one=True)
@@ -373,7 +378,7 @@ def get_starter_dataset(dept_id: int):
         "dataset": samples
     }
 
-@router.post("/{dept_id}/train")
+@router.post("/{dept_id}/train", dependencies=[Depends(require_admin)])
 def train_department_intent_model(dept_id: int, payload: TrainModelPayload):
     """
     Trains the scikit-learn LinearSVC model for this department, exports .pkl weights,
@@ -420,7 +425,7 @@ def classify_test_query(payload: ClassifyTestPayload):
     )
     return result
 
-@router.post("/bootstrap")
+@router.post("/bootstrap", dependencies=[Depends(require_admin)])
 def bootstrap_standard_departments():
     """
     Synchronizes the 5 canonical Tata 1mg functional departments with clean

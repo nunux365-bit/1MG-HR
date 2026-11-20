@@ -30,8 +30,23 @@ CREATE TABLE IF NOT EXISTS users (
     mail_app_password VARCHAR(255),
     mail_configured BOOLEAN DEFAULT FALSE,
     mail_last_synced_at TIMESTAMPTZ,
+    is_test BOOLEAN DEFAULT FALSE,
+    source VARCHAR(50) DEFAULT 'PORTAL',
+    revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1B. USER SESSIONS TABLE (Server-side token verification & live revocation)
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id SERIAL PRIMARY KEY,
+    token_hash VARCHAR(128) UNIQUE NOT NULL,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. HR DEPARTMENTS TABLE
@@ -117,6 +132,7 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS manager VARCHAR(150);
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS mobile_number VARCHAR(50);
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_profile_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS assigned_user_id INT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE;
 
 -- 5. EMPLOYEES MASTER TABLE (Central HRMS / Darwinbox Active Directory)
 CREATE TABLE IF NOT EXISTS employees (
@@ -128,7 +144,10 @@ CREATE TABLE IF NOT EXISTS employees (
     designation VARCHAR(150),
     manager_name VARCHAR(150),
     location VARCHAR(100),
+    joining_date DATE,
+    status VARCHAR(20) DEFAULT 'ACTIVE',
     source VARCHAR(50) DEFAULT 'HRMS',
+    is_test BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -221,6 +240,37 @@ VALUES
     ('neeraj.singh@1mg.com', 'Neeraj Singh', 'ADMIN', TRUE, 'Administrator', 'ACTIVE')
 ON CONFLICT (email) DO UPDATE SET role = 'ADMIN', status = 'ACTIVE';
 """
+
+def ensure_runtime_schema():
+    """Applies idempotent runtime migrations over execute_query (works via Neon HTTPS 443)."""
+    from backend.app.database import execute_query
+
+    statements = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'PORTAL';",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS joining_date DATE;",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ACTIVE';",
+        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE cases ADD COLUMN IF NOT EXISTS is_test BOOLEAN DEFAULT FALSE;",
+        """
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id SERIAL PRIMARY KEY,
+            token_hash VARCHAR(128) UNIQUE NOT NULL,
+            user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            email VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            revoked_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_employees_email_lower ON employees(LOWER(email));",
+    ]
+    for stmt in statements:
+        execute_query(stmt, commit=True)
+
 
 def init_database():
     print(f"Connecting to: {DB_URL.split('@')[-1]}")

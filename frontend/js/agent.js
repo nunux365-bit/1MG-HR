@@ -141,6 +141,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 function switchAgentProfile(userId) {
+  if ((currentUser.role || '').toUpperCase() !== 'ADMIN') {
+    showToast('Profile switching is restricted to verified Administrators.', 'error');
+    return;
+  }
   const prof = KNOWN_PROFILES[userId];
   if (!prof) return;
   currentUser = { ...prof };
@@ -469,7 +473,11 @@ function switchAgentView(viewId, navEl) {
   }
 }
 
-function handleSignOut() {
+async function handleSignOut() {
+  try {
+    await fetch('/api/v1/auth/logout', { method: 'POST' });
+  } catch (_) {}
+  localStorage.removeItem('1mg_token');
   localStorage.removeItem('1mg_user');
   window.location.href = '/';
 }

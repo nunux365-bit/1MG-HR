@@ -42,5 +42,8 @@ NEON_CONN_STR = f"postgresql://{NEON_USER}:{NEON_PASSWORD}@{NEON_HTTP_HOST}/{NEO
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "vaibhav.v1@1mg.com")
 ADMIN_APP_PASSWORD = os.getenv("ADMIN_APP_PASSWORD", "")
+ORYN_BOT_API_KEY = os.getenv("ORYN_BOT_API_KEY", "").strip()
+ORYN_WEBHOOK_SECRET = os.getenv("ORYN_WEBHOOK_SECRET", "").strip()
+SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", 168))
 PORT = int(os.getenv("PORT", 9000))
 HOST = os.getenv("HOST", "0.0.0.0")

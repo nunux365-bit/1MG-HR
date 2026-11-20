@@ -7,7 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
-from backend.app.routes import auth, admin_users, cases, department_routes
+from backend.app.db_init import ensure_runtime_schema
+from backend.app.routes import auth, admin_users, cases, department_routes, oryn_access
 
 logger = logging.getLogger("backend.main")
 
@@ -39,6 +40,10 @@ async def _background_imap_poller():
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
+    try:
+        ensure_runtime_schema()
+    except Exception as schema_err:
+        logger.warning(f"Runtime schema migration check skipped: {schema_err}")
     task = None
     enabled = os.getenv("ENABLE_BACKGROUND_IMAP_SYNC", "true").strip().lower() in ("1", "true", "yes")
     if enabled and os.getenv("DISABLE_BACKGROUND_TASKS", "0") != "1":
@@ -78,6 +83,8 @@ app.include_router(auth.router)
 app.include_router(admin_users.router)
 app.include_router(cases.router)
 app.include_router(department_routes.router)
+app.include_router(oryn_access.access_router)
+app.include_router(oryn_access.scim_router)
 
 # Mount frontend directories
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

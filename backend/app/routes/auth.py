@@ -2,10 +2,16 @@ import hashlib
 import json
 import secrets
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from backend.app.database import execute_query
 from backend.app.config import ADMIN_EMAIL, ADMIN_APP_PASSWORD
+from backend.app.dependencies import (
+    create_user_session,
+    extract_bearer_token,
+    get_current_user,
+    hash_session_token,
+)
 from backend.app.services.imap_service import has_system_mailbox_config
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
@@ -105,7 +111,7 @@ def check_email(payload: CheckEmailRequest):
                d.team_name as department_name, d.dept_gmail, d.dept_app_password
         FROM users u
         LEFT JOIN hr_departments d ON u.department_id = d.id
-        WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE';
+        WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE' AND u.revoked_at IS NULL;
         """,
         (email_clean,),
         fetch_one=True
@@ -184,7 +190,7 @@ def login(payload: LoginRequest):
                d.team_name as department_name, d.dept_gmail, d.dept_app_password
         FROM users u
         LEFT JOIN hr_departments d ON u.department_id = d.id
-        WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE';
+        WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE' AND u.revoked_at IS NULL;
         """,
         (email_clean,),
         fetch_one=True
@@ -220,8 +226,8 @@ def login(payload: LoginRequest):
     if not password_valid:
         raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
     
-    # Generate simple session token
-    session_token = secrets.token_urlsafe(32)
+    # Create persistent server-side session token
+    session_token = create_user_session(user)
     is_dept_head = bool(user.get("is_dept_head"))
     sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
     dept_has_pw = bool(user.get("dept_app_password"))
@@ -272,7 +278,7 @@ def set_password(payload: SetPasswordRequest):
                d.dept_gmail, d.dept_app_password
         FROM users u 
         LEFT JOIN hr_departments d ON u.department_id = d.id
-        WHERE LOWER(email) = %s AND status = 'ACTIVE';
+        WHERE LOWER(u.email) = %s AND u.status = 'ACTIVE' AND u.revoked_at IS NULL;
         """,
         (email_clean,),
         fetch_one=True
@@ -304,7 +310,7 @@ def set_password(payload: SetPasswordRequest):
         commit=True
     )
     
-    session_token = secrets.token_urlsafe(32)
+    session_token = create_user_session(user)
     is_admin = (user["role"] == "ADMIN")
     is_dept_head = bool(user.get("is_dept_head"))
     sys_mail_ok, sys_mail_user, _ = has_system_mailbox_config()
@@ -352,7 +358,7 @@ def change_password(payload: ChangePasswordRequest):
         raise HTTPException(status_code=400, detail="New passwords do not match.")
 
     user = execute_query(
-        "SELECT id, email, name, role, password_hash FROM users WHERE LOWER(email) = %s AND status = 'ACTIVE';",
+        "SELECT id, email, name, role, password_hash FROM users WHERE LOWER(email) = %s AND status = 'ACTIVE' AND revoked_at IS NULL;",
         (email_clean,),
         fetch_one=True
     )
@@ -382,4 +388,40 @@ def change_password(payload: ChangePasswordRequest):
         "success": True,
         "message": "Password changed successfully."
     }
+
+
+@router.get("/me")
+def get_me(user: dict = Depends(get_current_user)):
+    """Verifies current session token and returns live user profile & permissions."""
+    is_admin = (user["role"] == "ADMIN")
+    dept_info = _get_user_department_info(user["id"], user.get("department_id"), None, is_admin)
+    return {
+        "success": True,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"],
+            "is_dept_head": bool(user.get("is_dept_head")),
+            "department_id": user.get("department_id"),
+            "department_ids": dept_info["department_ids"],
+            "departments": dept_info["departments"],
+            "department_name": dept_info["department_name"],
+            "designation": user.get("designation"),
+            "status": user.get("status"),
+        },
+    }
+
+
+@router.post("/logout")
+def logout(request: Request):
+    """Revokes the caller's current session token."""
+    token = extract_bearer_token(request)
+    if token:
+        execute_query(
+            "UPDATE user_sessions SET revoked_at = NOW() WHERE token_hash = %s AND revoked_at IS NULL;",
+            (hash_session_token(token),),
+            commit=True,
+        )
+    return {"success": True, "message": "Signed out successfully."}
 

@@ -61,7 +61,10 @@ function switchView(viewId, navEl) {
   }
 }
 
-function handleSignOut() {
+async function handleSignOut() {
+  try {
+    await fetch('/api/v1/auth/logout', { method: 'POST' });
+  } catch (_) {}
   localStorage.clear();
   window.location.href = '/';
 }
@@ -423,6 +426,8 @@ function renderUsersTable(users, total, totalPages) {
               <div class="user-name-row">
                 <span class="user-name-text">${escapeHtml(u.name)}</span>
                 <span class="user-id-pill">#${u.id}</span>
+                ${u.is_test ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:#FEF3C7;color:#B45309;border:1px solid #FDE68A;">TEST</span>` : ''}
+                ${u.source && String(u.source).startsWith('ORYN') ? `<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:#DCFCE7;color:#15803D;border:1px solid #BBF7D0;">ORYN</span>` : ''}
               </div>
               <div class="user-email-row" onclick="copyStaffEmail('${escapeHtml(u.email)}', event)" data-tooltip="Click to copy email">
                 <span>${escapeHtml(u.email)}</span>
@@ -535,6 +540,13 @@ function renderUsersTable(users, total, totalPages) {
         <td style="text-align: right;">
           <div class="user-actions-suite">
             ${isPending ? `
+              <button
+                class="action-pill-btn edit"
+                onclick="copyActivationLink('${escapeHtml(u.email)}')"
+                data-tooltip="Copy Direct Activation Link"
+              >
+                <span>Copy Link</span>
+              </button>
               <button 
                 class="action-pill-btn resend"
                 onclick="triggerResendInvite(${u.id}, '${escapeHtml(u.name)}')" 
@@ -3884,8 +3896,12 @@ async function deleteCase(caseId) {
   }
 }
 
-function exportCasesCsv() {
-  window.open('/api/v1/admin/reports/cases.csv', '_blank');
+async function exportCasesCsv() {
+  try {
+    await window.authorizedDownload('/api/v1/admin/reports/cases.csv', 'people-desk-cases.csv');
+  } catch (err) {
+    showToast('Export Failed', err.message || 'Unable to export CSV.', 'error');
+  }
 }
 
 // =========================================================================
@@ -6021,11 +6037,15 @@ function renderReportAgentsTable(thead, tbody, rows) {
   }).join('');
 }
 
-function exportCurrentReport(format) {
+async function exportCurrentReport(format) {
   const qs = buildReportQueryString();
   const url = `/api/v1/admin/reports/export.csv?report_type=${currentReportTab}&${qs}`;
-  window.open(url, '_blank');
-  showToast('Export Initiated', `Downloading ${currentReportTab.toUpperCase()} CSV report...`, 'success');
+  try {
+    await window.authorizedDownload(url, `people-desk-${currentReportTab}-report.csv`);
+    showToast('Export Initiated', `Downloading ${currentReportTab.toUpperCase()} CSV report...`, 'success');
+  } catch (err) {
+    showToast('Export Failed', err.message || 'Unable to download report.', 'error');
+  }
 }
 
 function printExecutiveReport() {
@@ -6083,3 +6103,165 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView(requestedView);
   }
 });
+
+// =========================================================================
+// 11. BULK JOINERS / TESTERS & ORYN BOT CONNECTOR SUITE
+// =========================================================================
+function copyActivationLink(email) {
+  const link = `${window.location.origin}/?email=${encodeURIComponent(email)}`;
+  navigator.clipboard?.writeText(link).then(() => {
+    showToast('Activation Link Copied', link, 'success');
+  }).catch(() => {
+    prompt('Copy activation link:', link);
+  });
+}
+
+function openBulkUsersModal() {
+  const modal = document.getElementById('bulkUsersModal');
+  if (!modal) return;
+  const deptSel = document.getElementById('bulkDefaultDept');
+  if (deptSel) {
+    deptSel.innerHTML = `<option value="">Auto / People Desk Default</option>` +
+      allDepartments.map(d => `<option value="${d.id}">${escapeHtml(d.team_name)} (${escapeHtml(d.dept_code)})</option>`).join('');
+  }
+  const resBox = document.getElementById('bulkUsersResults');
+  if (resBox) {
+    resBox.style.display = 'none';
+    resBox.innerHTML = '';
+  }
+  modal.style.display = 'flex';
+}
+
+function closeBulkUsersModal() {
+  const modal = document.getElementById('bulkUsersModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function handleBulkCsvFile(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const textarea = document.getElementById('bulkUsersCsvInput');
+    if (textarea) textarea.value = String(ev.target?.result || '');
+  };
+  reader.readAsText(file);
+}
+
+async function submitBulkUsers(e) {
+  e.preventDefault();
+  const csvText = document.getElementById('bulkUsersCsvInput')?.value.trim() || '';
+  if (!csvText) {
+    showToast('Missing Data', 'Paste CSV rows or upload a CSV file first.', 'error');
+    return;
+  }
+  const deptIdRaw = document.getElementById('bulkDefaultDept')?.value || '';
+  const grantPortal = Boolean(document.getElementById('bulkGrantPortalAccess')?.checked);
+  const isTest = Boolean(document.getElementById('bulkMarkAsTest')?.checked);
+  const sendEmail = Boolean(document.getElementById('bulkSendWelcomeEmail')?.checked);
+  const btn = document.getElementById('btnSubmitBulkUsers');
+  const orig = btn ? btn.innerHTML : '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>Provisioning...</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/v1/admin/users/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        csv_text: csvText,
+        department_id: deptIdRaw ? parseInt(deptIdRaw, 10) : null,
+        grant_portal_access: grantPortal,
+        is_test: isTest,
+        send_welcome_email: sendEmail,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast('Bulk Import Failed', data.detail || 'Check CSV format and try again.', 'error');
+      return;
+    }
+
+    const resBox = document.getElementById('bulkUsersResults');
+    if (resBox) {
+      resBox.style.display = 'block';
+      resBox.innerHTML = `
+        <div style="font-size:12.5px;font-weight:700;color:#0F172A;margin-bottom:8px;">
+          Provisioned ${data.succeeded} / ${data.total} joiners (${data.failed} failed)
+        </div>
+        <div style="max-height:180px;overflow-y:auto;border:1px solid #E2E8F0;border-radius:8px;background:#F8FAFC;padding:8px;">
+          ${(data.results || []).map(r => r.success ? `
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #E2E8F0;font-size:12px;">
+              <span>✓ <strong>${escapeHtml(r.name)}</strong> (${escapeHtml(r.email)}) — ${escapeHtml(r.role)}</span>
+              ${r.activation_link ? `<button type="button" class="action-pill-btn edit" onclick="copyActivationLink('${escapeHtml(r.email)}')">Copy Link</button>` : ''}
+            </div>
+          ` : `
+            <div style="padding:6px 4px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#DC2626;">
+              ✕ ${escapeHtml(r.email || 'Row ' + (r.index + 1))}: ${escapeHtml(r.error || 'Failed')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    loadUsers();
+    showToast('Bulk Provisioning Complete', `Added ${data.succeeded} joiner(s) to People Desk.`, data.failed ? 'warning' : 'success');
+  } catch (err) {
+    showToast('Network Error', 'Failed to reach server for bulk provisioning.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  }
+}
+
+function openOrynConnectModal() {
+  const modal = document.getElementById('orynConnectModal');
+  if (!modal) return;
+  const origin = window.location.origin;
+  const restUrlEl = document.getElementById('orynRestEndpointUrl');
+  const scimUrlEl = document.getElementById('orynScimEndpointUrl');
+  if (restUrlEl) restUrlEl.innerText = `${origin}/api/access`;
+  if (scimUrlEl) scimUrlEl.innerText = `${origin}/scim/v2`;
+  modal.style.display = 'flex';
+}
+
+function closeOrynConnectModal() {
+  const modal = document.getElementById('orynConnectModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function copyOrynEndpoint(elementId) {
+  const txt = document.getElementById(elementId)?.innerText || '';
+  if (!txt) return;
+  navigator.clipboard?.writeText(txt).then(() => {
+    showToast('Copied to Clipboard', txt, 'success');
+  });
+}
+
+async function triggerCleanupTestData() {
+  if (!confirm('Delete all test users, test employees, and test cases marked with TEST (is_test=TRUE)? Real production records will not be touched.')) {
+    return;
+  }
+  try {
+    const res = await fetch('/api/v1/admin/test-data/cleanup', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showToast('Cleanup Failed', data.detail || 'Could not clean test data.', 'error');
+      return;
+    }
+    showToast(
+      'Test Data Cleaned',
+      `Removed ${data.users_deleted} test user(s), ${data.employees_deleted} employee(s), ${data.cases_deleted} case(s).`,
+      'success'
+    );
+    loadUsers();
+    loadCases();
+  } catch (err) {
+    showToast('Network Error', 'Failed to run test data cleanup.', 'error');
+  }
+}

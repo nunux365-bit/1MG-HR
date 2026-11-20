@@ -25,6 +25,10 @@ services:
         value: tata1mg_desk
       - key: ADMIN_EMAIL
         value: vaibhav.v1@1mg.com
+      - key: ORYN_BOT_API_KEY
+        sync: false
+      - key: ORYN_WEBHOOK_SECRET
+        sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT

@@ -294,7 +294,12 @@ async function handleSetPassword(e) {
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const emailParam = urlParams.get('email');
-  
+  const reasonParam = urlParams.get('reason');
+
+  if (reasonParam === 'session_revoked') {
+    showAlert('Your session expired or access was revoked by an administrator / Oryn Bot. Please sign in again.');
+  }
+
   if (emailParam) {
     const emailInput = document.getElementById('emailInput');
     if (emailInput) {
