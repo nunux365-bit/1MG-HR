@@ -6,7 +6,7 @@ load_dotenv()
 from urllib.parse import urlparse
 
 # Neon PostgreSQL connection parameters for People Desk (tata1mg_desk)
-NEON_HOST = os.getenv("NEON_HOST", "ep-delicate-band-b3531bbp-pooler.c-4.ap-southeast-1.aws.neon.tech")
+NEON_HOST = os.getenv("NEON_HOST", "ep-icy-hall-az0mzq8e-pooler.c-3.ap-southeast-1.aws.neon.tech")
 NEON_PORT = int(os.getenv("NEON_PORT", 5432))
 NEON_DBNAME = os.getenv("NEON_DBNAME", "tata1mg_desk")
 NEON_USER = os.getenv("NEON_USER", "neondb_owner")

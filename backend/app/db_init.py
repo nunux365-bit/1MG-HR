@@ -11,7 +11,7 @@ DB_URL = os.getenv("DATABASE_URL")
 if not DB_URL:
     neon_user = os.getenv("NEON_USER", "neondb_owner")
     neon_pass = os.getenv("NEON_PASSWORD", "")
-    neon_host = os.getenv("NEON_HOST", "ep-delicate-band-b3531bbp-pooler.c-4.ap-southeast-1.aws.neon.tech")
+    neon_host = os.getenv("NEON_HOST", "ep-icy-hall-az0mzq8e-pooler.c-3.ap-southeast-1.aws.neon.tech")
     neon_db = os.getenv("NEON_DBNAME", "tata1mg_desk")
     DB_URL = f"postgresql://{neon_user}:{neon_pass}@{neon_host}/{neon_db}?sslmode=require"
 

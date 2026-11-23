@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger("backend.imap_service")
 _imap_sync_lock = threading.Lock()
+_known_imap_uids: Dict[str, set] = {}
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 DEFAULT_IMAP_SYNC_START_DATE = "2026-11-17"
@@ -403,33 +404,56 @@ def sync_inbound_emails_from_mailbox(
         skipped_before_start = 0
 
         mail.select("INBOX")
+        uidvalidity_resp = mail.response("UIDVALIDITY")
+        uidvalidity = "0"
+        if uidvalidity_resp and uidvalidity_resp[1] and uidvalidity_resp[1][0]:
+            raw_uv = uidvalidity_resp[1][0]
+            uidvalidity = raw_uv.decode("ascii", errors="ignore") if isinstance(raw_uv, (bytes, bytearray)) else str(raw_uv)
+        uid_cache_key = f"{user.lower()}|{uidvalidity}"
+        known_uids = _known_imap_uids.setdefault(uid_cache_key, set())
+        if len(known_uids) > 5000:
+            known_uids.clear()
 
         # Search for UNSEEN first (scoped by SINCE when IMAP_SYNC_START_DATE is active)
         if sync_start_dt:
             since_str = format_imap_since_date(sync_start_dt)
-            status, search_data = mail.search(None, f"UNSEEN SINCE {since_str}")
+            status, search_data = mail.uid("search", None, f"UNSEEN SINCE {since_str}")
             if status != "OK":
-                status, search_data = mail.search(None, f"SINCE {since_str}")
+                status, search_data = mail.uid("search", None, f"SINCE {since_str}")
             msg_ids = search_data[0].split() if status == "OK" and search_data[0] else []
 
             # Fallback to messages since cutoff (never bare ALL) so already-read emails from today aren't missed
             if not msg_ids:
-                status, all_data = mail.search(None, f"SINCE {since_str}")
+                status, all_data = mail.uid("search", None, f"SINCE {since_str}")
                 if status == "OK" and all_data[0]:
                     all_ids = all_data[0].split()
                     msg_ids = all_ids[-min(max_fetch, len(all_ids)):]
         else:
-            status, search_data = mail.search(None, "UNSEEN")
+            status, search_data = mail.uid("search", None, "UNSEEN")
             msg_ids = search_data[0].split() if status == "OK" and search_data[0] else []
 
             # Fallback to latest messages to ensure nothing was missed
             if not msg_ids:
-                status, all_data = mail.search(None, "ALL")
+                status, all_data = mail.uid("search", None, "ALL")
                 if status == "OK" and all_data[0]:
                     all_ids = all_data[0].split()
                     msg_ids = all_ids[-min(10, len(all_ids)):]
 
-        target_ids = msg_ids[-max_fetch:]
+        target_ids = [uid for uid in msg_ids[-max_fetch:] if uid not in known_uids]
+        if not target_ids:
+            mail.close()
+            mail.logout()
+            return {
+                "success": True,
+                "synced_count": 0,
+                "cases_created": 0,
+                "replies_linked": 0,
+                "skipped_before_start": 0,
+                "sync_start_date": sync_start_dt.isoformat() if sync_start_dt else None,
+                "items": [],
+                "message": f"No new emails in {user}.",
+            }
+
         logger.info(
             f"Found {len(target_ids)} candidate messages in mailbox for {user} "
             f"(sync_start_date={sync_start_dt.isoformat() if sync_start_dt else 'NONE'})."
@@ -439,7 +463,7 @@ def sync_inbound_emails_from_mailbox(
         for mid in target_ids:
             try:
                 # Peek first so pre-cutoff emails stay unread in Gmail if skipped
-                fetch_status, data = mail.fetch(mid, "(BODY.PEEK[])")
+                fetch_status, data = mail.uid("fetch", mid, "(BODY.PEEK[])")
                 raw_email = None
                 if fetch_status == "OK" and data:
                     for part in data:
@@ -447,7 +471,7 @@ def sync_inbound_emails_from_mailbox(
                             raw_email = bytes(part[1])
                             break
                 if raw_email is None:
-                    fetch_status, data = mail.fetch(mid, "(RFC822)")
+                    fetch_status, data = mail.uid("fetch", mid, "(RFC822)")
                     if fetch_status == "OK" and data and isinstance(data[0], (tuple, list)) and len(data[0]) > 1:
                         raw_email = data[0][1]
                 if not raw_email:
@@ -473,7 +497,7 @@ def sync_inbound_emails_from_mailbox(
                         received_dt = None
                 if received_dt is None:
                     try:
-                        int_status, int_data = mail.fetch(mid, "(INTERNALDATE)")
+                        int_status, int_data = mail.uid("fetch", mid, "(INTERNALDATE)")
                         if int_status == "OK" and int_data and int_data[0]:
                             raw_int = int_data[0] if isinstance(int_data[0], bytes) else int_data[0][0]
                             received_dt = _parse_imap_internaldate(
@@ -486,11 +510,12 @@ def sync_inbound_emails_from_mailbox(
 
                 if sync_start_dt and received_dt.astimezone(timezone.utc) < sync_start_dt.astimezone(timezone.utc):
                     skipped_before_start += 1
+                    known_uids.add(mid)
                     continue
 
                 # Mark accepted post-cutoff message as Seen to match prior RFC822 fetch behavior
                 try:
-                    mail.store(mid, "+FLAGS", "\\Seen")
+                    mail.uid("store", mid, "+FLAGS", "\\Seen")
                 except Exception:
                     pass
 
@@ -502,10 +527,12 @@ def sync_inbound_emails_from_mailbox(
                 received_str = received_dt.strftime("%Y-%m-%d %H:%M:%S%z")
 
                 if not sender_email or "@" not in sender_email:
+                    known_uids.add(mid)
                     continue
 
                 # Skip outbound echo emails sent by People Desk itself
                 if sender_email.strip().lower() in self_addresses:
+                    known_uids.add(mid)
                     continue
 
                 # Check duplicate by exact Message-ID first, then sender+subject+window
@@ -529,6 +556,7 @@ def sync_inbound_emails_from_mailbox(
                         fetch_one=True,
                     )
                 if existing:
+                    known_uids.add(mid)
                     continue
 
                 # Run unified Noise Check + AI Department/Intent Classification + HRMS Lookup
@@ -688,6 +716,7 @@ def sync_inbound_emails_from_mailbox(
                 )
 
                 if inserted:
+                    known_uids.add(mid)
                     new_synced += 1
                     email_id = inserted["id"]
                     case_num_assigned = None
